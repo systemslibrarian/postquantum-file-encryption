@@ -26,6 +26,9 @@ Thumbs.db
 coverage*.xml
 *.trx
 
+# Benchmark output
+BenchmarkDotNet.Artifacts/
+
 # Rust / WebAssembly demo build output
 target/
 samples/**/pkg/

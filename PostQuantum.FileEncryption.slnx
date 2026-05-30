@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/PostQuantum.FileEncryption.Benchmarks/PostQuantum.FileEncryption.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/PostQuantum.FileEncryption.Demo/PostQuantum.FileEncryption.Demo.csproj" />
   </Folder>

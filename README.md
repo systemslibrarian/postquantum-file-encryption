@@ -246,15 +246,43 @@ Hybrid package (or use the experimental mode knowingly).
 
 ---
 
+## Performance
+
+Throughput is dominated by two things: the **AES-256-GCM data plane** (which uses hardware AES
+and runs at multiple GB/s) and a **one-time key derivation** per file (a deliberate cost that
+hardens passphrases). The bigger the file, the more the KDF amortizes.
+
+Indicative end-to-end numbers (16 MiB, *including* one KDF derivation), measured with the
+included BenchmarkDotNet project on a shared GitHub Codespace — treat as rough, not lab-grade:
+
+| Operation | KDF | Approx. throughput |
+| --------- | --- | ------------------ |
+| Encrypt   | PBKDF2 (100k) | ~210 MiB/s |
+| Decrypt   | PBKDF2 (100k) | ~300 MiB/s |
+| Encrypt   | Argon2id (8 MiB, 1 pass) | ~390 MiB/s |
+| Decrypt   | Argon2id (8 MiB, 1 pass) | ~450 MiB/s |
+
+Run it yourself (and tune the KDF cost):
+
+```bash
+dotnet run -c Release --project benchmarks/PostQuantum.FileEncryption.Benchmarks -- --filter '*'
+```
+
+The default PBKDF2 cost is 600,000 iterations (OWASP), so small files are KDF-bound by design;
+raise/lower it (or pick Argon2id) via `PqEncryptionOptions` to trade hardening for speed.
+
+---
+
 ## Project layout
 
 ```
-src/      PostQuantum.FileEncryption        — the library
-tests/    PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, known-answer, cross-impl, and fuzz tests
-samples/  PostQuantum.FileEncryption.Demo   — .NET demo (Blazor Server, runs the library)
-samples/  pqfe-wasm                          — Rust → WASM re-implementation of the .pqfe format
-samples/  pqfe-web                           — fully client-side browser demo (GitHub Pages)
-docs/     FILE-FORMAT.md                     — the container specification
+src/        PostQuantum.FileEncryption        — the library
+tests/      PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, known-answer, cross-impl, property, fuzz tests
+benchmarks/ PostQuantum.FileEncryption.Benchmarks — BenchmarkDotNet throughput suite
+samples/    PostQuantum.FileEncryption.Demo   — .NET demo (Blazor Server, runs the library)
+samples/    pqfe-wasm                          — Rust → WASM re-implementation of the .pqfe format
+samples/    pqfe-web                           — fully client-side browser demo (GitHub Pages)
+docs/       *.md                               — format spec, threat model, test vectors, roadmap, and more
 ```
 
 ### Why Blazor Server?
