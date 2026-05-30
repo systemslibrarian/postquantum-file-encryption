@@ -4,6 +4,8 @@ import init, { encrypt, decrypt } from './pkg/pqfe_wasm.js';
 
 const MIN_PASSPHRASE = 8;
 const EXTENSION = '.pqfe';
+// The whole file is read into memory in the browser, so cap it to avoid OOMing the tab.
+const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MiB
 
 const $ = (id) => document.getElementById(id);
 
@@ -76,9 +78,17 @@ function wireFileInfo(input, info, refresh) {
     });
 }
 
+function tooLarge(file, statusEl) {
+    if (file.size > MAX_FILE_BYTES) {
+        showStatus(statusEl, `File is too large for this in-browser demo (limit ${formatBytes(MAX_FILE_BYTES)}).`, 'error');
+        return true;
+    }
+    return false;
+}
+
 async function onEncrypt() {
     const file = els.encFile.files[0];
-    if (!file) return;
+    if (!file || tooLarge(file, els.encStatus)) return;
     els.encBtn.disabled = true;
     showStatus(els.encStatus, 'Encrypting…', 'working');
     await nextFrame();
@@ -87,6 +97,7 @@ async function onEncrypt() {
         const container = encrypt(data, els.encPass.value);
         download(file.name + EXTENSION, container);
         showStatus(els.encStatus, `Encrypted ${file.name} → ${file.name + EXTENSION}.`, 'success');
+        els.encPass.value = ''; // don't leave the passphrase sitting in the field
     } catch (e) {
         showStatus(els.encStatus, `Could not encrypt: ${e?.message ?? e}`, 'error');
     } finally {
@@ -96,7 +107,7 @@ async function onEncrypt() {
 
 async function onDecrypt() {
     const file = els.decFile.files[0];
-    if (!file) return;
+    if (!file || tooLarge(file, els.decStatus)) return;
     els.decBtn.disabled = true;
     showStatus(els.decStatus, 'Decrypting…', 'working');
     await nextFrame();
@@ -108,6 +119,7 @@ async function onDecrypt() {
             : file.name + '.decrypted';
         download(outName, plaintext);
         showStatus(els.decStatus, `Decrypted ${file.name} → ${outName}.`, 'success');
+        els.decPass.value = ''; // don't leave the passphrase sitting in the field
     } catch (e) {
         // The core returns a generic, no-oracle message for any authentication failure.
         showStatus(els.decStatus, e?.message ?? 'Could not decrypt the file.', 'error');

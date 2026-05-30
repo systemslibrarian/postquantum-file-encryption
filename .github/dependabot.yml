@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # .NET dependencies across the library, tests, and the Blazor demo.
+  - package-ecosystem: nuget
+    directories:
+      - "/src/PostQuantum.FileEncryption"
+      - "/tests/PostQuantum.FileEncryption.Tests"
+      - "/samples/PostQuantum.FileEncryption.Demo"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # Rust dependencies for the WebAssembly browser core.
+  - package-ecosystem: cargo
+    directory: "/samples/pqfe-wasm"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # Keep the pinned GitHub Actions (by SHA) current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

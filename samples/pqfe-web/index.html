@@ -4,6 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Lock the page down: only same-origin assets, no inline/3rd-party script, no framing.
+         'wasm-unsafe-eval' is required to instantiate WebAssembly (it does not permit JS eval). -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
     <title>PostQuantum.FileEncryption — Browser Demo</title>
     <link rel="stylesheet" href="style.css" />
 </head>

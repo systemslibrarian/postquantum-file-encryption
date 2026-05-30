@@ -29,7 +29,7 @@ coverage*.xml
 # Rust / WebAssembly demo build output
 target/
 samples/**/pkg/
-Cargo.lock
+# Cargo.lock IS committed for the demo crate (reproducible, auditable builds).
 
 # Local secrets / scratch
 *.local
