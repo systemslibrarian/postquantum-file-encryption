@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 wasm-bindgen = "0.2"
 aes-gcm = "0.10"
 pbkdf2 = "0.12"
-sha2 = "0.10"
+sha2 = "0.11"
 argon2 = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
 
