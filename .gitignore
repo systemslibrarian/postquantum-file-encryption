@@ -29,6 +29,11 @@ coverage*.xml
 # Benchmark output
 BenchmarkDotNet.Artifacts/
 
+# DocFX generated output (metadata + rendered site)
+docfx/_site/
+docfx/api/*.yml
+docfx/api/.manifest
+
 # Rust / WebAssembly demo build output
 target/
 samples/**/pkg/

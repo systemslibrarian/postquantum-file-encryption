@@ -1,0 +1,41 @@
+name: API docs
+
+# Builds the DocFX API reference from the library's XML docs and uploads it as an artifact.
+# (GitHub Pages currently hosts the browser demo; publishing the docs site there is a separate
+# choice — see docfx/ and the README.)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'docfx/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install DocFX
+        run: |
+          dotnet tool install -g docfx
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Build API docs
+        run: docfx docfx/docfx.json
+
+      - name: Upload site
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: api-docs
+          path: docfx/_site

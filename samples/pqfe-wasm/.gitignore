@@ -1,3 +1,10 @@
 /target
 /pkg
 # Cargo.lock is intentionally committed for reproducible, auditable builds.
+
+# cargo-fuzz build output and discovered corpus/crashes
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+/fuzz/coverage
+/fuzz/Cargo.lock

@@ -189,6 +189,20 @@ catch (PqDecryptionException) { /* wrong key, or altered/corrupted/truncated —
 catch (PqFormatException)     { /* not a PostQuantum.FileEncryption container at all */ }
 ```
 
+### All-or-nothing stream decryption
+
+```csharp
+// Writes to `output` only if the WHOLE container authenticates — nothing on a truncated input.
+await new PqFileDecryptor().DecryptAtomicAsync(input, output, passphrase);
+```
+
+### Telemetry (SIEM / OpenTelemetry)
+
+The library emits non-sensitive events on an `EventSource` named `PostQuantum.FileEncryption`
+(operation, KDF/key-source label, byte counts, elapsed time, failure category — **never** keys or
+plaintext). Subscribe via `EventListener`, `dotnet-trace`, EventPipe, or OpenTelemetry. See
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ---
 
 ## Security posture
@@ -243,6 +257,29 @@ In short: **the public-key, key-establishment part of "post-quantum" is not fini
 core — and we'd rather say so plainly than overstate it. If your need is "encrypt a file with a
 passphrase," the core is ready; if it's "encrypt to a recipient's public key," wait for the
 Hybrid package (or use the experimental mode knowingly).
+
+---
+
+## Documentation
+
+| Topic | Doc |
+| --- | --- |
+| Roadmap (now / v0.2 / v0.3 / 1.0) | [ROADMAP.md](ROADMAP.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Security policy & disclosure | [SECURITY.md](SECURITY.md) |
+| Threat model (assets, adversaries, audit focus) | [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) |
+| Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md) |
+| On-disk container format | [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) |
+| Known-answer test vectors | [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) |
+| Deployment & hardening | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Versioning & compatibility policy | [docs/VERSIONING.md](docs/VERSIONING.md) |
+| Key management (KMS/HSM, rotation) — design | [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md) |
+| Hybrid & multi-recipient — design | [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) |
+| Known gaps (the honest ledger) | [KNOWN-GAPS.md](KNOWN-GAPS.md) |
+| Comparison vs age / libsodium / OpenSSL | [docs/COMPARISON.md](docs/COMPARISON.md) |
+| Support & lifecycle | [SUPPORT.md](SUPPORT.md) · Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) |
+
+API reference (DocFX) is generated from the XML docs — see `docfx/`.
 
 ---
 

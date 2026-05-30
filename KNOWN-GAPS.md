@@ -84,8 +84,14 @@ lower-level **PostQuantum.FileFormat**. As of this release:
 ### Process and assurance gaps
 
 - **Not independently audited.** No third-party cryptographic review has been performed.
+- **Continuous fuzzing is partial.** Executed coverage comes from the in-repo randomized/property
+  tests; a **cargo-fuzz** harness for the Rust parser is included (`samples/pqfe-wasm/fuzz`, run
+  with nightly), but it is not yet run on a schedule, a **SharpFuzz** harness for the .NET parser
+  is not yet wired, and neither is on OSS-Fuzz.
 - **Recipient round-trip is not exercised on this CI host**, which lacks platform ML-KEM; those
   tests self-skip there. The capability gating *is* tested everywhere.
+- **NuGet author-signing** requires a code-signing certificate (not configured); nuget.org applies
+  repository signatures on publish. The release workflow produces an SBOM and a provenance attestation.
 - **Single target framework.** `net10.0` only; no down-level support.
 
 ---

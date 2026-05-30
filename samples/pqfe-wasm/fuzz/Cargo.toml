@@ -1,0 +1,25 @@
+[package]
+name = "pqfe-wasm-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.pqfe-wasm]
+path = ".."
+
+# Prevent this from interfering with workspace builds.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "decrypt"
+path = "fuzz_targets/decrypt.rs"
+test = false
+doc = false
+bench = false
