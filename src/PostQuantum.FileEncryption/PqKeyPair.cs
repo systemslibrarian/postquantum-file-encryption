@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 
 namespace PostQuantum.FileEncryption;
 
 /// <summary>The post-quantum key-encapsulation algorithm used for recipient encryption.</summary>
+[Experimental("PQFE001")]
 public enum PqKemAlgorithm
 {
     /// <summary>ML-KEM-768 (FIPS 203), NIST security category 3.</summary>
@@ -24,6 +26,7 @@ internal static class KemSizes
 /// A recipient's public (encapsulation) key. Share this freely; anyone holding it can encrypt
 /// a file that only the matching <see cref="PqRecipientPrivateKey"/> can open.
 /// </summary>
+[Experimental("PQFE001")]
 public sealed class PqRecipientPublicKey
 {
     internal byte[] KeyBytes { get; }
@@ -57,6 +60,7 @@ public sealed class PqRecipientPublicKey
 /// A recipient's private (decapsulation) key. Keep this secret. Dispose it when done so its
 /// bytes are zeroed from memory.
 /// </summary>
+[Experimental("PQFE001")]
 public sealed class PqRecipientPrivateKey : IDisposable
 {
     private readonly byte[] _decapsulationKey;
@@ -124,6 +128,7 @@ public sealed class PqRecipientPrivateKey : IDisposable
 /// // ... store keyPair.PrivateKey.Export() somewhere safe ...
 /// </code>
 /// </example>
+[Experimental("PQFE001")]
 public sealed class PqKeyPair : IDisposable
 {
     /// <summary>The public (encapsulation) key — safe to share.</summary>

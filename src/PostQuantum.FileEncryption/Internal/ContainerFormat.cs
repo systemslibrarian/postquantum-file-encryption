@@ -63,15 +63,19 @@ internal sealed record ContainerHeader(
     byte[] KeyParams,
     byte[] HeaderBytes)
 {
-    /// <summary>Builds a header for a new container and serializes it.</summary>
-    public static ContainerHeader Create(byte keySource, int chunkSize, byte[] keyParams)
+    /// <summary>
+    /// Builds a header for a new container and serializes it. <paramref name="noncePrefixOverride"/>
+    /// is for deterministic conformance tests only; production callers pass <see langword="null"/>
+    /// to get a fresh random prefix.
+    /// </summary>
+    public static ContainerHeader Create(byte keySource, int chunkSize, byte[] keyParams, byte[]? noncePrefixOverride = null)
     {
         if (keyParams.Length > ContainerFormat.MaxKeyParamsLength)
         {
             throw new ArgumentException("Key parameters block is too large for the container header.", nameof(keyParams));
         }
 
-        var noncePrefix = RandomNumberGenerator.GetBytes(ContainerFormat.NoncePrefixLength);
+        var noncePrefix = noncePrefixOverride ?? RandomNumberGenerator.GetBytes(ContainerFormat.NoncePrefixLength);
         var bytes = new byte[ContainerFormat.FixedHeaderLength + keyParams.Length];
         var span = bytes.AsSpan();
 

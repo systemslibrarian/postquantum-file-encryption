@@ -23,11 +23,14 @@ internal static class KeyEstablishment
 
     // ---------------------------------------------------------------- Passphrase
 
-    /// <summary>Derives a new content key from a passphrase and serializes its KeyParams.</summary>
+    /// <summary>
+    /// Derives a new content key from a passphrase and serializes its KeyParams.
+    /// <paramref name="saltOverride"/> is for deterministic conformance tests only.
+    /// </summary>
     public static async Task<(byte[] keyParams, byte[] contentKey)> BuildPassphraseAsync(
-        ReadOnlyMemory<byte> passphrase, PqEncryptionOptions options)
+        ReadOnlyMemory<byte> passphrase, PqEncryptionOptions options, byte[]? saltOverride = null)
     {
-        byte[] salt = RandomNumberGenerator.GetBytes(options.SaltSizeBytes);
+        byte[] salt = saltOverride ?? RandomNumberGenerator.GetBytes(options.SaltSizeBytes);
 
         byte[] contentKey = options.Kdf switch
         {

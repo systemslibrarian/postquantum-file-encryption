@@ -4,11 +4,17 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Underscored test method names are idiomatic and read as sentences. -->
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- Underscored test method names are idiomatic and read as sentences.
+         PQFE001: the tests deliberately exercise the experimental ML-KEM API. -->
+    <NoWarn>$(NoWarn);CA1707;PQFE001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="10.0.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CsCheck" Version="4.7.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

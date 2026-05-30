@@ -5,6 +5,9 @@
     <RootNamespace>PostQuantum.FileEncryption</RootNamespace>
     <AssemblyName>PostQuantum.FileEncryption</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The library implements the experimental ML-KEM feature internally, so it opts in to its
+         own PQFE001 diagnostic. The [Experimental] attribute still flows to external consumers. -->
+    <NoWarn>$(NoWarn);PQFE001</NoWarn>
   </PropertyGroup>
 
   <!-- NuGet package metadata -->

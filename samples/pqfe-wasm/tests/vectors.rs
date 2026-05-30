@@ -3,7 +3,7 @@
 //! independent implementations byte-compatible with the `.pqfe` v2 format.
 
 use base64::Engine;
-use pqfe_wasm::{decrypt_bytes, encrypt_bytes, PqError};
+use pqfe_wasm::{decrypt_bytes, encrypt_bytes, encrypt_bytes_with, PqError};
 
 const PASSPHRASE: &[u8] = b"test-vector-passphrase";
 const EXPECTED: &[u8] = b"PostQuantum.FileEncryption known-answer vector v2.";
@@ -71,4 +71,22 @@ fn truncation_is_detected() {
 fn non_container_is_format_error() {
     let garbage = vec![0u8; 64];
     assert!(matches!(decrypt_bytes(&garbage, PASSPHRASE), Err(PqError::Format(_))));
+}
+
+/// Byte-exact cross-check: with a fixed salt and nonce prefix, the Rust core must produce the
+/// identical container the .NET library does (see DeterministicVectorTests.cs).
+#[test]
+fn deterministic_output_matches_dotnet() {
+    let salt: Vec<u8> = (0u8..16).collect();
+    let nonce_prefix = [0xA1u8, 0xB2, 0xC3, 0xD4];
+    let container = encrypt_bytes_with(
+        b"Deterministic conformance vector - byte for byte.",
+        b"deterministic-conformance",
+        &salt,
+        &nonce_prefix,
+        120_000,
+        1024,
+    );
+    let expected = "UFFGRQIBAQAAAAQAobLD1AAWARAAAQIDBAUGBwgJCgsMDQ4PAAHUwAEAAAAx8LbT/vUWhAJzxG27tIWQK9TfelTH70vWt+4CuWNvi58E0J1kT46rSZnQgLQx7ndsXtTEuK5a8PFd/Geog1+9mN4=";
+    assert_eq!(base64::engine::general_purpose::STANDARD.encode(&container), expected);
 }

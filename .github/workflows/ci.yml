@@ -38,8 +38,8 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+      - name: Test (with coverage)
+        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
 
   rust:
     name: Rust/WASM — test & build

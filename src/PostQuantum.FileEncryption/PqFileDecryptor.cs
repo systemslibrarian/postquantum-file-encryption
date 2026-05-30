@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using PostQuantum.FileEncryption.Internal;
@@ -74,8 +75,9 @@ public sealed class PqFileDecryptor
 
     // ------------------------------------------------------------------ Recipient: file & stream
 
-    /// <summary>Decrypts a recipient-encrypted container at <paramref name="inputPath"/> to <paramref name="outputPath"/> using a private key.</summary>
+    /// <summary>Decrypts a recipient-encrypted container at <paramref name="inputPath"/> to <paramref name="outputPath"/> using a private key. <b>Experimental.</b></summary>
     /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
+    [Experimental("PQFE001")]
     public Task DecryptFileAsync(
         string inputPath, string outputPath, PqRecipientPrivateKey privateKey,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
@@ -88,8 +90,9 @@ public sealed class PqFileDecryptor
             PqContainer.DecryptRecipientAsync(input, output, privateKey, total, progress, cancellationToken));
     }
 
-    /// <summary>Decrypts a recipient-encrypted container read from <paramref name="input"/> to <paramref name="output"/> using a private key.</summary>
+    /// <summary>Decrypts a recipient-encrypted container read from <paramref name="input"/> to <paramref name="output"/> using a private key. <b>Experimental.</b></summary>
     /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
+    [Experimental("PQFE001")]
     public Task DecryptAsync(
         Stream input, Stream output, PqRecipientPrivateKey privateKey,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)

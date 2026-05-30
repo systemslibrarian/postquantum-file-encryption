@@ -17,10 +17,13 @@ internal static class PqContainer
 
     public static async Task EncryptPassphraseAsync(
         Stream source, Stream destination, ReadOnlyMemory<byte> passphrase, PqEncryptionOptions options,
-        long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken)
+        long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken,
+        byte[]? saltOverride = null, byte[]? noncePrefixOverride = null)
     {
-        (byte[] keyParams, byte[] contentKey) = await KeyEstablishment.BuildPassphraseAsync(passphrase, options).ConfigureAwait(false);
-        var header = ContainerHeader.Create(ContainerFormat.KeySourcePassphrase, options.ChunkSizeBytes, keyParams);
+        // The override parameters are used only by deterministic conformance tests; production
+        // callers leave them null so salt and nonce prefix are freshly random per file.
+        (byte[] keyParams, byte[] contentKey) = await KeyEstablishment.BuildPassphraseAsync(passphrase, options, saltOverride).ConfigureAwait(false);
+        var header = ContainerHeader.Create(ContainerFormat.KeySourcePassphrase, options.ChunkSizeBytes, keyParams, noncePrefixOverride);
         await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
     }
 

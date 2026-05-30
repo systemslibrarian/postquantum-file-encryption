@@ -128,23 +128,36 @@ pub fn encrypt_bytes(data: &[u8], passphrase: &[u8]) -> Vec<u8> {
     random_bytes(&mut salt);
     let mut nonce_prefix = [0u8; NONCE_PREFIX_LEN];
     random_bytes(&mut nonce_prefix);
+    encrypt_bytes_with(data, passphrase, &salt, &nonce_prefix, DEFAULT_PBKDF2_ITERS, DEFAULT_CHUNK)
+}
 
-    let key = derive_pbkdf2(passphrase, &salt, DEFAULT_PBKDF2_ITERS);
+/// Deterministic encryption with caller-supplied salt, nonce prefix, iteration count, and chunk
+/// size. Intended for **conformance testing** (byte-for-byte cross-checks against the .NET
+/// library); production code should use [`encrypt_bytes`], which generates random salt/nonce.
+pub fn encrypt_bytes_with(
+    data: &[u8],
+    passphrase: &[u8],
+    salt: &[u8],
+    nonce_prefix: &[u8],
+    iterations: u32,
+    chunk_size: u32,
+) -> Vec<u8> {
+    let key = derive_pbkdf2(passphrase, salt, iterations);
     let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
 
     // KeyParams (passphrase / PBKDF2): KdfId | SaltLen | Salt | Iterations(u32 BE)
     let mut key_params = Vec::with_capacity(2 + salt.len() + 4);
     key_params.push(KDF_PBKDF2);
     key_params.push(salt.len() as u8);
-    key_params.extend_from_slice(&salt);
-    key_params.extend_from_slice(&DEFAULT_PBKDF2_ITERS.to_be_bytes());
+    key_params.extend_from_slice(salt);
+    key_params.extend_from_slice(&iterations.to_be_bytes());
 
-    let header = build_header(KEYSOURCE_PASSPHRASE, DEFAULT_CHUNK, &nonce_prefix, &key_params);
+    let header = build_header(KEYSOURCE_PASSPHRASE, chunk_size, nonce_prefix, &key_params);
 
     let mut out = Vec::with_capacity(header.len() + data.len() + 64);
     out.extend_from_slice(&header);
 
-    let chunk = DEFAULT_CHUNK as usize;
+    let chunk = chunk_size as usize;
     let mut counter: u64 = 0;
     let mut offset = 0usize;
     loop {

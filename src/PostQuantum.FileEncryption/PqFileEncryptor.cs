@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using PostQuantum.FileEncryption.Internal;
@@ -89,8 +90,9 @@ public sealed class PqFileEncryptor
 
     // ------------------------------------------------------------------ Recipient: file & stream
 
-    /// <summary>Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> for a recipient's public key.</summary>
+    /// <summary>Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> for a recipient's public key. <b>Experimental.</b></summary>
     /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
+    [Experimental("PQFE001")]
     public Task EncryptFileAsync(
         string inputPath, string outputPath, PqRecipientPublicKey recipient,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
@@ -103,8 +105,9 @@ public sealed class PqFileEncryptor
             PqContainer.EncryptRecipientAsync(input, output, recipient, _options, total, progress, cancellationToken));
     }
 
-    /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> for a recipient's public key.</summary>
+    /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> for a recipient's public key. <b>Experimental.</b></summary>
     /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
+    [Experimental("PQFE001")]
     public Task EncryptAsync(
         Stream input, Stream output, PqRecipientPublicKey recipient, long? totalBytes = null,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
