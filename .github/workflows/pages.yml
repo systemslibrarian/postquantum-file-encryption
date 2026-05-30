@@ -1,0 +1,58 @@
+name: Deploy browser demo to GitHub Pages
+
+# Builds the Rust → WebAssembly core and publishes the fully client-side demo
+# (samples/pqfe-web) to GitHub Pages. The .pqfe cryptography runs in the browser; no
+# server is involved.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'samples/pqfe-wasm/**'
+      - 'samples/pqfe-web/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; cancel in-progress runs for the same ref.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable) + wasm target
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build the WebAssembly core
+        working-directory: samples/pqfe-wasm
+        run: wasm-pack build --target web --release --out-dir ../pqfe-web/pkg
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: samples/pqfe-web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

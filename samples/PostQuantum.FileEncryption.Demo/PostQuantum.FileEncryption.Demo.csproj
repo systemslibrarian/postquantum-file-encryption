@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+
+    <!-- This is a sample, not a shipped package: keep it out of packing and don't let the
+         repo's strict analysis (warnings-as-errors) block it. -->
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!-- Always demo the latest local library build. The library's AES-256-GCM runs here on the
+       server runtime (it is unsupported in browser WebAssembly), so this demo uses Blazor Server. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
+  </ItemGroup>
+
+</Project>

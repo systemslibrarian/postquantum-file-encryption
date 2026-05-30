@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    Repository-wide build settings shared by every project.
+    Package-specific metadata lives in the individual .csproj files.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- Reproducibility -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Authorship -->
+    <Authors>Paul Clark</Authors>
+    <Company>Systems Librarian</Company>
+    <Copyright>Copyright (c) Paul Clark</Copyright>
+  </PropertyGroup>
+
+</Project>

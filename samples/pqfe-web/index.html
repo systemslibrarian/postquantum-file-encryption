@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PostQuantum.FileEncryption — Browser Demo</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="page">
+        <header class="app-header">
+            <div class="app-header-inner">
+                <span class="app-logo">🔐</span>
+                <div>
+                    <div class="app-title">PostQuantum.FileEncryption</div>
+                    <div class="app-subtitle">Browser demo — encrypt &amp; decrypt files, fully client-side</div>
+                </div>
+                <a class="app-repo" href="https://github.com/systemslibrarian/postquantum-file-encryption" target="_blank" rel="noopener">GitHub ↗</a>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <div class="intro">
+                <p>
+                    Pick a file, choose a passphrase, and encrypt it into a <code>.pqfe</code> container —
+                    then decrypt it back. Everything runs in your browser via WebAssembly;
+                    <strong>your file never leaves this device</strong>.
+                </p>
+                <div class="crypto-note">
+                    <strong>What's under the hood:</strong> a Rust → WebAssembly core that
+                    re-implements the documented <code>.pqfe</code> format — passphrase-based
+                    <strong>AES-256-GCM</strong> with PBKDF2-HMAC-SHA256. It is byte-compatible with
+                    the .NET library (verified against the same known-answer test vectors), so a file
+                    encrypted here decrypts with the library, and vice versa.
+                </div>
+            </div>
+
+            <div id="loading" class="status">Loading the cryptography module…</div>
+
+            <div class="cards" id="app" hidden>
+                <!-- Encrypt -->
+                <section class="card">
+                    <h2><span class="step">1</span> Encrypt a file</h2>
+
+                    <label class="field-label">File to protect</label>
+                    <input type="file" id="encFile" class="file-input" />
+                    <div class="file-chosen" id="encFileInfo" hidden></div>
+
+                    <label class="field-label">Passphrase</label>
+                    <input type="password" id="encPass" class="text-input"
+                           placeholder="A strong, memorable passphrase" autocomplete="new-password" />
+                    <div class="hint warn" id="encHint" hidden>Use at least 8 characters.</div>
+
+                    <button class="btn primary" id="encBtn" disabled>Encrypt &amp; download</button>
+                    <div class="status" id="encStatus" hidden></div>
+                </section>
+
+                <!-- Decrypt -->
+                <section class="card">
+                    <h2><span class="step">2</span> Decrypt a <code>.pqfe</code> file</h2>
+
+                    <label class="field-label">Encrypted file</label>
+                    <input type="file" id="decFile" class="file-input" />
+                    <div class="file-chosen" id="decFileInfo" hidden></div>
+
+                    <label class="field-label">Passphrase</label>
+                    <input type="password" id="decPass" class="text-input"
+                           placeholder="The passphrase it was encrypted with" autocomplete="off" />
+
+                    <button class="btn primary" id="decBtn" disabled>Decrypt &amp; download</button>
+                    <div class="status" id="decStatus" hidden></div>
+                </section>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            Runs entirely in your browser via WebAssembly — files never leave your device.
+            &nbsp;·&nbsp; To God be the glory — 1 Corinthians 10:31.
+        </footer>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>

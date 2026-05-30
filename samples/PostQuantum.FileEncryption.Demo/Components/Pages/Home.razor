@@ -1,0 +1,248 @@
+@page "/"
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+
+<PageTitle>PostQuantum.FileEncryption — Demo</PageTitle>
+
+<div class="intro">
+    <p>
+        Pick a file, choose a passphrase, and encrypt it into a <code>.pqfe</code> container —
+        then decrypt it back. The file is streamed to this demo server, processed
+        <strong>in memory</strong> by the actual library, and never written to disk.
+    </p>
+    <div class="crypto-note">
+        <strong>What's under the hood:</strong> this demo uses passphrase-based
+        <strong>AES-256-GCM</strong> with PBKDF2-HMAC-SHA256 key derivation — authenticated
+        encryption with a 256-bit key (quantum-resistant for the data itself). The library also
+        supports <strong>ML-KEM-768</strong> recipient (public-key) encryption. The crypto runs
+        on the server because .NET's AES-GCM is not available in browser WebAssembly.
+    </div>
+</div>
+
+<div class="cards">
+    @* ----------------------------------------------------------------- Encrypt *@
+    <section class="card">
+        <h2><span class="step">1</span> Encrypt a file</h2>
+
+        <label class="field-label">File to protect</label>
+        <InputFile OnChange="OnEncryptFileSelected" class="file-input" />
+        @if (_encryptFileName is not null)
+        {
+            <div class="file-chosen">@_encryptFileName <span class="muted">(@FormatBytes(_encryptFileSize))</span></div>
+        }
+
+        <label class="field-label">Passphrase</label>
+        <input type="password" class="text-input" @bind="_encryptPassphrase" @bind:event="oninput"
+               placeholder="A strong, memorable passphrase" autocomplete="new-password" />
+        @if (_encryptPassphrase.Length is > 0 and < MinPassphraseLength)
+        {
+            <div class="hint warn">Use at least @MinPassphraseLength characters.</div>
+        }
+
+        <button class="btn primary" @onclick="EncryptAsync" disabled="@(!CanEncrypt || _busy)">
+            @(_busy && _activeSide == Side.Encrypt ? "Encrypting…" : "Encrypt & download")
+        </button>
+
+        @if (_activeSide == Side.Encrypt)
+        {
+            @RenderStatus
+        }
+    </section>
+
+    @* ----------------------------------------------------------------- Decrypt *@
+    <section class="card">
+        <h2><span class="step">2</span> Decrypt a <code>.pqfe</code> file</h2>
+
+        <label class="field-label">Encrypted file</label>
+        <InputFile OnChange="OnDecryptFileSelected" class="file-input" />
+        @if (_decryptFileName is not null)
+        {
+            <div class="file-chosen">@_decryptFileName <span class="muted">(@FormatBytes(_decryptFileSize))</span></div>
+        }
+
+        <label class="field-label">Passphrase</label>
+        <input type="password" class="text-input" @bind="_decryptPassphrase" @bind:event="oninput"
+               placeholder="The passphrase it was encrypted with" autocomplete="off" />
+
+        <button class="btn primary" @onclick="DecryptAsync" disabled="@(!CanDecrypt || _busy)">
+            @(_busy && _activeSide == Side.Decrypt ? "Decrypting…" : "Decrypt & download")
+        </button>
+
+        @if (_activeSide == Side.Decrypt)
+        {
+            @RenderStatus
+        }
+    </section>
+</div>
+
+@code {
+    private const int MinPassphraseLength = 8;
+    private const long MaxFileSize = 25L * 1024 * 1024; // 25 MiB cap for the demo
+    private const string Extension = ".pqfe";
+
+    private enum Side { None, Encrypt, Decrypt }
+
+    private Side _activeSide = Side.None;
+    private bool _busy;
+
+    // Encrypt side
+    private IBrowserFile? _encryptFile;
+    private string? _encryptFileName;
+    private long _encryptFileSize;
+    private string _encryptPassphrase = string.Empty;
+
+    // Decrypt side
+    private IBrowserFile? _decryptFile;
+    private string? _decryptFileName;
+    private long _decryptFileSize;
+    private string _decryptPassphrase = string.Empty;
+
+    // Shared status
+    private string? _statusMessage;
+    private bool _statusIsError;
+    private int _progressPercent;
+
+    private bool CanEncrypt => _encryptFile is not null && _encryptPassphrase.Length >= MinPassphraseLength;
+    private bool CanDecrypt => _decryptFile is not null && _decryptPassphrase.Length > 0;
+
+    private void OnEncryptFileSelected(InputFileChangeEventArgs e)
+    {
+        _encryptFile = e.File;
+        _encryptFileName = e.File.Name;
+        _encryptFileSize = e.File.Size;
+        ResetStatus();
+    }
+
+    private void OnDecryptFileSelected(InputFileChangeEventArgs e)
+    {
+        _decryptFile = e.File;
+        _decryptFileName = e.File.Name;
+        _decryptFileSize = e.File.Size;
+        ResetStatus();
+    }
+
+    private async Task EncryptAsync()
+    {
+        if (!CanEncrypt || _encryptFile is null) return;
+        await RunAsync(Side.Encrypt, async (progress, ct) =>
+        {
+            using var input = await ReadFileAsync(_encryptFile);
+            using var output = new MemoryStream();
+            await new PqFileEncryptor().EncryptAsync(input, output, _encryptPassphrase, input.Length, progress, ct);
+            await DownloadAsync(_encryptFile.Name + Extension, output.ToArray());
+            return $"Encrypted {_encryptFile.Name} → {_encryptFile.Name + Extension}.";
+        });
+    }
+
+    private async Task DecryptAsync()
+    {
+        if (!CanDecrypt || _decryptFile is null) return;
+        await RunAsync(Side.Decrypt, async (progress, ct) =>
+        {
+            using var input = await ReadFileAsync(_decryptFile);
+            using var output = new MemoryStream();
+            await new PqFileDecryptor().DecryptAsync(input, output, _decryptPassphrase, progress, ct);
+            string outName = SuggestDecryptedName(_decryptFile.Name);
+            await DownloadAsync(outName, output.ToArray());
+            return $"Decrypted {_decryptFile.Name} → {outName}.";
+        });
+    }
+
+    private async Task RunAsync(Side side, Func<IProgress<PqProgress>, CancellationToken, Task<string>> work)
+    {
+        _busy = true;
+        _activeSide = side;
+        _statusMessage = null;
+        _statusIsError = false;
+        _progressPercent = 0;
+        StateHasChanged();
+
+        var progress = new Progress<PqProgress>(p =>
+        {
+            _progressPercent = (int)Math.Round((p.Fraction ?? 0) * 100);
+            InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            _statusMessage = await work(progress, CancellationToken.None);
+            _progressPercent = 100;
+        }
+        catch (PqDecryptionException)
+        {
+            _statusIsError = true;
+            _statusMessage = "Could not decrypt: the passphrase is wrong, or the file has been altered or corrupted.";
+        }
+        catch (PqFormatException)
+        {
+            _statusIsError = true;
+            _statusMessage = "That file is not a PostQuantum.FileEncryption (.pqfe) container.";
+        }
+        catch (Exception ex)
+        {
+            _statusIsError = true;
+            _statusMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static async Task<MemoryStream> ReadFileAsync(IBrowserFile file)
+    {
+        // Buffer the upload into memory so the library can stream over a seekable source.
+        var ms = new MemoryStream();
+        await using var stream = file.OpenReadStream(MaxFileSize);
+        await stream.CopyToAsync(ms);
+        ms.Position = 0;
+        return ms;
+    }
+
+    private async Task DownloadAsync(string fileName, byte[] bytes)
+    {
+        // Stream the result to the browser instead of marshalling a large base64 string.
+        using var stream = new MemoryStream(bytes);
+        using var streamRef = new DotNetStreamReference(stream);
+        await JS.InvokeVoidAsync("pqfeDownload", fileName, streamRef);
+    }
+
+    private static string SuggestDecryptedName(string encryptedName) =>
+        encryptedName.EndsWith(Extension, StringComparison.OrdinalIgnoreCase)
+            ? encryptedName[..^Extension.Length]
+            : encryptedName + ".decrypted";
+
+    private void ResetStatus()
+    {
+        _statusMessage = null;
+        _statusIsError = false;
+        _progressPercent = 0;
+        _activeSide = Side.None;
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB" };
+        double value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1)
+        {
+            value /= 1024;
+            unit++;
+        }
+        return $"{value:0.#} {units[unit]}";
+    }
+
+    private RenderFragment RenderStatus => __builder =>
+    {
+        if (_busy && _progressPercent is > 0 and < 100)
+        {
+            <div class="progress-track"><div class="progress-bar" style="width:@(_progressPercent)%"></div></div>
+        }
+        if (_statusMessage is not null)
+        {
+            <div class="status @(_statusIsError ? "error" : "success")">@_statusMessage</div>
+        }
+    };
+}

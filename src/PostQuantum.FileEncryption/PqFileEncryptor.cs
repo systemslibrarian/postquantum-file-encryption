@@ -1,0 +1,144 @@
+using System.Security.Cryptography;
+using System.Text;
+using PostQuantum.FileEncryption.Internal;
+
+namespace PostQuantum.FileEncryption;
+
+/// <summary>
+/// Encrypts files and streams into authenticated PostQuantum.FileEncryption containers, either
+/// with a passphrase or to a recipient's public key. Instances are immutable and safe to
+/// share across threads.
+/// </summary>
+/// <example>
+/// <code>
+/// // Passphrase
+/// await new PqFileEncryptor().EncryptFileAsync("report.pdf", "report.pdf.pqfe", "correct horse battery staple");
+///
+/// // To a recipient's public key (requires platform ML-KEM support)
+/// var recipient = PqRecipientPublicKey.Import(publicKeyBytes);
+/// await new PqFileEncryptor().EncryptFileAsync("report.pdf", "report.pdf.pqfe", recipient);
+/// </code>
+/// </example>
+public sealed class PqFileEncryptor
+{
+    private readonly PqEncryptionOptions _options;
+
+    /// <summary>Creates an encryptor using the strong default options.</summary>
+    public PqFileEncryptor() : this(PqEncryptionOptions.Default) { }
+
+    /// <summary>Creates an encryptor using the supplied options.</summary>
+    /// <param name="options">Configuration for new ciphertext. Validated immediately.</param>
+    public PqFileEncryptor(PqEncryptionOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        _options = options;
+    }
+
+    // ------------------------------------------------------------------ Passphrase: file
+
+    /// <summary>Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> with a passphrase.</summary>
+    /// <remarks>Output is written atomically: a sibling temp file is moved into place only on full success.</remarks>
+    public Task EncryptFileAsync(
+        string inputPath, string outputPath, string passphrase,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(passphrase);
+        return WithPassphraseBytesAsync(passphrase, p =>
+            EncryptFileAsync(inputPath, outputPath, p, progress, cancellationToken));
+    }
+
+    /// <summary>
+    /// Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> with a passphrase
+    /// supplied as bytes (typically UTF-8). Prefer this overload when you want to zero the
+    /// passphrase from memory yourself; this library does not retain it.
+    /// </summary>
+    public Task EncryptFileAsync(
+        string inputPath, string outputPath, ReadOnlyMemory<byte> passphrase,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputPath);
+        ArgumentException.ThrowIfNullOrEmpty(outputPath);
+
+        return EncryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
+            PqContainer.EncryptPassphraseAsync(input, output, passphrase, _options, total, progress, cancellationToken));
+    }
+
+    // ------------------------------------------------------------------ Passphrase: stream
+
+    /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> with a passphrase. Neither stream is disposed.</summary>
+    public Task EncryptAsync(
+        Stream input, Stream output, string passphrase, long? totalBytes = null,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(passphrase);
+        return WithPassphraseBytesAsync(passphrase, p =>
+            EncryptAsync(input, output, p, totalBytes, progress, cancellationToken));
+    }
+
+    /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> with a passphrase supplied as bytes.</summary>
+    public Task EncryptAsync(
+        Stream input, Stream output, ReadOnlyMemory<byte> passphrase, long? totalBytes = null,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+        long? total = ResolveTotal(input, totalBytes);
+        return PqContainer.EncryptPassphraseAsync(input, output, passphrase, _options, total, progress, cancellationToken);
+    }
+
+    // ------------------------------------------------------------------ Recipient: file & stream
+
+    /// <summary>Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> for a recipient's public key.</summary>
+    /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
+    public Task EncryptFileAsync(
+        string inputPath, string outputPath, PqRecipientPublicKey recipient,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputPath);
+        ArgumentException.ThrowIfNullOrEmpty(outputPath);
+        ArgumentNullException.ThrowIfNull(recipient);
+
+        return EncryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
+            PqContainer.EncryptRecipientAsync(input, output, recipient, _options, total, progress, cancellationToken));
+    }
+
+    /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> for a recipient's public key.</summary>
+    /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
+    public Task EncryptAsync(
+        Stream input, Stream output, PqRecipientPublicKey recipient, long? totalBytes = null,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(recipient);
+        long? total = ResolveTotal(input, totalBytes);
+        return PqContainer.EncryptRecipientAsync(input, output, recipient, _options, total, progress, cancellationToken);
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private static async Task EncryptFileCoreAsync(
+        string inputPath, string outputPath, Func<FileStream, FileStream, long?, Task> encrypt)
+    {
+        await using var input = FileIo.OpenRead(inputPath);
+        long? total = input.CanSeek ? input.Length : null;
+        await FileIo.WriteViaTempAsync(outputPath, output => encrypt(input, output, total)).ConfigureAwait(false);
+    }
+
+    private static long? ResolveTotal(Stream input, long? totalBytes) =>
+        totalBytes ?? (input.CanSeek ? input.Length - input.Position : null);
+
+    private static async Task WithPassphraseBytesAsync(string passphrase, Func<ReadOnlyMemory<byte>, Task> body)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(passphrase);
+        try
+        {
+            await body(bytes).ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(bytes);
+        }
+    }
+}

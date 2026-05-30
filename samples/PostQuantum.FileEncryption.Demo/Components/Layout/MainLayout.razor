@@ -1,0 +1,29 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <header class="app-header">
+        <div class="app-header-inner">
+            <span class="app-logo">🔐</span>
+            <div>
+                <div class="app-title">PostQuantum.FileEncryption</div>
+                <div class="app-subtitle">Interactive demo — encrypt &amp; decrypt files</div>
+            </div>
+            <a class="app-repo" href="https://github.com/systemslibrarian/postquantum-file-encryption" target="_blank" rel="noopener">GitHub ↗</a>
+        </div>
+    </header>
+
+    <main class="app-main">
+        @Body
+    </main>
+
+    <footer class="app-footer">
+        Files are processed in memory on the server and never written to disk.
+        &nbsp;·&nbsp; To God be the glory — 1 Corinthians 10:31.
+    </footer>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

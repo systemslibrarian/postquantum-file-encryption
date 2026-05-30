@@ -1,0 +1,36 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+
+# .NET
+project.lock.json
+*.nupkg
+*.snupkg
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test results
+[Tt]est[Rr]esult*/
+coverage*.xml
+*.trx
+
+# Rust / WebAssembly demo build output
+target/
+samples/**/pkg/
+Cargo.lock
+
+# Local secrets / scratch
+*.local
+scratch/

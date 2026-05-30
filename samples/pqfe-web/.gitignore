@@ -1,0 +1,3 @@
+# The WebAssembly package is a build artifact produced by `wasm-pack`
+# (locally or by the GitHub Pages workflow). Do not commit it.
+/pkg
