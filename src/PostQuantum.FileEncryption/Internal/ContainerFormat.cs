@@ -22,6 +22,7 @@ internal static class ContainerFormat
     public const byte KeySourceMlKemRecipient = 2;   // KeyParams carry an ML-KEM-wrapped content key
     public const byte KeySourceHybridRecipient = 3;  // X25519 + ML-KEM-768 combiner (Hybrid package)
     public const byte KeySourceMultiRecipient = 4;   // multiple recipients (Hybrid package)
+    public const byte KeySourceKeyProvider = 5;      // external envelope provider (KMS/HSM/local-KEK)
 
     // KDF identifiers (used inside passphrase KeyParams).
     public const byte KdfPbkdf2HmacSha256 = 1;
@@ -121,7 +122,8 @@ internal sealed record ContainerHeader(
 
         byte keySource = span[ContainerFormat.OffsetKeySource];
         if (keySource is not (ContainerFormat.KeySourcePassphrase or ContainerFormat.KeySourceMlKemRecipient
-            or ContainerFormat.KeySourceHybridRecipient or ContainerFormat.KeySourceMultiRecipient))
+            or ContainerFormat.KeySourceHybridRecipient or ContainerFormat.KeySourceMultiRecipient
+            or ContainerFormat.KeySourceKeyProvider))
         {
             throw new PqFormatException($"Unsupported key-source identifier {keySource}.");
         }

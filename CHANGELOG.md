@@ -13,6 +13,13 @@ and the on-disk format may change before `1.0`.
   (`KeySource = 4`), with `PqHybridKeyPair` / `PqHybridEncryptor` / `PqHybridDecryptor`. Fully
   managed via BouncyCastle (both primitives) — no native ML-KEM requirement, runs anywhere.
   Round-trip, multi-recipient, fail-closed, and pinned decrypt-KAT tested.
+- **Envelope key management** — `IContentKeyProvider` (the KMS/HSM seam) and a built-in,
+  dependency-free `LocalKekContentKeyProvider` (AES-256-GCM key wrap, `KeySource = 5`). Any
+  `PqFileEncryptor` / `PqFileDecryptor` file/stream/in-memory overload accepts a provider; the
+  master key never enters the process beyond the provider's boundary. Cloud providers (AWS/Azure)
+  implement the same interface in separate packages.
+- Continuous coverage-guided fuzzing for both parsers (cargo-fuzz + SharpFuzz), scheduled nightly;
+  OSS-Fuzz integration files.
 
 ## [0.1.0] - 2026-05-30
 

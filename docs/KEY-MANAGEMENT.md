@@ -1,38 +1,43 @@
-# Key Management: KMS/HSM, Multi-Recipient, Rotation (design)
+# Key Management: envelope providers (KMS/HSM), Multi-Recipient, Rotation
 
-Enterprise key management is **not implemented** in the core today (passphrase mode is). This is
-the design for how it will work, so the seams are understood and the gaps are honest. It builds
-on the recipient/hybrid work in [ROADMAP-v3.md](ROADMAP-v3.md).
+The **envelope-key seam is implemented** (`KeySource = 5`): `IContentKeyProvider` plus the
+built-in, dependency-free `LocalKekContentKeyProvider`. Cloud-KMS/HSM providers (AWS, Azure,
+Vault, PKCS#11) are designed below and ship as separate provider packages.
 
-## Envelope encryption with an external KMS/HSM
+## Envelope encryption with an external provider (IMPLEMENTED)
 
-The container already uses envelope encryption internally: a random **content key (CEK)** encrypts
-the data, and the header carries a **wrapped** CEK. Today the CEK is wrapped by a passphrase-derived
-key or (experimentally) an ML-KEM KEM-DEM. The same seam generalizes to a KMS/HSM:
-
-```
-encrypt:  CEK = random 32 bytes
-          wrapped = KMS.Encrypt(keyId, CEK)          # AWS KMS / Azure Key Vault / Vault / PKCS#11 HSM
-          header carries { providerId, keyId, wrapped }   # the master key never enters local RAM
-decrypt:  CEK = KMS.Decrypt(keyId, wrapped)
-```
-
-- The master key stays in the KMS/HSM; only the per-file CEK is wrapped/unwrapped there.
-- This lands behind the existing `Internal/KeyEstablishment` seam as an `IKeyProvider`-style
-  abstraction, in a provider package (e.g. `PostQuantum.FileEncryption.Aws`) so the core stays
-  dependency-light — the same packaging principle as the Hybrid package.
-
-Proposed shape:
+The container uses envelope encryption: a random **content key (CEK)** encrypts the data, and the
+header carries a **wrapped** CEK. A provider supplies the CEK and the opaque `wrapInfo` needed to
+recover it — so the master key never enters this process beyond the provider's boundary.
 
 ```csharp
 public interface IContentKeyProvider
 {
-    // Returns a fresh CEK and the opaque wrap bytes to store in the header.
-    Task<(byte[] cek, byte[] wrapInfo)> WrapNewKeyAsync(CancellationToken ct);
-    // Recovers the CEK from the stored wrap bytes.
-    Task<byte[]> UnwrapKeyAsync(ReadOnlyMemory<byte> wrapInfo, CancellationToken ct);
+    string ProviderId { get; }   // stored in the header; checked on decrypt
+    Task<(byte[] contentKey, byte[] wrapInfo)> WrapNewKeyAsync(CancellationToken ct = default);
+    Task<byte[]> UnwrapKeyAsync(ReadOnlyMemory<byte> wrapInfo, CancellationToken ct = default);
 }
 ```
+
+Usage (any `PqFileEncryptor` / `PqFileDecryptor` overload accepts a provider):
+
+```csharp
+using var provider = LocalKekContentKeyProvider.Generate();        // or new(kekBytes), or a KMS provider
+byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, provider);
+byte[] plain     = await new PqFileDecryptor().DecryptBytesAsync(container, provider);
+```
+
+A cloud provider implements the same interface, mapping to `GenerateDataKey` / `Decrypt`:
+
+```
+encrypt:  (CEK, wrapInfo) = KMS.GenerateDataKey(keyId)   # wrapInfo = encrypted CEK ‖ keyId
+decrypt:  CEK = KMS.Decrypt(wrapInfo)                    # master key stays in the KMS/HSM
+```
+
+- The master key stays in the KMS/HSM; only the per-file CEK crosses the boundary, wrapped.
+- Cloud providers ship as separate packages (e.g. `PostQuantum.FileEncryption.Aws`) so the core
+  stays dependency-light — the same packaging principle as the Hybrid package. They need their
+  cloud SDK and live credentials to integration-test; that is the remaining work.
 
 ## Multiple recipients / access groups
 

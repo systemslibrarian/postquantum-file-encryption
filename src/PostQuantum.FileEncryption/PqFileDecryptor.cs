@@ -104,6 +104,45 @@ public sealed class PqFileDecryptor
         return PqContainer.DecryptRecipientAsync(input, output, privateKey, total, progress, cancellationToken);
     }
 
+    // ------------------------------------------------------------------ Envelope key provider
+
+    /// <summary>Decrypts a container at <paramref name="inputPath"/> to <paramref name="outputPath"/> using an envelope-key provider.</summary>
+    /// <exception cref="PqDecryptionException">Wrong provider/key, or the container is altered or truncated.</exception>
+    public Task DecryptFileAsync(
+        string inputPath, string outputPath, IContentKeyProvider keyProvider,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputPath);
+        ArgumentException.ThrowIfNullOrEmpty(outputPath);
+        ArgumentNullException.ThrowIfNull(keyProvider);
+
+        return DecryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
+            PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, total, progress, cancellationToken));
+    }
+
+    /// <summary>Decrypts the container read from <paramref name="input"/> to <paramref name="output"/> using an envelope-key provider.</summary>
+    public Task DecryptAsync(
+        Stream input, Stream output, IContentKeyProvider keyProvider,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(keyProvider);
+        long? total = input.CanSeek ? input.Length - input.Position : null;
+        return PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, total, progress, cancellationToken);
+    }
+
+    /// <summary>Decrypts an in-memory container using an envelope-key provider and returns the plaintext.</summary>
+    public async Task<byte[]> DecryptBytesAsync(
+        ReadOnlyMemory<byte> container, IContentKeyProvider keyProvider, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(keyProvider);
+        using var input = new MemoryStream(container.ToArray(), writable: false);
+        using var output = new MemoryStream(container.Length);
+        await PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, container.Length, null, cancellationToken).ConfigureAwait(false);
+        return output.ToArray();
+    }
+
     // ------------------------------------------------------------------ All-or-nothing stream
 
     /// <summary>

@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Text;
 
 namespace PostQuantum.FileEncryption.Internal;
 
@@ -91,5 +93,85 @@ internal static class PqContainer
             byte[] contentKey = KeyEstablishment.UnwrapRecipientKey(header, privateKey);
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
+    }
+
+    // ---------------------------------------------------------------- external key provider (KeySource = 5)
+
+    public static async Task EncryptKeyProviderAsync(
+        Stream source, Stream destination, IContentKeyProvider provider, PqEncryptionOptions options,
+        long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken)
+    {
+        await InstrumentedAsync("encrypt", "key-provider", totalBytes, async () =>
+        {
+            (byte[] contentKey, byte[] wrapInfo) = await provider.WrapNewKeyAsync(cancellationToken).ConfigureAwait(false);
+            byte[] keyParams = SerializeKeyProviderParams(provider.ProviderId, wrapInfo);
+            var header = ContainerHeader.Create(ContainerFormat.KeySourceKeyProvider, options.ChunkSizeBytes, keyParams);
+            await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    public static async Task DecryptKeyProviderAsync(
+        Stream source, Stream destination, IContentKeyProvider provider,
+        long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken)
+    {
+        await InstrumentedAsync("decrypt", "key-provider", totalBytes, async () =>
+        {
+            ContainerHeader header = await Codec.ReadHeaderAsync(source, cancellationToken).ConfigureAwait(false);
+            if (header.KeySource != ContainerFormat.KeySourceKeyProvider)
+            {
+                throw new PqDecryptionException("This container was not encrypted with an external key provider.");
+            }
+            (string providerId, byte[] wrapInfo) = ParseKeyProviderParams(header.KeyParams);
+            if (!string.Equals(providerId, provider.ProviderId, StringComparison.Ordinal))
+            {
+                throw new PqDecryptionException(
+                    $"This container was encrypted by a different key provider ('{providerId}'), not '{provider.ProviderId}'.");
+            }
+            byte[] contentKey = await provider.UnwrapKeyAsync(wrapInfo, cancellationToken).ConfigureAwait(false);
+            await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    // KeyParams (KeySource=5): ProviderIdLength(1) | ProviderId(UTF-8) | WrapInfoLength(2 BE) | WrapInfo
+    private static byte[] SerializeKeyProviderParams(string providerId, byte[] wrapInfo)
+    {
+        byte[] id = Encoding.UTF8.GetBytes(providerId);
+        if (id.Length is 0 or > byte.MaxValue)
+        {
+            throw new ArgumentException("Provider id must be between 1 and 255 UTF-8 bytes.", nameof(providerId));
+        }
+        if (wrapInfo.Length > ushort.MaxValue)
+        {
+            throw new ArgumentException("Provider wrap info is too large.", nameof(wrapInfo));
+        }
+
+        var buffer = new byte[1 + id.Length + 2 + wrapInfo.Length];
+        buffer[0] = (byte)id.Length;
+        id.CopyTo(buffer, 1);
+        BinaryPrimitives.WriteUInt16BigEndian(buffer.AsSpan(1 + id.Length), (ushort)wrapInfo.Length);
+        wrapInfo.CopyTo(buffer, 1 + id.Length + 2);
+        return buffer;
+    }
+
+    private static (string providerId, byte[] wrapInfo) ParseKeyProviderParams(byte[] keyParams)
+    {
+        var span = keyParams.AsSpan();
+        if (span.Length < 1)
+        {
+            throw new PqFormatException("Key-provider parameters are empty.");
+        }
+        int idLength = span[0];
+        if (idLength == 0 || span.Length < 1 + idLength + 2)
+        {
+            throw new PqFormatException("Key-provider parameters are malformed.");
+        }
+        string providerId = Encoding.UTF8.GetString(span.Slice(1, idLength));
+        int wrapInfoLength = BinaryPrimitives.ReadUInt16BigEndian(span[(1 + idLength)..]);
+        if (span.Length != 1 + idLength + 2 + wrapInfoLength)
+        {
+            throw new PqFormatException("Key-provider parameters have an invalid length.");
+        }
+        byte[] wrapInfo = span.Slice(1 + idLength + 2, wrapInfoLength).ToArray();
+        return (providerId, wrapInfo);
     }
 }

@@ -119,6 +119,49 @@ public sealed class PqFileEncryptor
         return PqContainer.EncryptRecipientAsync(input, output, recipient, _options, total, progress, cancellationToken);
     }
 
+    // ------------------------------------------------------------------ Envelope key provider
+
+    /// <summary>
+    /// Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> using an external
+    /// envelope-key provider (KMS/HSM/local-KEK). The master key never enters this process beyond
+    /// the provider's boundary.
+    /// </summary>
+    public Task EncryptFileAsync(
+        string inputPath, string outputPath, IContentKeyProvider keyProvider,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(inputPath);
+        ArgumentException.ThrowIfNullOrEmpty(outputPath);
+        ArgumentNullException.ThrowIfNull(keyProvider);
+
+        return EncryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
+            PqContainer.EncryptKeyProviderAsync(input, output, keyProvider, _options, total, progress, cancellationToken));
+    }
+
+    /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> using an envelope-key provider.</summary>
+    public Task EncryptAsync(
+        Stream input, Stream output, IContentKeyProvider keyProvider, long? totalBytes = null,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(keyProvider);
+        long? total = ResolveTotal(input, totalBytes);
+        return PqContainer.EncryptKeyProviderAsync(input, output, keyProvider, _options, total, progress, cancellationToken);
+    }
+
+    /// <summary>Encrypts an in-memory buffer using an envelope-key provider and returns the container bytes.</summary>
+    public async Task<byte[]> EncryptBytesAsync(
+        ReadOnlyMemory<byte> plaintext, IContentKeyProvider keyProvider, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(keyProvider);
+        using var input = new MemoryStream(plaintext.ToArray(), writable: false);
+        using var output = new MemoryStream(plaintext.Length + 256);
+        await PqContainer.EncryptKeyProviderAsync(
+            input, output, keyProvider, _options, plaintext.Length, null, cancellationToken).ConfigureAwait(false);
+        return output.ToArray();
+    }
+
     // ------------------------------------------------------------------ In-memory convenience
 
     /// <summary>

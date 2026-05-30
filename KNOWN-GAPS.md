@@ -47,9 +47,11 @@ lower-level **PostQuantum.FileFormat**. As of this release:
   **multiple recipients** — is **implemented** in the `PostQuantum.FileEncryption.Hybrid`
   package (managed BouncyCastle for both primitives; runs anywhere). The core's own
   `[Experimental]` ML-KEM-only mode is retained but superseded by the Hybrid package.
-- **KMS/HSM providers are not implemented.** The envelope seam and rewrap/rotation are
-  **designed** in [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md); AWS/Azure providers (separate
-  packages) need their SDKs and live credentials to integration-test.
+- **Cloud KMS/HSM providers are not implemented yet.** The **envelope seam is implemented** —
+  `IContentKeyProvider` plus the built-in, tested `LocalKekContentKeyProvider` (`KeySource = 5`).
+  Cloud providers (AWS KMS, Azure Key Vault, Vault, PKCS#11) implement the same interface in
+  separate packages and need their SDKs + live credentials to integration-test. Rewrap/rotation
+  tooling is still designed-only. See [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md).
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
   exist, but the `string` overloads remain for ergonomics and cannot zero the caller's `string`.
 

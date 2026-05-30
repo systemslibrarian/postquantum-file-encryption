@@ -196,6 +196,20 @@ catch (PqFormatException)     { /* not a PostQuantum.FileEncryption container at
 await new PqFileDecryptor().DecryptAtomicAsync(input, output, passphrase);
 ```
 
+### Envelope encryption (KMS / HSM)
+
+Encrypt under an external key provider so the master key never enters your process. A built-in,
+dependency-free local-KEK provider is included; cloud providers (AWS KMS, Azure Key Vault, …)
+implement the same `IContentKeyProvider` interface in separate packages.
+
+```csharp
+using var provider = LocalKekContentKeyProvider.Generate();   // or new(kek), or a KMS-backed provider
+byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, provider);
+byte[] plaintext = await new PqFileDecryptor().DecryptBytesAsync(container, provider);
+```
+
+See [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md).
+
 ### Telemetry (SIEM / OpenTelemetry)
 
 The library emits non-sensitive events on an `EventSource` named `PostQuantum.FileEncryption`

@@ -31,7 +31,7 @@ container with no authenticated final frame is rejected as truncated.
 |      0 |    4 | `Magic`           | ASCII `PQFE` (`0x50 0x51 0x46 0x45`)             |
 |      4 |    1 | `FormatVersion`   | `2`                                              |
 |      5 |    1 | `AeadId`          | `1` = AES-256-GCM                                |
-|      6 |    1 | `KeySource`       | `1` passphrase, `2` ML-KEM, `3` hybrid, `4` multi |
+|      6 |    1 | `KeySource`       | `1` passphrase · `2` ML-KEM · `3` hybrid · `4` multi · `5` key provider |
 |      7 |    1 | `Flags`           | reserved, must be `0`                            |
 |      8 |    4 | `ChunkSize`       | plaintext bytes per non-final chunk (uint32)     |
 |     12 |    4 | `NoncePrefix`     | random per-file nonce prefix                     |
@@ -141,6 +141,23 @@ then N times:
 
 A decryptor tries each block with its private key and uses the first that authenticates; if none
 do, it fails closed with no oracle about which recipients are present.
+
+### KeyParams when `KeySource = 5` (external key provider)
+
+The CEK is wrapped by an external envelope provider (`IContentKeyProvider`: KMS, HSM, or the
+built-in local-KEK). The header stores the provider id and the provider's opaque `wrapInfo`; the
+library does not interpret `wrapInfo` — only the matching provider does.
+
+```
+0     1    ProviderIdLength P (uint8, 1–255)
+1     P    ProviderId (UTF-8, e.g. "local-kek", "aws-kms")
+1+P   2    WrapInfoLength W (uint16)
+3+P   W    WrapInfo (provider-opaque)
+```
+
+On decryption the supplied provider's id must match `ProviderId`, then
+`UnwrapKeyAsync(WrapInfo)` recovers the CEK. For the built-in `LocalKekContentKeyProvider`,
+`WrapInfo` is `Nonce(12) ‖ Tag(16) ‖ AES-256-GCM(KEK)-wrapped CEK(32)`.
 
 ## Frames
 
