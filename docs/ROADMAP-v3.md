@@ -1,29 +1,56 @@
-# Roadmap: container format v3 (design)
+# Roadmap: post-quantum public-key support (`PostQuantum.FileEncryption.Hybrid`)
 
-This is a **design**, not shipped code. It specifies the two recipient-mode features planned
-beyond v0.2 — a **classical + post-quantum hybrid combiner** and **multiple recipients** — so
-they can be implemented against a concrete target once the open decisions below are made. They
-are deliberately deferred because (a) ML-KEM recipient mode is not runtime-testable in every
-environment, and (b) the combiner needs an X25519 implementation that .NET does not provide
-in-box (confirmed: there is no built-in X25519/Curve25519 type in .NET 10).
+This specifies the **upgrade path** beyond the symmetric core. It is a design, not shipped
+code.
 
-Until then, v0.2's single-recipient ML-KEM-768 mode (`KeySource = 2`) remains the recipient
-option, and passphrases remain dependency-light (PBKDF2 in-box; Argon2id via Konscious).
+## Where things stand, and the decision
+
+**The stable core (`PostQuantum.FileEncryption`) is symmetric and passphrase-based:**
+AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id. That is the engine being finalized for
+release.
+
+The core also includes an **experimental, platform-gated ML-KEM-768 recipient mode**
+(`KeySource = 2`), available only where the platform provides ML-KEM. It is not part of the
+stable symmetric surface and may be superseded by the package below.
+
+**Decision:** all post-quantum **public-key** features — the classical+PQ hybrid combiner and
+multiple recipients — will ship in a **separate `PostQuantum.FileEncryption.Hybrid` package**,
+using **BouncyCastle.Cryptography** for X25519. Rationale:
+
+- .NET has **no built-in X25519** (confirmed on .NET 10), so the combiner needs a dependency.
+- Keeping it in a separate package leaves the core **dependency-light** (PBKDF2 in-box;
+  Argon2id via Konscious) and lets consumers who only need passphrase encryption avoid pulling
+  in BouncyCastle.
+- The project rule stands: **no homegrown cryptography** — X25519 comes from a vetted library.
+
+```
+PostQuantum.FileEncryption          (core, this repo)
+  └─ symmetric passphrase AES-256-GCM        ← stable, released
+  └─ experimental ML-KEM-768 recipient       ← platform-gated, may move to Hybrid
+
+PostQuantum.FileEncryption.Hybrid   (future package, depends on BouncyCastle)
+  └─ X25519 + ML-KEM-768 hybrid combiner     (KeySource = 3)
+  └─ multiple recipients                     (KeySource = 4)
+  └─ a stable home for public-key recipient encryption
+```
+
+The container format reserves `KeySource` values so the Hybrid package slots in behind the same
+`.pqfe` format; the chunk/AEAD core is unchanged.
 
 ## 1. Hybrid combiner (`KeySource = 3`)
 
-Belt-and-suspenders: combine ML-KEM-768 with X25519 ECDH so the content key stays protected if
-*either* primitive is later broken (a future ML-KEM weakness, or a quantum break of X25519).
+Combine ML-KEM-768 with X25519 ECDH so the content key stays protected if *either* primitive is
+later broken (a future ML-KEM weakness, or a quantum break of X25519).
 
 **Encrypt** (recipient holds an X25519 key pair and an ML-KEM key pair):
 
 ```
-(kem_ct, ss_pq)        = ML-KEM-768.Encapsulate(recipient_mlkem_pub)
-(eph_priv, eph_pub)    = X25519.GenerateKeyPair()
-ss_classical           = X25519(eph_priv, recipient_x25519_pub)
-KEK                    = HKDF-SHA256(ikm = ss_pq ‖ ss_classical,
-                                     info = "PostQuantum.FileEncryption/v3 hybrid kek")
-(wrapped, wrap_tag)    = AES-256-GCM(KEK, wrap_nonce, CEK, aad = "…/v3 cek-wrap")
+(kem_ct, ss_pq)     = ML-KEM-768.Encapsulate(recipient_mlkem_pub)
+(eph_priv, eph_pub) = X25519.GenerateKeyPair()                       # BouncyCastle
+ss_classical        = X25519(eph_priv, recipient_x25519_pub)
+KEK                 = HKDF-SHA256(ikm = ss_pq ‖ ss_classical,
+                                  info = "PostQuantum.FileEncryption/v3 hybrid kek")
+(wrapped, wrap_tag) = AES-256-GCM(KEK, wrap_nonce, CEK, aad = "…/v3 cek-wrap")
 ```
 
 **`KeyParams` (KeySource = 3):**
@@ -59,33 +86,29 @@ N × {    per-recipient wrap block:
 
 Every block wraps the **same** CEK. The decryptor tries its private key against each block and
 uses the first that authenticates; if none do, it fails closed with the usual generic error (no
-oracle about which recipients are present). A short, non-secret key-id hint may be added later
-to avoid trial-decapsulation, but trial order must not leak via timing.
+oracle about which recipients are present). A short, non-secret key-id hint may be added later to
+avoid trial-decapsulation, but trial order must not leak via timing.
 
-## Open decision: where does X25519 come from?
+## Package layout & dependencies
 
-.NET has no built-in X25519. Options, with the recommendation first:
+| Package | Adds | Dependencies |
+| --- | --- | --- |
+| `PostQuantum.FileEncryption` | symmetric passphrase engine (+ experimental ML-KEM recipient) | Konscious (Argon2id) |
+| `PostQuantum.FileEncryption.Hybrid` | combiner, multi-recipient, hybrid key types | the core + **BouncyCastle.Cryptography** |
 
-1. **A separate `PostQuantum.FileEncryption.Hybrid` package** that depends on
-   **BouncyCastle.Cryptography** (pure-managed, broad platform support) and provides the
-   combiner. Keeps the core library dependency-light; consumers opt in. **Recommended.**
-2. Add BouncyCastle directly to the core library. Simpler, but forces the dependency on everyone.
-3. **NSec.Cryptography** (libsodium): fast and well-regarded, but a native dependency with
-   platform/runtime constraints — at odds with the current "managed, in-box" posture.
-
-No homegrown X25519 — the project rule (no novel cryptography) stands.
+The Hybrid package implements only key establishment (X25519 + ML-KEM + HKDF + key-wrap) behind
+the core's existing `KeyEstablishment` seam; it does not touch the chunk/AEAD core.
 
 ## Implementation & test plan
 
-- Implement behind the existing `KeyEstablishment` seam; no change to the chunk/AEAD core.
-- Gate on `MLKem.IsSupported` exactly like v0.2 recipient mode; round-trip tests **self-skip**
-  where ML-KEM is unavailable (as the current recipient tests do).
+- Gate on `MLKem.IsSupported`, exactly like the core's experimental recipient mode; round-trip
+  tests **self-skip** where ML-KEM is unavailable.
 - Generate **known-answer vectors** on an ML-KEM-capable host and add them to
-  [TEST-VECTORS.md](TEST-VECTORS.md) and both test suites.
-- The Rust/WASM browser core would gain the combiner only if a maintained X25519 + ML-KEM crate
-  set is used; otherwise it stays passphrase-only (already documented).
+  [TEST-VECTORS.md](TEST-VECTORS.md) and the test suites.
 - Bump `FormatVersion` to 3; v3 readers continue to accept v2 containers, or a clean break is
   taken while still in preview (decided at implementation time).
+- The Rust/WASM browser core stays passphrase-only unless a maintained X25519 + ML-KEM crate set
+  is adopted there.
 
 ## Also planned (smaller)
 

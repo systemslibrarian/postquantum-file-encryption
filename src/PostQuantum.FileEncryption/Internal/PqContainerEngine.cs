@@ -156,25 +156,25 @@ internal static class PqContainerEngine
                 }
                 if (headerRead != frameHeader.Length)
                 {
-                    throw new PqDecryptionException("Container is truncated inside a frame header.");
+                    throw new PqDecryptionException("The encrypted file is truncated (it ends partway through a block).");
                 }
 
                 byte frameType = frameHeader[0];
                 if (frameType is not (ContainerFormat.FrameData or ContainerFormat.FrameFinal))
                 {
-                    throw new PqDecryptionException("Container contains an unrecognized frame marker.");
+                    throw new PqDecryptionException("The encrypted file is corrupted (unrecognized internal structure).");
                 }
 
                 uint length = BinaryPrimitives.ReadUInt32BigEndian(frameHeader.AsSpan(1));
                 if (length > (uint)header.ChunkSize)
                 {
-                    throw new PqDecryptionException("Container declares a frame larger than its chunk size.");
+                    throw new PqDecryptionException("The encrypted file is corrupted (inconsistent block size).");
                 }
 
                 if (await ReadExactAsync(source, ciphertext.AsMemory(0, (int)length), cancellationToken).ConfigureAwait(false) != length ||
                     await ReadExactAsync(source, tag, cancellationToken).ConfigureAwait(false) != tag.Length)
                 {
-                    throw new PqDecryptionException("Container is truncated inside a frame body.");
+                    throw new PqDecryptionException("The encrypted file is truncated (it ends partway through a block).");
                 }
 
                 BuildNonce(header.NoncePrefix, counter, nonce);
@@ -189,7 +189,7 @@ internal static class PqContainerEngine
                 catch (AuthenticationTagMismatchException ex)
                 {
                     throw new PqDecryptionException(
-                        "Decryption failed: the key is wrong, or the data has been altered or corrupted.", ex);
+                        "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.", ex);
                 }
 
                 await destination.WriteAsync(plaintext.AsMemory(0, (int)length), cancellationToken).ConfigureAwait(false);
@@ -208,7 +208,7 @@ internal static class PqContainerEngine
             if (!sawFinal)
             {
                 // No authenticated final frame ⇒ the container was truncated. Fail closed.
-                throw new PqDecryptionException("Container is incomplete: no authenticated final frame was found.");
+                throw new PqDecryptionException("The encrypted file is incomplete or was truncated (its end-of-file marker is missing).");
             }
 
             await destination.FlushAsync(cancellationToken).ConfigureAwait(false);

@@ -10,10 +10,11 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption</PackageId>
-    <Version>0.2.0-preview.1</Version>
+    <Version>0.1.0</Version>
     <Title>PostQuantum.FileEncryption</Title>
-    <Description>A high-level, delightful, fail-closed wrapper for post-quantum file and stream encryption on .NET. Authenticated AES-256-GCM containers with chunked streaming and progress, passphrase key derivation (PBKDF2-HMAC-SHA256 or Argon2id), and ML-KEM-768 hybrid recipient (public-key) encryption where the platform supports it. Designed to delegate to PostQuantum.FileFormat in a future release.</Description>
-    <PackageTags>post-quantum;pqc;encryption;file-encryption;aes-gcm;cryptography;security;ml-kem;streaming;dotnet</PackageTags>
+    <Description>A high-level, delightful, fail-closed file and stream encryptor for .NET. The stable core is symmetric and passphrase-based: authenticated AES-256-GCM containers with chunked streaming and progress, and PBKDF2-HMAC-SHA256 or Argon2id key derivation. AES-256 keeps your data confidential against a quantum (harvest-now-decrypt-later) adversary. An experimental, platform-gated ML-KEM-768 recipient mode is included; the productionized post-quantum public-key path (hybrid X25519 + ML-KEM, multiple recipients) is planned for a separate PostQuantum.FileEncryption.Hybrid package.</Description>
+    <PackageReleaseNotes>0.1.0 — first release. Production-ready symmetric (passphrase) engine: AES-256-GCM with PBKDF2 or Argon2id, chunked streaming, progress, cancellation, in-memory and file/stream APIs, fail-closed against tampering/reordering/truncation. ML-KEM-768 recipient mode is included but experimental and platform-gated. 0.x: the on-disk format may change before 1.0.</PackageReleaseNotes>
+    <PackageTags>encryption;file-encryption;aes-gcm;aes-256;argon2;pbkdf2;passphrase;authenticated-encryption;cryptography;security;streaming;post-quantum;pqc;ml-kem;dotnet</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-file-encryption</PackageProjectUrl>

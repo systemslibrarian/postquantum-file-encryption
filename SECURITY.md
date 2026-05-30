@@ -6,13 +6,14 @@ is written to be honest rather than reassuring.
 
 ## Supported versions
 
-| Version            | Supported          |
-| ------------------ | ------------------ |
-| `0.2.0-preview.*`  | ✅ (preview only)   |
-| `< 0.2`            | ❌                  |
+| Version   | Supported |
+| --------- | --------- |
+| `0.1.x`   | ✅         |
+| `< 0.1`   | ❌         |
 
-The on-disk container format is **not frozen** before `1.0`. A file encrypted by a preview
-build is not guaranteed to be decryptable by a later build. v0.2 does not read the v0.1 format.
+The symmetric (passphrase) engine is production-ready. As a `0.x` release, the on-disk
+container format is **not yet frozen** and may change before `1.0`; a file encrypted by a
+`0.x` build is not guaranteed to be decryptable across a future breaking format change.
 
 ## Reporting a vulnerability
 
@@ -34,8 +35,8 @@ report until a fix is available and coordinated.
   parameters, the chunk ordinal, and the final-chunk marker, defeating bit-flipping, header
   tampering, chunk reordering, splicing between containers, and truncation.
 - **Quantum-resistant confidentiality of the data**, via AES-256 (≈128-bit security against a
-  Grover attacker), and **quantum-resistant key establishment** for recipient mode, via
-  ML-KEM-768 (FIPS 203) in a hybrid KEM-DEM construction.
+  Grover attacker). Quantum-resistant *key establishment* (ML-KEM-768, FIPS 203, KEM-DEM) is
+  available only in the **experimental** recipient mode — see [KNOWN-GAPS.md](KNOWN-GAPS.md).
 - **Bounded work on untrusted input.** KDF cost parameters carried in a container (PBKDF2
   iterations, Argon2id memory/iterations) are range-checked before use, so a malicious header
   cannot force unbounded memory or CPU — it fails closed as a `PqFormatException`.

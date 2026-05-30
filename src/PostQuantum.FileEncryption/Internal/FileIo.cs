@@ -7,8 +7,12 @@ namespace PostQuantum.FileEncryption.Internal;
 /// </summary>
 internal static class FileIo
 {
+    // A buffer large enough to keep large-file I/O efficient (one syscall per chunk-sized read),
+    // while staying small relative to the bounded streaming memory the engine already uses.
+    private const int FileBufferSize = 64 * 1024;
+
     public static FileStream OpenRead(string path) =>
-        new(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1, useAsync: true);
+        new(path, FileMode.Open, FileAccess.Read, FileShare.Read, FileBufferSize, useAsync: true);
 
     /// <summary>
     /// Runs <paramref name="writeBody"/> against a temporary file, then atomically moves it to
@@ -21,7 +25,7 @@ internal static class FileIo
         {
             await using (var output = new FileStream(
                 tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                bufferSize: 1, useAsync: true))
+                FileBufferSize, useAsync: true))
             {
                 await writeBody(output).ConfigureAwait(false);
             }

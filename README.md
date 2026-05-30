@@ -8,10 +8,12 @@ modern defaults. You should not have to read a cryptographic spec to protect a f
 just call a method, and the library does the careful, paranoid, fail-closed thing every
 time.
 
-> **Status: `0.2.0-preview.1` — early preview.** The on-disk container format is not yet
-> frozen and may change before `1.0`. Do not use this release for data you must be able to
-> decrypt with a future version. See [KNOWN-GAPS.md](KNOWN-GAPS.md) for an honest account of
-> what is and is not done.
+> **Status: `0.1.0` — first release.** The **symmetric, passphrase-based engine is
+> production-ready** and thoroughly tested. This is a `0.x` release, so the on-disk format may
+> still change before `1.0` — don't archive data you must read with a future major version yet.
+> Post-quantum *public-key* (recipient) encryption is **experimental** — see
+> [Post-quantum & the upgrade path](#post-quantum--the-upgrade-path) and
+> [KNOWN-GAPS.md](KNOWN-GAPS.md).
 
 ---
 
@@ -54,15 +56,16 @@ so the cryptography runs on the server runtime. (See ["Why Blazor Server?"](#why
 
 ---
 
-## What it does (v0.2)
+## What it does
 
-- **Passphrase-based encryption** with your choice of key-derivation function:
+The **stable core is a symmetric, passphrase-based file encryptor**. Post-quantum *public-key*
+encryption is on the roadmap as a separate package — see
+[Post-quantum & the upgrade path](#post-quantum--the-upgrade-path) below.
+
+- **Passphrase-based encryption** (the stable, recommended path) with your choice of
+  key-derivation function:
   - **PBKDF2-HMAC-SHA256** (default, no extra cost), 600,000 iterations.
   - **Argon2id** (memory-hard, opt-in), defaulting to OWASP's 19 MiB / 2-pass setting.
-- **Recipient (public-key) encryption** using **ML-KEM-768** (FIPS 203) in a hybrid KEM-DEM
-  construction — encrypt to someone's public key; only their private key can open it.
-  Available where the platform provides ML-KEM (.NET 10 with OpenSSL 3.5+ or Windows CNG);
-  gated cleanly with `PqKeyPair.IsSupported`.
 - **AES-256-GCM** for all data encryption — an authenticated cipher whose 256-bit key stays
   strong against a quantum adversary (Grover's algorithm only halves the effective strength).
 - **Chunked streaming** so you can encrypt a 50 GB file with bounded memory — with optional
@@ -80,7 +83,7 @@ so the cryptography runs on the server runtime. (See ["Why Blazor Server?"](#why
 ## Install
 
 ```bash
-dotnet add package PostQuantum.FileEncryption --version 0.2.0-preview.1
+dotnet add package PostQuantum.FileEncryption --version 0.1.0
 ```
 
 Targets **.NET 10** (`net10.0`). Depends on `Konscious.Security.Cryptography.Argon2` for the
@@ -89,6 +92,19 @@ Argon2id KDF; everything else is from .NET's `System.Security.Cryptography`.
 ---
 
 ## Usage
+
+### Quick start — encrypt some bytes in memory
+
+```csharp
+using PostQuantum.FileEncryption;
+
+byte[] secret    = "meet me at dawn"u8.ToArray();
+byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, "correct horse battery staple");
+byte[] recovered = await new PqFileDecryptor().DecryptBytesAsync(container, "correct horse battery staple");
+// recovered.SequenceEqual(secret) == true
+```
+
+That's the whole happy path. Everything below is the same idea for files, streams, and options.
 
 ### Encrypt and decrypt a file with a passphrase
 
@@ -108,7 +124,14 @@ await new PqFileEncryptor(options).EncryptFileAsync("in", "out.pqfe", passphrase
 await new PqFileDecryptor().DecryptFileAsync("out.pqfe", "in.copy", passphrase);
 ```
 
-### Encrypt to a recipient's public key (post-quantum KEM)
+### Encrypt to a recipient's public key (experimental, post-quantum KEM)
+
+> **Experimental & platform-gated.** ML-KEM-768 recipient mode runs only where the platform
+> provides ML-KEM (.NET 10 with OpenSSL 3.5+ or Windows CNG); guard with `PqKeyPair.IsSupported`.
+> It is **not** part of the stable symmetric surface — the productionized public-key path
+> (hybrid X25519 + ML-KEM, multiple recipients) is planned for the separate
+> `PostQuantum.FileEncryption.Hybrid` package. See
+> [Post-quantum & the upgrade path](#post-quantum--the-upgrade-path).
 
 ```csharp
 if (PqKeyPair.IsSupported)
@@ -198,6 +221,28 @@ For the reporting process and current limitations, read [SECURITY.md](SECURITY.m
 
 > Cryptographic software earns trust slowly. This is a preview, and it has **not** been
 > independently audited. Please review the code, the format, and the gaps before depending on it.
+
+---
+
+## Post-quantum & the upgrade path
+
+Be clear-eyed about what "post-quantum" means here today:
+
+- **What's stable now:** the symmetric, passphrase-based engine. AES-256 is quantum-resistant
+  for the *confidentiality of your data* (≈128-bit security under Grover), so a passphrase-
+  encrypted file is sound against a harvest-now-decrypt-later adversary. This is the engine
+  being finalized for release.
+- **What's experimental:** an ML-KEM-768 recipient (public-key) mode, included but
+  platform-gated and not part of the stable surface.
+- **What's planned:** the productionized post-quantum public-key story — a **hybrid
+  X25519 + ML-KEM-768 combiner** and **multiple recipients** — will ship in a **separate
+  `PostQuantum.FileEncryption.Hybrid` package** (using BouncyCastle for X25519), keeping the
+  core dependency-light. The full design is in [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
+
+In short: **the public-key, key-establishment part of "post-quantum" is not finished** in the
+core — and we'd rather say so plainly than overstate it. If your need is "encrypt a file with a
+passphrase," the core is ready; if it's "encrypt to a recipient's public key," wait for the
+Hybrid package (or use the experimental mode knowingly).
 
 ---
 

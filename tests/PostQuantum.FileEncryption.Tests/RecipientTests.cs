@@ -4,10 +4,12 @@ using Xunit;
 namespace PostQuantum.FileEncryption.Tests;
 
 /// <summary>
-/// ML-KEM recipient (public-key) encryption. The full round-trip runs only where the platform
-/// provides ML-KEM (<see cref="PqKeyPair.IsSupported"/>); the capability-gating behavior is
-/// verified on every platform, including hosts without ML-KEM.
+/// <b>EXPERIMENTAL feature.</b> ML-KEM recipient (public-key) encryption is not part of the
+/// stable symmetric surface — see <c>docs/ROADMAP-v3.md</c>. The full round-trip runs only where
+/// the platform provides ML-KEM (<see cref="PqKeyPair.IsSupported"/>); the capability-gating
+/// behavior is verified on every platform, including hosts without ML-KEM.
 /// </summary>
+[Trait("Category", "Experimental")]
 public sealed class RecipientTests
 {
     private static byte[] RandomBytes(int n)

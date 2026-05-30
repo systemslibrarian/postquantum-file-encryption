@@ -101,6 +101,38 @@ public sealed class PqFileDecryptor
         return PqContainer.DecryptRecipientAsync(input, output, privateKey, total, progress, cancellationToken);
     }
 
+    // ------------------------------------------------------------------ In-memory convenience
+
+    /// <summary>
+    /// Decrypts an in-memory container with a passphrase and returns the recovered plaintext.
+    /// Fail-closed: throws <see cref="PqDecryptionException"/> rather than returning bad data.
+    /// </summary>
+    public async Task<byte[]> DecryptBytesAsync(
+        ReadOnlyMemory<byte> container, string passphrase, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(passphrase);
+        byte[] passphraseBytes = Encoding.UTF8.GetBytes(passphrase);
+        try
+        {
+            return await DecryptBytesAsync(container, passphraseBytes, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(passphraseBytes);
+        }
+    }
+
+    /// <summary>Decrypts an in-memory container with a passphrase supplied as bytes.</summary>
+    public async Task<byte[]> DecryptBytesAsync(
+        ReadOnlyMemory<byte> container, ReadOnlyMemory<byte> passphrase, CancellationToken cancellationToken = default)
+    {
+        using var input = new MemoryStream(container.ToArray(), writable: false);
+        using var output = new MemoryStream(container.Length);
+        await PqContainer.DecryptPassphraseAsync(
+            input, output, passphrase, container.Length, null, cancellationToken).ConfigureAwait(false);
+        return output.ToArray();
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static async Task DecryptFileCoreAsync(

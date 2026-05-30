@@ -116,6 +116,40 @@ public sealed class PqFileEncryptor
         return PqContainer.EncryptRecipientAsync(input, output, recipient, _options, total, progress, cancellationToken);
     }
 
+    // ------------------------------------------------------------------ In-memory convenience
+
+    /// <summary>
+    /// Encrypts an in-memory buffer with a passphrase and returns the container bytes — the
+    /// simplest way to protect a small blob without touching streams or files.
+    /// </summary>
+    public async Task<byte[]> EncryptBytesAsync(
+        ReadOnlyMemory<byte> plaintext, string passphrase,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(passphrase);
+        byte[] passphraseBytes = Encoding.UTF8.GetBytes(passphrase);
+        try
+        {
+            return await EncryptBytesAsync(plaintext, passphraseBytes, progress, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(passphraseBytes);
+        }
+    }
+
+    /// <summary>Encrypts an in-memory buffer with a passphrase supplied as bytes.</summary>
+    public async Task<byte[]> EncryptBytesAsync(
+        ReadOnlyMemory<byte> plaintext, ReadOnlyMemory<byte> passphrase,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        using var input = new MemoryStream(plaintext.ToArray(), writable: false);
+        using var output = new MemoryStream(plaintext.Length + 256);
+        await PqContainer.EncryptPassphraseAsync(
+            input, output, passphrase, _options, plaintext.Length, progress, cancellationToken).ConfigureAwait(false);
+        return output.ToArray();
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static async Task EncryptFileCoreAsync(

@@ -5,19 +5,25 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`0.2.0-preview.1`**.
+Last reviewed against: **`0.1.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
-## Resolved since v0.1
+## Release scope (read this first)
 
-For the record, these earlier gaps are now closed:
+- **The stable, released engine is symmetric and passphrase-based:** AES-256-GCM with
+  PBKDF2-HMAC-SHA256 or Argon2id. AES-256 is quantum-resistant for the *confidentiality of the
+  data itself*. This is what is finalized for release.
+- **The post-quantum *public-key* (key-establishment) story is not finished in the core.** An
+  ML-KEM-768 recipient mode is **included but experimental and platform-gated** (`PqKeyPair`,
+  `PqKeyPair.IsSupported`). The productionized path — a hybrid **X25519 + ML-KEM** combiner and
+  multiple recipients — is **planned for a separate `PostQuantum.FileEncryption.Hybrid`
+  package** (BouncyCastle for X25519); see [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
 
-- **Post-quantum asymmetric layer** — ML-KEM-768 hybrid recipient (public-key) encryption now
-  exists (`PqKeyPair`, encrypt-to-public-key, decrypt-with-private-key), gated on platform
-  support via `PqKeyPair.IsSupported`.
-- **Memory-hard KDF** — Argon2id is now selectable via `PqEncryptionOptions.Kdf`.
+## Resolved since the first symmetric cut
+
+- **Memory-hard KDF** — Argon2id is selectable via `PqEncryptionOptions.Kdf`.
 - **Zeroable passphrases** — `ReadOnlyMemory<byte>` passphrase overloads are available.
 - **Test vectors and fuzzing** — pinned known-answer vectors and a mutation/truncation fuzz
-  harness are in the test suite.
+  harness are in the test suite, cross-checked against the Rust/WASM implementation.
 
 ## Still open
 
