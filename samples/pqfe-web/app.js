@@ -1,6 +1,6 @@
-// Loads the Rust→WASM core and wires up the encrypt/decrypt UI. All cryptography runs locally
-// in the browser; no file or passphrase is ever sent anywhere.
-import init, { encrypt, decrypt } from './pkg/pqfe_wasm.js';
+// Wires up the encrypt/decrypt UI. All cryptography runs locally in the browser — preferably
+// in a Web Worker (so the UI never freezes), with a graceful fallback to the main thread if
+// module workers are unavailable. No file or passphrase is ever sent anywhere.
 
 const MIN_PASSPHRASE = 8;
 const EXTENSION = '.pqfe';
@@ -17,6 +17,61 @@ const els = {
     decFile: $('decFile'), decFileInfo: $('decFileInfo'), decPass: $('decPass'),
     decBtn: $('decBtn'), decStatus: $('decStatus'),
 };
+
+// ----------------------------------------------------------------- crypto backend
+
+// Prefer a module Web Worker; fall back to running the WASM on the main thread.
+function createWorkerBackend() {
+    return new Promise((resolve, reject) => {
+        let worker;
+        try {
+            worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+        } catch (e) {
+            reject(e);
+            return;
+        }
+        const pending = new Map();
+        let nextId = 1;
+        const timer = setTimeout(() => reject(new Error('worker init timed out')), 10000);
+
+        const backend = {
+            kind: 'worker',
+            run(op, data, passphrase) {
+                return new Promise((res, rej) => {
+                    const id = nextId++;
+                    pending.set(id, { res, rej });
+                    worker.postMessage({ id, op, data, passphrase }, [data.buffer]);
+                });
+            },
+        };
+
+        worker.onmessage = (e) => {
+            const m = e.data;
+            if (m.type === 'ready') { clearTimeout(timer); resolve(backend); return; }
+            if (m.type === 'error') { clearTimeout(timer); reject(new Error(m.error)); return; }
+            const p = pending.get(m.id);
+            if (!p) return;
+            pending.delete(m.id);
+            m.ok ? p.res(m.result) : p.rej(new Error(m.error));
+        };
+        worker.onerror = (e) => { clearTimeout(timer); reject(new Error(e.message || 'worker error')); };
+    });
+}
+
+async function createMainThreadBackend() {
+    const mod = await import('./pkg/pqfe_wasm.js');
+    await mod.default();
+    return {
+        kind: 'main',
+        async run(op, data, passphrase) {
+            return op === 'encrypt' ? mod.encrypt(data, passphrase) : mod.decrypt(data, passphrase);
+        },
+    };
+}
+
+let backend = null;
+
+// ----------------------------------------------------------------- helpers
 
 function formatBytes(bytes) {
     const units = ['B', 'KB', 'MB', 'GB'];
@@ -51,18 +106,23 @@ const readFile = (file) =>
         reader.readAsArrayBuffer(file);
     });
 
-// Let the browser paint the "Working…" state before a synchronous WASM call blocks the thread.
-const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+function tooLarge(file, statusEl) {
+    if (file.size > MAX_FILE_BYTES) {
+        showStatus(statusEl, `File is too large for this in-browser demo (limit ${formatBytes(MAX_FILE_BYTES)}).`, 'error');
+        return true;
+    }
+    return false;
+}
 
 function refreshEncryptButton() {
     const file = els.encFile.files[0];
     const pass = els.encPass.value;
     els.encHint.hidden = !(pass.length > 0 && pass.length < MIN_PASSPHRASE);
-    els.encBtn.disabled = !(file && pass.length >= MIN_PASSPHRASE);
+    els.encBtn.disabled = !(backend && file && pass.length >= MIN_PASSPHRASE);
 }
 
 function refreshDecryptButton() {
-    els.decBtn.disabled = !(els.decFile.files[0] && els.decPass.value.length > 0);
+    els.decBtn.disabled = !(backend && els.decFile.files[0] && els.decPass.value.length > 0);
 }
 
 function wireFileInfo(input, info, refresh) {
@@ -78,23 +138,16 @@ function wireFileInfo(input, info, refresh) {
     });
 }
 
-function tooLarge(file, statusEl) {
-    if (file.size > MAX_FILE_BYTES) {
-        showStatus(statusEl, `File is too large for this in-browser demo (limit ${formatBytes(MAX_FILE_BYTES)}).`, 'error');
-        return true;
-    }
-    return false;
-}
+// ----------------------------------------------------------------- actions
 
 async function onEncrypt() {
     const file = els.encFile.files[0];
     if (!file || tooLarge(file, els.encStatus)) return;
     els.encBtn.disabled = true;
     showStatus(els.encStatus, 'Encrypting…', 'working');
-    await nextFrame();
     try {
         const data = await readFile(file);
-        const container = encrypt(data, els.encPass.value);
+        const container = await backend.run('encrypt', data, els.encPass.value);
         download(file.name + EXTENSION, container);
         showStatus(els.encStatus, `Encrypted ${file.name} → ${file.name + EXTENSION}.`, 'success');
         els.encPass.value = ''; // don't leave the passphrase sitting in the field
@@ -110,10 +163,9 @@ async function onDecrypt() {
     if (!file || tooLarge(file, els.decStatus)) return;
     els.decBtn.disabled = true;
     showStatus(els.decStatus, 'Decrypting…', 'working');
-    await nextFrame();
     try {
         const data = await readFile(file);
-        const plaintext = decrypt(data, els.decPass.value);
+        const plaintext = await backend.run('decrypt', data, els.decPass.value);
         const outName = file.name.toLowerCase().endsWith(EXTENSION)
             ? file.name.slice(0, -EXTENSION.length)
             : file.name + '.decrypted';
@@ -128,12 +180,18 @@ async function onDecrypt() {
     }
 }
 
+// ----------------------------------------------------------------- startup
+
 async function main() {
     try {
-        await init();
-    } catch (e) {
-        showStatus(els.loading, `Failed to load the cryptography module: ${e?.message ?? e}`, 'error');
-        return;
+        backend = await createWorkerBackend();
+    } catch {
+        try {
+            backend = await createMainThreadBackend();
+        } catch (e) {
+            showStatus(els.loading, `Failed to load the cryptography module: ${e?.message ?? e}`, 'error');
+            return;
+        }
     }
 
     els.loading.hidden = true;

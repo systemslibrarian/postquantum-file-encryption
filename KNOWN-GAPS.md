@@ -37,9 +37,11 @@ lower-level **PostQuantum.FileFormat**. As of this release:
 ### Cryptographic scope
 
 - **Recipient mode is KEM-DEM, not a PQ+classical combiner.** It relies on ML-KEM-768 alone for
-  the asymmetric step. A combined X25519 + ML-KEM hybrid (belt-and-suspenders against a future
-  ML-KEM weakness) is a candidate for a later release.
-- **Single recipient per container.** No multi-recipient support yet.
+  the asymmetric step. A combined X25519 + ML-KEM hybrid is **designed** in
+  [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) but not implemented — .NET has no built-in X25519, so
+  it needs a dependency decision, and it needs an ML-KEM-capable host to test.
+- **Single recipient per container.** Multi-recipient is **designed** in
+  [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md), not yet implemented.
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
   exist, but the `string` overloads remain for ergonomics and cannot zero the caller's `string`.
 

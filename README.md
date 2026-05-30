@@ -188,9 +188,13 @@ PostQuantum.FileEncryption is built to be **boring and predictable** where it ma
 - **No novel cryptography.** Primitives come from .NET's `System.Security.Cryptography` and the
   Konscious Argon2id implementation; this library only composes them.
 
-For the threat model, reporting process, and current limitations, read
-[SECURITY.md](SECURITY.md) and [KNOWN-GAPS.md](KNOWN-GAPS.md). The on-disk format is specified
-in [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md).
+For the reporting process and current limitations, read [SECURITY.md](SECURITY.md) and
+[KNOWN-GAPS.md](KNOWN-GAPS.md). Deeper references:
+
+- [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries, and what an audit should focus on
+- [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) — the on-disk container specification
+- [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) — pinned known-answer vectors (cross-checked by both implementations)
+- [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) — design for the hybrid combiner and multi-recipient mode
 
 > Cryptographic software earns trust slowly. This is a preview, and it has **not** been
 > independently audited. Please review the code, the format, and the gaps before depending on it.
