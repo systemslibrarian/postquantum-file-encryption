@@ -5,6 +5,8 @@
     <RootNamespace>PostQuantum.FileEncryption</RootNamespace>
     <AssemblyName>PostQuantum.FileEncryption</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Trim- and AOT-compatible: enables the trimming/AOT analyzers so we keep it that way. -->
+    <IsAotCompatible>true</IsAotCompatible>
     <!-- The library implements the experimental ML-KEM feature internally, so it opts in to its
          own PQFE001 diagnostic. The [Experimental] attribute still flows to external consumers. -->
     <NoWarn>$(NoWarn);PQFE001</NoWarn>

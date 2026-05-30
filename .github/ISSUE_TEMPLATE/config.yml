@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/systemslibrarian/postquantum-file-encryption/security/advisories/new
+    about: Please report vulnerabilities privately via a GitHub Security Advisory — never in a public issue. See SECURITY.md.
