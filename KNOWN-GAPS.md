@@ -86,10 +86,11 @@ lower-level **PostQuantum.FileFormat**. As of this release:
 ### Process and assurance gaps
 
 - **Not independently audited.** No third-party cryptographic review has been performed.
-- **Continuous fuzzing is partial.** Executed coverage comes from the in-repo randomized/property
-  tests; a **cargo-fuzz** harness for the Rust parser is included (`samples/pqfe-wasm/fuzz`, run
-  with nightly), but it is not yet run on a schedule, a **SharpFuzz** harness for the .NET parser
-  is not yet wired, and neither is on OSS-Fuzz.
+- **Continuous fuzzing is wired but young.** Coverage-guided fuzzers run for **both** parsers —
+  **cargo-fuzz** (Rust) and **SharpFuzz** (.NET) — validated with no crashes (~330k and ~480k
+  executions) and scheduled nightly in CI with a cached corpus (`.github/workflows/fuzz.yml`).
+  OSS-Fuzz integration files are ready (`oss-fuzz/`) but upstream onboarding is not yet done, and
+  the accumulated corpora are still small. See [docs/FUZZING.md](docs/FUZZING.md).
 - **Recipient round-trip is not exercised on this CI host**, which lacks platform ML-KEM; those
   tests self-skip there. The capability gating *is* tested everywhere.
 - **NuGet author-signing** requires a code-signing certificate (not configured); nuget.org applies

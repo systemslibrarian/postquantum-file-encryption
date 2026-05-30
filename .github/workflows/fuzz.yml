@@ -1,0 +1,99 @@
+name: Fuzz
+
+# Scheduled coverage-guided fuzzing of the .pqfe parsers. The corpus is cached between runs so
+# coverage accumulates over time. A crash fails the job and uploads the reproducing input.
+
+on:
+  schedule:
+    - cron: '17 4 * * *' # nightly, 04:17 UTC
+  workflow_dispatch:
+    inputs:
+      duration_seconds:
+        description: 'Fuzz duration per target (seconds)'
+        default: '300'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz
+  cancel-in-progress: false
+
+jobs:
+  rust-cargo-fuzz:
+    name: Rust parser (cargo-fuzz)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust nightly + cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo install cargo-fuzz --locked
+
+      - name: Restore fuzz corpus
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: samples/pqfe-wasm/fuzz/corpus
+          key: cargo-fuzz-corpus-${{ github.run_id }}
+          restore-keys: cargo-fuzz-corpus-
+
+      - name: Fuzz the decrypt parser
+        working-directory: samples/pqfe-wasm
+        run: |
+          DURATION="${{ github.event.inputs.duration_seconds || '300' }}"
+          cargo +nightly fuzz run decrypt -- -max_total_time="$DURATION" -rss_limit_mb=4096
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cargo-fuzz-crashes
+          path: samples/pqfe-wasm/fuzz/artifacts
+
+  dotnet-sharpfuzz:
+    name: .NET parser (SharpFuzz)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install clang + SharpFuzz CLI
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang
+          dotnet tool install -g SharpFuzz.CommandLine
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Build the libFuzzer driver
+        run: |
+          curl -sSL https://raw.githubusercontent.com/Metalnem/libfuzzer-dotnet/master/libfuzzer-dotnet.cc -o libfuzzer-dotnet.cc
+          clang -g -O2 -fsanitize=fuzzer libfuzzer-dotnet.cc -o libfuzzer-dotnet
+
+      - name: Publish & instrument the harness
+        run: |
+          dotnet publish fuzz/PostQuantum.FileEncryption.Fuzz/PostQuantum.FileEncryption.Fuzz.csproj -c Release -o fuzzpub
+          sharpfuzz fuzzpub/PostQuantum.FileEncryption.dll
+
+      - name: Restore corpus
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: dotnet-corpus
+          key: sharpfuzz-corpus-${{ github.run_id }}
+          restore-keys: sharpfuzz-corpus-
+
+      - name: Fuzz the .NET decrypt parser
+        run: |
+          DURATION="${{ github.event.inputs.duration_seconds || '300' }}"
+          mkdir -p dotnet-corpus
+          ./libfuzzer-dotnet --target_path=dotnet --target_arg="$PWD/fuzzpub/PostQuantum.FileEncryption.Fuzz.dll" \
+            dotnet-corpus -max_total_time="$DURATION" -rss_limit_mb=4096
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sharpfuzz-crashes
+          path: crash-*

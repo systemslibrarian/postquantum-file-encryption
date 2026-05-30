@@ -290,6 +290,7 @@ format details: [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
 | Versioning & compatibility policy | [docs/VERSIONING.md](docs/VERSIONING.md) |
 | Key management (KMS/HSM, rotation) — design | [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md) |
 | Hybrid & multi-recipient — design | [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) |
+| Fuzzing (cargo-fuzz + SharpFuzz + OSS-Fuzz) | [docs/FUZZING.md](docs/FUZZING.md) |
 | Known gaps (the honest ledger) | [KNOWN-GAPS.md](KNOWN-GAPS.md) |
 | Comparison vs age / libsodium / OpenSSL | [docs/COMPARISON.md](docs/COMPARISON.md) |
 | Support & lifecycle | [SUPPORT.md](SUPPORT.md) · Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) |

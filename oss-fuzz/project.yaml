@@ -1,0 +1,13 @@
+# OSS-Fuzz project configuration for the Rust .pqfe parser fuzz target.
+# To onboard: copy this directory to projects/postquantum-file-encryption/ in a PR against
+# https://github.com/google/oss-fuzz . See oss-fuzz/README.md.
+homepage: "https://github.com/systemslibrarian/postquantum-file-encryption"
+language: rust
+main_repo: "https://github.com/systemslibrarian/postquantum-file-encryption"
+primary_contact: "systemslibrarian@gmail.com"
+fuzzing_engines:
+  - libfuzzer
+sanitizers:
+  - address
+architectures:
+  - x86_64

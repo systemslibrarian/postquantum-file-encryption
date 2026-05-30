@@ -34,6 +34,14 @@ docfx/_site/
 docfx/api/*.yml
 docfx/api/.manifest
 
+# Local fuzzing scratch (SharpFuzz driver, instrumented publish, corpus, crashes)
+/fuzzpub/
+/dotnet-corpus/
+libfuzzer-dotnet
+libfuzzer-dotnet.cc
+crash-*
+
+
 # Rust / WebAssembly demo build output
 target/
 samples/**/pkg/
