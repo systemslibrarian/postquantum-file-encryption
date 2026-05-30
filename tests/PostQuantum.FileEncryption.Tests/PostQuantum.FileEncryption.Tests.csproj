@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
   </ItemGroup>
 
 </Project>

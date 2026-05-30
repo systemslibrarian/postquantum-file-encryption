@@ -7,6 +7,13 @@ and the on-disk format may change before `1.0`.
 
 ## [Unreleased]
 
+### Added
+- **`PostQuantum.FileEncryption.Hybrid` package (0.1.0)** — post-quantum hybrid public-key
+  encryption: an **X25519 + ML-KEM-768 combiner** (`KeySource = 3`) and **multiple recipients**
+  (`KeySource = 4`), with `PqHybridKeyPair` / `PqHybridEncryptor` / `PqHybridDecryptor`. Fully
+  managed via BouncyCastle (both primitives) — no native ML-KEM requirement, runs anywhere.
+  Round-trip, multi-recipient, fail-closed, and pinned decrypt-KAT tested.
+
 ## [0.1.0] - 2026-05-30
 
 First release. The **symmetric, passphrase-based engine is production-ready**.

@@ -1,7 +1,12 @@
-# Roadmap: post-quantum public-key support (`PostQuantum.FileEncryption.Hybrid`)
+# Post-quantum public-key support (`PostQuantum.FileEncryption.Hybrid`)
 
-This specifies the **upgrade path** beyond the symmetric core. It is a design, not shipped
-code.
+> **Status: the hybrid combiner (`KeySource = 3`) and multiple recipients (`KeySource = 4`) are
+> IMPLEMENTED and tested in the `PostQuantum.FileEncryption.Hybrid` package** (managed
+> BouncyCastle for *both* X25519 and ML-KEM-768 — no native ML-KEM requirement). This document
+> is now both the spec and the rationale. Remaining future work: KMS/HSM providers (see
+> [KEY-MANAGEMENT.md](KEY-MANAGEMENT.md)).
+
+This specifies the public-key upgrade path beyond the symmetric core.
 
 ## Where things stand, and the decision
 

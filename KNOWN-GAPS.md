@@ -42,12 +42,14 @@ lower-level **PostQuantum.FileFormat**. As of this release:
 
 ### Cryptographic scope
 
-- **Recipient mode is KEM-DEM, not a PQ+classical combiner.** It relies on ML-KEM-768 alone for
-  the asymmetric step. A combined X25519 + ML-KEM hybrid is **designed** in
-  [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) but not implemented — .NET has no built-in X25519, so
-  it needs a dependency decision, and it needs an ML-KEM-capable host to test.
-- **Single recipient per container.** Multi-recipient is **designed** in
-  [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md), not yet implemented.
+- **The core's recipient mode is ML-KEM-only (not a combiner) and experimental.** The
+  productionized public-key path — a **hybrid X25519 + ML-KEM-768 combiner** and
+  **multiple recipients** — is **implemented** in the `PostQuantum.FileEncryption.Hybrid`
+  package (managed BouncyCastle for both primitives; runs anywhere). The core's own
+  `[Experimental]` ML-KEM-only mode is retained but superseded by the Hybrid package.
+- **KMS/HSM providers are not implemented.** The envelope seam and rewrap/rotation are
+  **designed** in [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md); AWS/Azure providers (separate
+  packages) need their SDKs and live credentials to integration-test.
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
   exist, but the `string` overloads remain for ergonomics and cannot zero the caller's `string`.
 

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>PostQuantum.FileEncryption.Hybrid</RootNamespace>
+    <AssemblyName>PostQuantum.FileEncryption.Hybrid</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>PostQuantum.FileEncryption.Hybrid</PackageId>
+    <Version>0.1.0</Version>
+    <Title>PostQuantum.FileEncryption.Hybrid</Title>
+    <Description>Post-quantum hybrid public-key encryption for PostQuantum.FileEncryption. Adds X25519 + ML-KEM-768 (FIPS 203) hybrid recipient encryption and multi-recipient support on top of the core .pqfe format, so a file's content key is protected even if either primitive is later broken. Fully managed via BouncyCastle (no platform ML-KEM dependency).</Description>
+    <PackageReleaseNotes>0.1.0 — first release. X25519 + ML-KEM-768 hybrid combiner (KeySource 3) and multiple recipients (KeySource 4), managed via BouncyCastle. Round-trip and fail-closed tested.</PackageReleaseNotes>
+    <PackageTags>post-quantum;pqc;ml-kem;x25519;hybrid;encryption;file-encryption;recipient;cryptography;dotnet</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-file-encryption</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/postquantum-file-encryption</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+    <ProjectReference Include="../PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PostQuantum.FileEncryption.Tests" />
+  </ItemGroup>
+
+</Project>

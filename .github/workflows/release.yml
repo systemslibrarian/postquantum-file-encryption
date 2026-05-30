@@ -36,12 +36,15 @@ jobs:
           dotnet test  --configuration Release --no-build
 
       - name: Pack
-        run: dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj --configuration Release -o artifacts
+        run: |
+          dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj --configuration Release -o artifacts
+          dotnet pack src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj --configuration Release -o artifacts
 
-      - name: Generate SBOM (CycloneDX)
+      - name: Generate SBOMs (CycloneDX)
         run: |
           dotnet tool install --global CycloneDX
-          dotnet CycloneDX src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj -o artifacts --json --filename sbom.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj -o artifacts --json --filename sbom.core.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj -o artifacts --json --filename sbom.hybrid.cdx.json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2

@@ -6,6 +6,7 @@
     <Project Path="samples/PostQuantum.FileEncryption.Demo/PostQuantum.FileEncryption.Demo.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
     <Project Path="src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
   </Folder>
   <Folder Name="/tests/">

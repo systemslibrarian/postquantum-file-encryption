@@ -246,17 +246,32 @@ Be clear-eyed about what "post-quantum" means here today:
   for the *confidentiality of your data* (≈128-bit security under Grover), so a passphrase-
   encrypted file is sound against a harvest-now-decrypt-later adversary. This is the engine
   being finalized for release.
-- **What's experimental:** an ML-KEM-768 recipient (public-key) mode, included but
-  platform-gated and not part of the stable surface.
-- **What's planned:** the productionized post-quantum public-key story — a **hybrid
-  X25519 + ML-KEM-768 combiner** and **multiple recipients** — will ship in a **separate
-  `PostQuantum.FileEncryption.Hybrid` package** (using BouncyCastle for X25519), keeping the
-  core dependency-light. The full design is in [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
+- **What's experimental:** an ML-KEM-768-only recipient mode in the **core**, platform-gated
+  (needs native ML-KEM) and not part of the stable surface.
+- **What's shipped for public-key:** the **`PostQuantum.FileEncryption.Hybrid`** package — a
+  **hybrid X25519 + ML-KEM-768 combiner** plus **multiple recipients**. It's fully managed
+  (BouncyCastle for *both* primitives), so it runs **anywhere** with no native ML-KEM
+  requirement, and the content key stays safe if *either* X25519 or ML-KEM is later broken.
 
-In short: **the public-key, key-establishment part of "post-quantum" is not finished** in the
-core — and we'd rather say so plainly than overstate it. If your need is "encrypt a file with a
-passphrase," the core is ready; if it's "encrypt to a recipient's public key," wait for the
-Hybrid package (or use the experimental mode knowingly).
+```bash
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 0.1.0
+```
+
+```csharp
+using PostQuantum.FileEncryption.Hybrid;
+
+using var keyPair = PqHybridKeyPair.Generate();        // recipient
+byte[] publish = keyPair.PublicKey.Export();
+
+var recipient = PqHybridPublicKey.Import(publish);     // sender
+byte[] container = await new PqHybridEncryptor().EncryptBytesAsync(secret, recipient);
+
+byte[] plaintext = await new PqHybridDecryptor().DecryptBytesAsync(container, keyPair.PrivateKey);
+```
+
+So: passphrase encryption is the stable core; **hybrid public-key encryption is available now**
+via the Hybrid package; the core's ML-KEM-only recipient mode remains experimental. Design and
+format details: [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
 
 ---
 
@@ -313,8 +328,9 @@ raise/lower it (or pick Argon2id) via `PqEncryptionOptions` to trade hardening f
 ## Project layout
 
 ```
-src/        PostQuantum.FileEncryption        — the library
-tests/      PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, known-answer, cross-impl, property, fuzz tests
+src/        PostQuantum.FileEncryption        — the library (symmetric core)
+src/        PostQuantum.FileEncryption.Hybrid — X25519 + ML-KEM-768 hybrid public-key package
+tests/      PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, hybrid, known-answer, cross-impl, property, fuzz tests
 benchmarks/ PostQuantum.FileEncryption.Benchmarks — BenchmarkDotNet throughput suite
 samples/    PostQuantum.FileEncryption.Demo   — .NET demo (Blazor Server, runs the library)
 samples/    pqfe-wasm                          — Rust → WASM re-implementation of the .pqfe format

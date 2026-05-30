@@ -31,7 +31,7 @@ container with no authenticated final frame is rejected as truncated.
 |      0 |    4 | `Magic`           | ASCII `PQFE` (`0x50 0x51 0x46 0x45`)             |
 |      4 |    1 | `FormatVersion`   | `2`                                              |
 |      5 |    1 | `AeadId`          | `1` = AES-256-GCM                                |
-|      6 |    1 | `KeySource`       | `1` = passphrase, `2` = ML-KEM recipient         |
+|      6 |    1 | `KeySource`       | `1` passphrase, `2` ML-KEM, `3` hybrid, `4` multi |
 |      7 |    1 | `Flags`           | reserved, must be `0`                            |
 |      8 |    4 | `ChunkSize`       | plaintext bytes per non-final chunk (uint32)     |
 |     12 |    4 | `NoncePrefix`     | random per-file nonce prefix                     |
@@ -98,6 +98,49 @@ decrypt: ss  = ML-KEM-768.Decapsulate(KemCiphertext, recipient_private_key)
 ```
 
 A wrap-tag mismatch (wrong recipient key or tampering) is rejected.
+
+### KeyParams when `KeySource = 3` (hybrid recipient)
+
+Provided by the `PostQuantum.FileEncryption.Hybrid` package. The CEK is wrapped under a key
+derived from **both** an ML-KEM-768 shared secret and an X25519 shared secret, so it stays safe
+if either primitive is broken.
+
+```
+0     1    KemId                       1 = ML-KEM-768
+1     2    KemCiphertextLength C        (uint16, 1088)
+3     C    KemCiphertext
+3+C   32   EphemeralX25519PublicKey
+35+C  12   WrapNonce
+47+C  16   WrapTag
+63+C  32   WrappedKey                   AES-256-GCM(KEK) over the CEK
+```
+
+```
+encrypt: (KemCiphertext, ss_pq) = ML-KEM-768.Encapsulate(recipient_mlkem_pub)
+         (eph_priv, eph_pub)     = X25519.GenerateKeyPair()
+         ss_classical            = X25519(eph_priv, recipient_x25519_pub)
+         KEK = HKDF-SHA256(ss_pq ‖ ss_classical, info = "PostQuantum.FileEncryption/v3 hybrid kek")
+         (WrappedKey, WrapTag) = AES-256-GCM(KEK, WrapNonce, CEK, aad = "PostQuantum.FileEncryption/v3 cek-wrap")
+```
+
+Decryption reverses it (decapsulate + X25519 agreement → same HKDF → AES-GCM unwrap). The
+concatenation order `ss_pq ‖ ss_classical` is fixed and authenticated (the whole header is
+chunk AAD).
+
+### KeyParams when `KeySource = 4` (multiple recipients)
+
+The same CEK is wrapped to N recipients; any one private key opens the file.
+
+```
+0     1    RecipientCount N (uint8, ≥ 1)
+then N times:
+  1   Mode (3 = hybrid)
+  2   BlockLength L (uint16)
+  L   block = a KeySource-3 body (above), wrapping the SAME CEK
+```
+
+A decryptor tries each block with its private key and uses the first that authenticates; if none
+do, it fails closed with no oracle about which recipients are present.
 
 ## Frames
 

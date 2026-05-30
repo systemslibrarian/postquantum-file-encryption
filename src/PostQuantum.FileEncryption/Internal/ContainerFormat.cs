@@ -18,8 +18,10 @@ internal static class ContainerFormat
 
     // How the per-file content key is established. The variable KeyParams block is interpreted
     // according to this value.
-    public const byte KeySourcePassphrase = 1;     // KeyParams describe a KDF over a passphrase
-    public const byte KeySourceMlKemRecipient = 2;  // KeyParams carry an ML-KEM-wrapped content key
+    public const byte KeySourcePassphrase = 1;       // KeyParams describe a KDF over a passphrase
+    public const byte KeySourceMlKemRecipient = 2;   // KeyParams carry an ML-KEM-wrapped content key
+    public const byte KeySourceHybridRecipient = 3;  // X25519 + ML-KEM-768 combiner (Hybrid package)
+    public const byte KeySourceMultiRecipient = 4;   // multiple recipients (Hybrid package)
 
     // KDF identifiers (used inside passphrase KeyParams).
     public const byte KdfPbkdf2HmacSha256 = 1;
@@ -118,7 +120,8 @@ internal sealed record ContainerHeader(
         }
 
         byte keySource = span[ContainerFormat.OffsetKeySource];
-        if (keySource is not (ContainerFormat.KeySourcePassphrase or ContainerFormat.KeySourceMlKemRecipient))
+        if (keySource is not (ContainerFormat.KeySourcePassphrase or ContainerFormat.KeySourceMlKemRecipient
+            or ContainerFormat.KeySourceHybridRecipient or ContainerFormat.KeySourceMultiRecipient))
         {
             throw new PqFormatException($"Unsupported key-source identifier {keySource}.");
         }
