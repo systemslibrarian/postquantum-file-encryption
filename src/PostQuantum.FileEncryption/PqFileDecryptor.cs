@@ -104,6 +104,41 @@ public sealed class PqFileDecryptor
         return PqContainer.DecryptRecipientAsync(input, output, privateKey, total, progress, cancellationToken);
     }
 
+    // ------------------------------------------------------------------ All-or-nothing stream
+
+    /// <summary>
+    /// Decrypts the container from <paramref name="input"/> and writes the plaintext to
+    /// <paramref name="output"/> <b>only if the entire container authenticates</b> — nothing is
+    /// written on failure. This closes the streaming gap where <see cref="DecryptAsync(Stream, Stream, string, IProgress{PqProgress}?, CancellationToken)"/>
+    /// emits earlier authentic chunks before a later truncation is detected.
+    /// </summary>
+    /// <remarks>
+    /// The recovered plaintext is buffered in memory before being written, so peak memory is
+    /// proportional to the plaintext size. For very large inputs prefer the file API
+    /// (<see cref="DecryptFileAsync(string, string, string, IProgress{PqProgress}?, CancellationToken)"/>),
+    /// which is already atomic via a temp file and rename without buffering.
+    /// </remarks>
+    public Task DecryptAtomicAsync(
+        Stream input, Stream output, string passphrase, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(passphrase);
+        return WithPassphraseBytesAsync(passphrase, p => DecryptAtomicAsync(input, output, p, cancellationToken));
+    }
+
+    /// <summary>All-or-nothing stream decryption with a passphrase supplied as bytes.</summary>
+    public async Task DecryptAtomicAsync(
+        Stream input, Stream output, ReadOnlyMemory<byte> passphrase, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+
+        using var buffer = new MemoryStream();
+        // If this throws, `output` has not been touched — that is the all-or-nothing guarantee.
+        await DecryptAsync(input, buffer, passphrase, null, cancellationToken).ConfigureAwait(false);
+        buffer.Position = 0;
+        await buffer.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
+    }
+
     // ------------------------------------------------------------------ In-memory convenience
 
     /// <summary>
