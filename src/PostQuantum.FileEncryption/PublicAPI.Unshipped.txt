@@ -1,0 +1,3 @@
+#nullable enable
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptBytes(System.ReadOnlySpan<byte> container, System.ReadOnlySpan<char> passphrase) -> byte[]!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptBytes(System.ReadOnlySpan<byte> plaintext, System.ReadOnlySpan<char> passphrase) -> byte[]!

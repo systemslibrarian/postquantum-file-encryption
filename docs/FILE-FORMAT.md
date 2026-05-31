@@ -1,11 +1,16 @@
 # PostQuantum.FileEncryption Container Format — v2
 
 This is the authoritative specification of the on-disk container produced and consumed by
-PostQuantum.FileEncryption `0.2.x`. It is documented so the format can be reviewed and
+PostQuantum.FileEncryption `1.0` and later. It is documented so the format can be reviewed and
 re-implemented independently.
 
-> **Not frozen.** This format may change before `1.0`. The `FormatVersion` byte exists so a
-> future reader can refuse or migrate older containers. (v0.2 does not read the v0.1 format.)
+> **FROZEN at v2 for the `1.x` line.** Every byte of the wire format described below is
+> pinned by the cross-checked known-answer vectors in [TEST-VECTORS.md](TEST-VECTORS.md) and
+> [CONFORMANCE.md](CONFORMANCE.md). Any change that breaks byte-compatibility with an
+> existing reader requires a `2.0` major version. New `KeySource` values may be added
+> additively (existing readers reject unknown `KeySource`s as fail-closed format errors,
+> which is the intended behavior). v1 containers are no longer produced by this library;
+> readers MAY refuse them.
 
 All multi-byte integers are **big-endian**. All cryptography uses .NET's
 `System.Security.Cryptography` primitives, plus Argon2id from

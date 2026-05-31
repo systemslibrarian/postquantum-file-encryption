@@ -1,0 +1,107 @@
+#nullable enable
+[PQFE001]PostQuantum.FileEncryption.PqFileDecryptor.DecryptAsync(System.IO.Stream! input, System.IO.Stream! output, PostQuantum.FileEncryption.PqRecipientPrivateKey! privateKey, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[PQFE001]PostQuantum.FileEncryption.PqFileDecryptor.DecryptFileAsync(string! inputPath, string! outputPath, PostQuantum.FileEncryption.PqRecipientPrivateKey! privateKey, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[PQFE001]PostQuantum.FileEncryption.PqFileEncryptor.EncryptAsync(System.IO.Stream! input, System.IO.Stream! output, PostQuantum.FileEncryption.PqRecipientPublicKey! recipient, long? totalBytes = null, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[PQFE001]PostQuantum.FileEncryption.PqFileEncryptor.EncryptFileAsync(string! inputPath, string! outputPath, PostQuantum.FileEncryption.PqRecipientPublicKey! recipient, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[PQFE001]PostQuantum.FileEncryption.PqKemAlgorithm
+[PQFE001]PostQuantum.FileEncryption.PqKemAlgorithm.MlKem768 = 1 -> PostQuantum.FileEncryption.PqKemAlgorithm
+[PQFE001]PostQuantum.FileEncryption.PqKeyPair
+[PQFE001]PostQuantum.FileEncryption.PqKeyPair.Dispose() -> void
+[PQFE001]PostQuantum.FileEncryption.PqKeyPair.PrivateKey.get -> PostQuantum.FileEncryption.PqRecipientPrivateKey!
+[PQFE001]PostQuantum.FileEncryption.PqKeyPair.PublicKey.get -> PostQuantum.FileEncryption.PqRecipientPublicKey!
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPrivateKey
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPrivateKey.Algorithm.get -> PostQuantum.FileEncryption.PqKemAlgorithm
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPrivateKey.Dispose() -> void
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPrivateKey.Export() -> byte[]!
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPublicKey
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPublicKey.Algorithm.get -> PostQuantum.FileEncryption.PqKemAlgorithm
+[PQFE001]PostQuantum.FileEncryption.PqRecipientPublicKey.Export() -> byte[]!
+[PQFE001]static PostQuantum.FileEncryption.PqKeyPair.Generate(PostQuantum.FileEncryption.PqKemAlgorithm algorithm = PostQuantum.FileEncryption.PqKemAlgorithm.MlKem768) -> PostQuantum.FileEncryption.PqKeyPair!
+[PQFE001]static PostQuantum.FileEncryption.PqKeyPair.IsSupported.get -> bool
+[PQFE001]static PostQuantum.FileEncryption.PqRecipientPrivateKey.Import(byte[]! bytes, PostQuantum.FileEncryption.PqKemAlgorithm algorithm = PostQuantum.FileEncryption.PqKemAlgorithm.MlKem768) -> PostQuantum.FileEncryption.PqRecipientPrivateKey!
+[PQFE001]static PostQuantum.FileEncryption.PqRecipientPublicKey.Import(byte[]! bytes, PostQuantum.FileEncryption.PqKemAlgorithm algorithm = PostQuantum.FileEncryption.PqKemAlgorithm.MlKem768) -> PostQuantum.FileEncryption.PqRecipientPublicKey!
+~override PostQuantum.FileEncryption.PqProgress.Equals(object obj) -> bool
+~override PostQuantum.FileEncryption.PqProgress.ToString() -> string
+override PostQuantum.FileEncryption.PqProgress.GetHashCode() -> int
+PostQuantum.FileEncryption.IContentKeyProvider
+PostQuantum.FileEncryption.IContentKeyProvider.ProviderId.get -> string!
+PostQuantum.FileEncryption.IContentKeyProvider.UnwrapKeyAsync(System.ReadOnlyMemory<byte> wrapInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.IContentKeyProvider.WrapNewKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(byte[]! contentKey, byte[]! wrapInfo)>!
+PostQuantum.FileEncryption.LocalKekContentKeyProvider
+PostQuantum.FileEncryption.LocalKekContentKeyProvider.Dispose() -> void
+PostQuantum.FileEncryption.LocalKekContentKeyProvider.ExportKek() -> byte[]!
+PostQuantum.FileEncryption.LocalKekContentKeyProvider.LocalKekContentKeyProvider(System.ReadOnlySpan<byte> kek) -> void
+PostQuantum.FileEncryption.LocalKekContentKeyProvider.ProviderId.get -> string!
+PostQuantum.FileEncryption.LocalKekContentKeyProvider.UnwrapKeyAsync(System.ReadOnlyMemory<byte> wrapInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.LocalKekContentKeyProvider.WrapNewKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(byte[]! contentKey, byte[]! wrapInfo)>!
+PostQuantum.FileEncryption.PqDecryptionException
+PostQuantum.FileEncryption.PqDecryptionException.PqDecryptionException(string! message) -> void
+PostQuantum.FileEncryption.PqDecryptionException.PqDecryptionException(string! message, System.Exception! innerException) -> void
+PostQuantum.FileEncryption.PqEncryptionException
+PostQuantum.FileEncryption.PqEncryptionException.PqEncryptionException(string! message) -> void
+PostQuantum.FileEncryption.PqEncryptionException.PqEncryptionException(string! message, System.Exception! innerException) -> void
+PostQuantum.FileEncryption.PqEncryptionOptions
+PostQuantum.FileEncryption.PqEncryptionOptions.Argon2Iterations.get -> int
+PostQuantum.FileEncryption.PqEncryptionOptions.Argon2Iterations.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.Argon2MemoryKiB.get -> int
+PostQuantum.FileEncryption.PqEncryptionOptions.Argon2MemoryKiB.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.Argon2Parallelism.get -> int
+PostQuantum.FileEncryption.PqEncryptionOptions.Argon2Parallelism.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.ChunkSizeBytes.get -> int
+PostQuantum.FileEncryption.PqEncryptionOptions.ChunkSizeBytes.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.Kdf.get -> PostQuantum.FileEncryption.PqKdf
+PostQuantum.FileEncryption.PqEncryptionOptions.Kdf.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.Pbkdf2Iterations.get -> int
+PostQuantum.FileEncryption.PqEncryptionOptions.Pbkdf2Iterations.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.PqEncryptionOptions() -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.SaltSizeBytes.get -> int
+PostQuantum.FileEncryption.PqEncryptionOptions.SaltSizeBytes.init -> void
+PostQuantum.FileEncryption.PqEncryptionOptions.WithArgon2id(int? memoryKiB = null, int? iterations = null, int? parallelism = null) -> PostQuantum.FileEncryption.PqEncryptionOptions!
+PostQuantum.FileEncryption.PqEncryptionOptions.WithChunkSize(int chunkSizeBytes) -> PostQuantum.FileEncryption.PqEncryptionOptions!
+PostQuantum.FileEncryption.PqEncryptionOptions.WithPbkdf2(int? iterations = null) -> PostQuantum.FileEncryption.PqEncryptionOptions!
+PostQuantum.FileEncryption.PqFileDecryptor
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptAsync(System.IO.Stream! input, System.IO.Stream! output, PostQuantum.FileEncryption.IContentKeyProvider! keyProvider, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptAsync(System.IO.Stream! input, System.IO.Stream! output, string! passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptAsync(System.IO.Stream! input, System.IO.Stream! output, System.ReadOnlyMemory<byte> passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptAtomicAsync(System.IO.Stream! input, System.IO.Stream! output, string! passphrase, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptAtomicAsync(System.IO.Stream! input, System.IO.Stream! output, System.ReadOnlyMemory<byte> passphrase, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptBytesAsync(System.ReadOnlyMemory<byte> container, PostQuantum.FileEncryption.IContentKeyProvider! keyProvider, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptBytesAsync(System.ReadOnlyMemory<byte> container, string! passphrase, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptBytesAsync(System.ReadOnlyMemory<byte> container, System.ReadOnlyMemory<byte> passphrase, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptFileAsync(string! inputPath, string! outputPath, PostQuantum.FileEncryption.IContentKeyProvider! keyProvider, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptFileAsync(string! inputPath, string! outputPath, string! passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptFileAsync(string! inputPath, string! outputPath, System.ReadOnlyMemory<byte> passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileDecryptor.PqFileDecryptor() -> void
+PostQuantum.FileEncryption.PqFileEncryptor
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptAsync(System.IO.Stream! input, System.IO.Stream! output, PostQuantum.FileEncryption.IContentKeyProvider! keyProvider, long? totalBytes = null, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptAsync(System.IO.Stream! input, System.IO.Stream! output, string! passphrase, long? totalBytes = null, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptAsync(System.IO.Stream! input, System.IO.Stream! output, System.ReadOnlyMemory<byte> passphrase, long? totalBytes = null, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptBytesAsync(System.ReadOnlyMemory<byte> plaintext, PostQuantum.FileEncryption.IContentKeyProvider! keyProvider, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptBytesAsync(System.ReadOnlyMemory<byte> plaintext, string! passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptBytesAsync(System.ReadOnlyMemory<byte> plaintext, System.ReadOnlyMemory<byte> passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptFileAsync(string! inputPath, string! outputPath, PostQuantum.FileEncryption.IContentKeyProvider! keyProvider, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptFileAsync(string! inputPath, string! outputPath, string! passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptFileAsync(string! inputPath, string! outputPath, System.ReadOnlyMemory<byte> passphrase, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.PqFileEncryptor.PqFileEncryptor() -> void
+PostQuantum.FileEncryption.PqFileEncryptor.PqFileEncryptor(PostQuantum.FileEncryption.PqEncryptionOptions! options) -> void
+PostQuantum.FileEncryption.PqFormatException
+PostQuantum.FileEncryption.PqFormatException.PqFormatException(string! message) -> void
+PostQuantum.FileEncryption.PqFormatException.PqFormatException(string! message, System.Exception! innerException) -> void
+PostQuantum.FileEncryption.PqKdf
+PostQuantum.FileEncryption.PqKdf.Argon2id = 2 -> PostQuantum.FileEncryption.PqKdf
+PostQuantum.FileEncryption.PqKdf.Pbkdf2HmacSha256 = 1 -> PostQuantum.FileEncryption.PqKdf
+PostQuantum.FileEncryption.PqProgress
+PostQuantum.FileEncryption.PqProgress.BytesProcessed.get -> long
+PostQuantum.FileEncryption.PqProgress.BytesProcessed.init -> void
+PostQuantum.FileEncryption.PqProgress.Deconstruct(out long BytesProcessed, out long? TotalBytes) -> void
+PostQuantum.FileEncryption.PqProgress.Equals(PostQuantum.FileEncryption.PqProgress other) -> bool
+PostQuantum.FileEncryption.PqProgress.Fraction.get -> double?
+PostQuantum.FileEncryption.PqProgress.PqProgress() -> void
+PostQuantum.FileEncryption.PqProgress.PqProgress(long BytesProcessed, long? TotalBytes) -> void
+PostQuantum.FileEncryption.PqProgress.TotalBytes.get -> long?
+PostQuantum.FileEncryption.PqProgress.TotalBytes.init -> void
+static PostQuantum.FileEncryption.LocalKekContentKeyProvider.Generate() -> PostQuantum.FileEncryption.LocalKekContentKeyProvider!
+static PostQuantum.FileEncryption.PqEncryptionOptions.Argon2id.get -> PostQuantum.FileEncryption.PqEncryptionOptions!
+static PostQuantum.FileEncryption.PqEncryptionOptions.Default.get -> PostQuantum.FileEncryption.PqEncryptionOptions!
+static PostQuantum.FileEncryption.PqProgress.operator !=(PostQuantum.FileEncryption.PqProgress left, PostQuantum.FileEncryption.PqProgress right) -> bool
+static PostQuantum.FileEncryption.PqProgress.operator ==(PostQuantum.FileEncryption.PqProgress left, PostQuantum.FileEncryption.PqProgress right) -> bool

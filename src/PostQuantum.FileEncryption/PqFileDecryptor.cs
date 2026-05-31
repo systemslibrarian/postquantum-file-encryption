@@ -134,12 +134,13 @@ public sealed class PqFileDecryptor
 
     /// <summary>Decrypts an in-memory container using an envelope-key provider and returns the plaintext.</summary>
     public async Task<byte[]> DecryptBytesAsync(
-        ReadOnlyMemory<byte> container, IContentKeyProvider keyProvider, CancellationToken cancellationToken = default)
+        ReadOnlyMemory<byte> container, IContentKeyProvider keyProvider,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(keyProvider);
         using var input = new MemoryStream(container.ToArray(), writable: false);
         using var output = new MemoryStream(container.Length);
-        await PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, container.Length, null, cancellationToken).ConfigureAwait(false);
+        await PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, container.Length, progress, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
     }
 
@@ -208,6 +209,36 @@ public sealed class PqFileDecryptor
         await PqContainer.DecryptPassphraseAsync(
             input, output, passphrase, container.Length, null, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
+    }
+
+    // ------------------------------------------------------------------ Synchronous bytes API
+
+    /// <summary>
+    /// Synchronously decrypts an in-memory container with a <see cref="ReadOnlySpan{T}"/> of
+    /// passphrase characters — fail-closed, throws <see cref="PqDecryptionException"/> on any
+    /// authentication failure rather than returning bad data. The span is UTF-8 encoded into a
+    /// temporary buffer that is zeroed before this method returns.
+    /// </summary>
+    /// <remarks>
+    /// In-memory decryption performs no real async I/O, so this overload reuses the async
+    /// implementation by completing it inline — no <c>SynchronizationContext</c> capture,
+    /// no deadlock surface.
+    /// </remarks>
+    public byte[] DecryptBytes(ReadOnlySpan<byte> container, ReadOnlySpan<char> passphrase)
+    {
+        int byteCount = Encoding.UTF8.GetByteCount(passphrase);
+        byte[] passphraseBytes = new byte[byteCount];
+        try
+        {
+            Encoding.UTF8.GetBytes(passphrase, passphraseBytes);
+            byte[] containerCopy = container.ToArray();
+            return DecryptBytesAsync(containerCopy, (ReadOnlyMemory<byte>)passphraseBytes)
+                .GetAwaiter().GetResult();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(passphraseBytes);
+        }
     }
 
     // ------------------------------------------------------------------ helpers

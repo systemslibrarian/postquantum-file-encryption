@@ -12,6 +12,14 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
 
+    <!--
+      Package validation against the previously published baseline so any binary-breaking
+      change vs. the last shipped version fails the build. Intentional, documented breaks
+      are listed per project in CompatibilitySuppressions.xml.
+    -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.2.0</PackageValidationBaselineVersion>
+
     <!-- Reproducibility -->
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>

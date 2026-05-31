@@ -15,14 +15,15 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption</PackageId>
-    <Version>0.2.0</Version>
+    <Version>1.0.0-rc.1</Version>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption</Title>
-    <Description>A high-level, delightful, fail-closed file and stream encryptor for .NET. The stable core is symmetric and passphrase-based: authenticated AES-256-GCM containers with chunked streaming and progress, PBKDF2-HMAC-SHA256 or Argon2id key derivation, and an envelope-key provider seam (IContentKeyProvider) for KMS/HSM scenarios. AES-256 keeps your data confidential against a quantum (harvest-now-decrypt-later) adversary. Production post-quantum public-key encryption — X25519 + ML-KEM-768 hybrid combiner with multi-recipient support — ships as the companion package PostQuantum.FileEncryption.Hybrid. AOT-compatible; deterministic builds; cross-implementation tested against an independent Rust/WASM reference.</Description>
-    <PackageReleaseNotes>0.2.0 — adds the Hybrid companion package (X25519 + ML-KEM-768), an envelope-key provider seam (IContentKeyProvider + LocalKekContentKeyProvider), a `pqfe` CLI sample, continuous coverage-guided fuzzing (cargo-fuzz + SharpFuzz), and discoverable options helpers (PqEncryptionOptions.Argon2id, WithArgon2id, WithPbkdf2, WithChunkSize). CI now covers Linux/Windows/macOS plus a native-AOT publish smoke test; the release pipeline runs OSSF Scorecard and validates every .nupkg before push. 0.x: the on-disk format may still change before 1.0.</PackageReleaseNotes>
+    <Description>A high-level, delightful, fail-closed file and stream encryptor for .NET. The stable core is symmetric and passphrase-based: authenticated AES-256-GCM containers with chunked streaming and progress, PBKDF2-HMAC-SHA256 or Argon2id key derivation, and an envelope-key provider seam (IContentKeyProvider) for KMS/HSM scenarios. AES-256 keeps your data confidential against a quantum (harvest-now-decrypt-later) adversary. Production post-quantum public-key encryption — X25519 + ML-KEM-768 hybrid combiner with multi-recipient support — ships as the companion package PostQuantum.FileEncryption.Hybrid. AOT-compatible; deterministic builds; cross-implementation tested against an independent Rust/WASM reference; public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers.</Description>
+    <PackageReleaseNotes>1.0.0-rc.1 — release candidate. The .pqfe container format (v2) is FROZEN for 1.x: every byte is pinned by cross-checked known-answer vectors and a written conformance spec, and any future change requires a 2.0 major. Publish-ready polish bundled in: PublicAPI analyzer + locked baseline (Microsoft.CodeAnalysis.PublicApiAnalyzers), package icon, Codecov coverage, IProgress&lt;PqProgress&gt; parity on the envelope-key bytes APIs, sync ReadOnlySpan&lt;char&gt; passphrase entry point, EnablePackageValidation against the 0.2.0 baseline.</PackageReleaseNotes>
     <PackageTags>encryption;file-encryption;aes-gcm;aes-256;argon2;pbkdf2;passphrase;authenticated-encryption;cryptography;security;streaming;post-quantum;pqc;ml-kem;dotnet</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-file-encryption</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/postquantum-file-encryption</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -36,11 +37,18 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../../README.md" Pack="true" PackagePath="\" />
     <None Include="$(MSBuildThisFileDirectory)../../LICENSE" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../../assets/icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
 
   <ItemGroup>

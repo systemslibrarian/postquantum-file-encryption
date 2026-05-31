@@ -5,7 +5,7 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`0.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`0.3.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
@@ -25,6 +25,18 @@ Last reviewed against: **`0.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **Test vectors and fuzzing** — pinned known-answer vectors and a mutation/truncation fuzz
   harness are in the test suite, cross-checked against the Rust/WASM implementation.
 
+## Resolved in `0.3.0`
+
+- **PublicAPI surface locked** — `Microsoft.CodeAnalysis.PublicApiAnalyzers` is wired into
+  both packages with the full 0.2.0 surface baselined (`PublicAPI.Shipped.txt`). Any accidental
+  breaking change to a public type, member, or signature now fails the build.
+- **Package icon** packed into both packages; the icon-rule exclusion has been removed from
+  `release.yml`, so the release pipeline enforces icon-must-be-set strictly.
+- **Coverage published.** `ci.yml` uploads coverage to Codecov on the Ubuntu matrix leg and
+  the README carries the badge.
+- **Bytes-API progress parity.** The envelope-key `EncryptBytesAsync` / `DecryptBytesAsync`
+  overloads now accept the same optional `IProgress<PqProgress>?` the passphrase overloads do.
+
 ## Resolved in `0.2.0`
 
 - **CLI sample** — `samples/Pqfe.Cli` (`pqfe encrypt | decrypt`) makes the README copy-paste
@@ -42,19 +54,6 @@ Last reviewed against: **`0.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   `WithArgon2id` / `WithPbkdf2` / `WithChunkSize` fluent methods on the immutable options.
 
 ## Still open
-
-### "Wrapper around PostQuantum.FileFormat" — seam built, not wired
-
-The stated long-term goal is for this library to be a delightful, high-level wrapper over the
-lower-level **PostQuantum.FileFormat**. As of this release:
-
-- **PostQuantum.FileFormat is still not published** and is not a referenced dependency.
-- v0.2 ships a **self-contained reference container** (see
-  [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md)) implemented directly on platform primitives.
-- The delegation **seam exists** (`Internal/IPqContainerCodec`, with the orchestration in
-  `Internal/PqContainer`). When PostQuantum.FileFormat is available, an alternative codec can
-  be dropped in behind the unchanged public API. **This is intentionally not done yet** — there
-  is nothing to wire to.
 
 ### Cryptographic scope
 
@@ -103,15 +102,10 @@ lower-level **PostQuantum.FileFormat**. As of this release:
 
 ### Process and assurance gaps
 
-- **Public-API baseline is not enforced.** `Microsoft.CodeAnalysis.PublicApiAnalyzers` and the
-  `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` files are still on the roadmap; until then,
-  preventing accidental breaking changes between releases relies on PR review and the test
-  suite. Tracked in [docs/VERSIONING.md](docs/VERSIONING.md).
-- **Coverage is collected but not published.** CI runs `XPlat Code Coverage` (Coverlet), but
-  the artifact is not yet uploaded to a public dashboard (Codecov / Coveralls). No coverage
-  badge in the README.
-- **No package icon yet.** Both packages currently ship without a `PackageIcon`; release-time
-  validation skips that single rule until one is added.
+- **`<EnablePackageValidation>` is not yet enabled** with a `PackageValidationBaselineVersion`.
+  At `0.x` we still allow binary-breaking changes between minor versions; the right time for
+  baseline-driven package validation is the `1.0` freeze. Tracked in
+  [ROADMAP.md](ROADMAP.md#toward-10).
 - **Not independently audited.** No third-party cryptographic review has been performed.
 - **Continuous fuzzing is wired but young.** Coverage-guided fuzzers run for **both** parsers —
   **cargo-fuzz** (Rust) and **SharpFuzz** (.NET) — validated with no crashes (~330k and ~480k

@@ -1,5 +1,13 @@
 # PostQuantum.FileEncryption
 
+[![CI](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/ci.yml/badge.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/codeql.yml/badge.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/systemslibrarian/postquantum-file-encryption/badge)](https://securityscorecards.dev/viewer/?uri=github.com/systemslibrarian/postquantum-file-encryption)
+[![codecov](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption/branch/main/graph/badge.svg)](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption)
+[![NuGet](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.svg)](https://www.nuget.org/packages/PostQuantum.FileEncryption/)
+[![NuGet Hybrid](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.Hybrid.svg?label=nuget%20hybrid)](https://www.nuget.org/packages/PostQuantum.FileEncryption.Hybrid/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **A high-level, delightful, fail-closed way to encrypt files and streams on .NET.**
 
 PostQuantum.FileEncryption gives you two friendly classes — `PqFileEncryptor` and
@@ -8,11 +16,12 @@ modern defaults. You should not have to read a cryptographic spec to protect a f
 just call a method, and the library does the careful, paranoid, fail-closed thing every
 time.
 
-> **Status: `0.2.0`.** The **symmetric, passphrase-based engine is
+> **Status: `1.0.0-rc.1`.** The **symmetric, passphrase-based engine is
 > production-ready** and thoroughly tested (106 tests, continuous fuzzing, cross-checked
-> Rust/WASM byte-compatibility, AOT-published smoke test, OpenSSF Scorecard). This is a
-> `0.x` release, so the on-disk format may still change before `1.0` — don't archive data
-> you must read with a future major version yet. Post-quantum *public-key* (recipient)
+> Rust/WASM byte-compatibility, AOT-published smoke test, OpenSSF Scorecard, public-API
+> baseline locked by analyzer). The **on-disk `.pqfe` container format is now FROZEN at
+> v2** for the `1.x` line: every byte is pinned by published conformance vectors, and any
+> incompatible change requires a `2.0` major version. Post-quantum *public-key* (recipient)
 > encryption ships as the separate **`PostQuantum.FileEncryption.Hybrid`** package
 > (X25519 + ML-KEM-768, fully managed); see
 > [Post-quantum & the upgrade path](#post-quantum--the-upgrade-path) and
@@ -103,7 +112,7 @@ encryption is on the roadmap as a separate package — see
 ## Install
 
 ```bash
-dotnet add package PostQuantum.FileEncryption --version 0.2.0
+dotnet add package PostQuantum.FileEncryption --version 1.0.0-rc.1
 ```
 
 Targets **.NET 10** (`net10.0`). Depends on `Konscious.Security.Cryptography.Argon2` for the
@@ -298,7 +307,7 @@ Be clear-eyed about what "post-quantum" means here today:
   requirement, and the content key stays safe if *either* X25519 or ML-KEM is later broken.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 0.2.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0-rc.1
 ```
 
 ```csharp
@@ -329,6 +338,7 @@ format details: [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
 | Threat model (assets, adversaries, audit focus) | [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) |
 | Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md) |
 | On-disk container format | [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) |
+| Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](docs/CONFORMANCE.md) |
 | Known-answer test vectors | [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) |
 | Deployment & hardening | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Versioning & compatibility policy | [docs/VERSIONING.md](docs/VERSIONING.md) |

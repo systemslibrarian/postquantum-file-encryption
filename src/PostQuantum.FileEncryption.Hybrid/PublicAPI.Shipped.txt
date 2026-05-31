@@ -1,0 +1,27 @@
+#nullable enable
+PostQuantum.FileEncryption.Hybrid.PqHybridDecryptor
+PostQuantum.FileEncryption.Hybrid.PqHybridDecryptor.DecryptAsync(System.IO.Stream! input, System.IO.Stream! output, PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey! privateKey, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Hybrid.PqHybridDecryptor.DecryptBytesAsync(System.ReadOnlyMemory<byte> container, PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey! privateKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.Hybrid.PqHybridDecryptor.DecryptFileAsync(string! inputPath, string! outputPath, PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey! privateKey, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Hybrid.PqHybridDecryptor.PqHybridDecryptor() -> void
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.EncryptAsync(System.IO.Stream! input, System.IO.Stream! output, PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey! recipient, long? totalBytes = null, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.EncryptBytesAsync(System.ReadOnlyMemory<byte> plaintext, PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey! recipient, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.EncryptBytesToAsync(System.ReadOnlyMemory<byte> plaintext, System.Collections.Generic.IReadOnlyList<PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey!>! recipients, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.EncryptFileAsync(string! inputPath, string! outputPath, PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey! recipient, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.EncryptFileToAsync(string! inputPath, string! outputPath, System.Collections.Generic.IReadOnlyList<PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey!>! recipients, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.EncryptToAsync(System.IO.Stream! input, System.IO.Stream! output, System.Collections.Generic.IReadOnlyList<PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey!>! recipients, long? totalBytes = null, System.IProgress<PostQuantum.FileEncryption.PqProgress>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.PqHybridEncryptor() -> void
+PostQuantum.FileEncryption.Hybrid.PqHybridEncryptor.PqHybridEncryptor(PostQuantum.FileEncryption.PqEncryptionOptions! options) -> void
+PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair
+PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair.Dispose() -> void
+PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair.PrivateKey.get -> PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey!
+PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair.PublicKey.get -> PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey!
+PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey
+PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.Dispose() -> void
+PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.Export() -> byte[]!
+PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey
+PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey.Export() -> byte[]!
+static PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair.Generate() -> PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair!
+static PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey!
+static PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey!

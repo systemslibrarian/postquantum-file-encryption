@@ -152,13 +152,14 @@ public sealed class PqFileEncryptor
 
     /// <summary>Encrypts an in-memory buffer using an envelope-key provider and returns the container bytes.</summary>
     public async Task<byte[]> EncryptBytesAsync(
-        ReadOnlyMemory<byte> plaintext, IContentKeyProvider keyProvider, CancellationToken cancellationToken = default)
+        ReadOnlyMemory<byte> plaintext, IContentKeyProvider keyProvider,
+        IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(keyProvider);
         using var input = new MemoryStream(plaintext.ToArray(), writable: false);
         using var output = new MemoryStream(plaintext.Length + 256);
         await PqContainer.EncryptKeyProviderAsync(
-            input, output, keyProvider, _options, plaintext.Length, null, cancellationToken).ConfigureAwait(false);
+            input, output, keyProvider, _options, plaintext.Length, progress, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
     }
 
@@ -194,6 +195,36 @@ public sealed class PqFileEncryptor
         await PqContainer.EncryptPassphraseAsync(
             input, output, passphrase, _options, plaintext.Length, progress, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
+    }
+
+    // ------------------------------------------------------------------ Synchronous bytes API
+
+    /// <summary>
+    /// Synchronously encrypts an in-memory buffer with a <see cref="ReadOnlySpan{T}"/> of
+    /// passphrase characters — the simplest path for callers that never go async and want a
+    /// stack-friendly, zeroable passphrase. The span is UTF-8 encoded into a temporary buffer
+    /// that is zeroed before this method returns.
+    /// </summary>
+    /// <remarks>
+    /// In-memory encryption performs no real async I/O (the underlying streams are
+    /// <see cref="MemoryStream"/>), so this overload reuses the async implementation by
+    /// completing it inline — no <c>SynchronizationContext</c> capture, no deadlock surface.
+    /// </remarks>
+    public byte[] EncryptBytes(ReadOnlySpan<byte> plaintext, ReadOnlySpan<char> passphrase)
+    {
+        int byteCount = Encoding.UTF8.GetByteCount(passphrase);
+        byte[] passphraseBytes = new byte[byteCount];
+        try
+        {
+            Encoding.UTF8.GetBytes(passphrase, passphraseBytes);
+            byte[] plaintextCopy = plaintext.ToArray();
+            return EncryptBytesAsync(plaintextCopy, (ReadOnlyMemory<byte>)passphraseBytes)
+                .GetAwaiter().GetResult();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(passphraseBytes);
+        }
     }
 
     // ------------------------------------------------------------------ helpers
