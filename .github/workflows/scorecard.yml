@@ -1,0 +1,50 @@
+name: OpenSSF Scorecard
+
+# Runs the OpenSSF Scorecard supply-chain risk check on a weekly cadence and on demand.
+# Results are surfaced as SARIF in the repository's Security tab and published to the public
+# OpenSSF dashboard, which is the standard signal enterprises use to evaluate a dependency's
+# supply-chain hygiene. This is especially important for a cryptography library on NuGet.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '17 5 * * 1'   # Mondays, 05:17 UTC
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload SARIF to the Security tab
+      id-token: write          # publish results to the public Scorecard dashboard
+      contents: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload artifact (raw results)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@4e828ff8d448a8a6e532957b1811f387a63867e8 # v3
+        with:
+          sarif_file: results.sarif

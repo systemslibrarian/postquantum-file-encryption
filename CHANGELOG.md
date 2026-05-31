@@ -7,8 +7,10 @@ and the on-disk format may change before `1.0`.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-30
+
 ### Added
-- **`PostQuantum.FileEncryption.Hybrid` package (0.1.0)** — post-quantum hybrid public-key
+- **`PostQuantum.FileEncryption.Hybrid` companion package** — post-quantum hybrid public-key
   encryption: an **X25519 + ML-KEM-768 combiner** (`KeySource = 3`) and **multiple recipients**
   (`KeySource = 4`), with `PqHybridKeyPair` / `PqHybridEncryptor` / `PqHybridDecryptor`. Fully
   managed via BouncyCastle (both primitives) — no native ML-KEM requirement, runs anywhere.
@@ -18,8 +20,23 @@ and the on-disk format may change before `1.0`.
   `PqFileEncryptor` / `PqFileDecryptor` file/stream/in-memory overload accepts a provider; the
   master key never enters the process beyond the provider's boundary. Cloud providers (AWS/Azure)
   implement the same interface in separate packages.
-- Continuous coverage-guided fuzzing for both parsers (cargo-fuzz + SharpFuzz), scheduled nightly;
-  OSS-Fuzz integration files.
+- **Continuous coverage-guided fuzzing** for both parsers (cargo-fuzz + SharpFuzz), scheduled
+  nightly; OSS-Fuzz integration files.
+- **`samples/Pqfe.Cli`** — minimal `pqfe encrypt | decrypt` command-line sample that exercises
+  the public API and is published with `PublishAot=true` in CI as the AOT smoke test.
+- **Discoverable options helpers** — `PqEncryptionOptions.Argon2id` static preset plus
+  `WithArgon2id` / `WithPbkdf2` / `WithChunkSize` fluent methods on the immutable options.
+
+### Changed
+- CI matrix now covers Linux, Windows, and macOS; a separate job performs a native-AOT publish
+  of the CLI sample and round-trips a real file on every push.
+- Release pipeline runs `Meziantou.Framework.NuGetPackageValidation.Tool` against every
+  `.nupkg` before `nuget push`, alongside the existing CycloneDX SBOM and SLSA-style
+  provenance attestation.
+- New OpenSSF Scorecard workflow (weekly + push to main + on demand) with SARIF upload to the
+  Security tab and publication to the public Scorecard dashboard.
+- `PostQuantum.FileEncryption.Hybrid` metadata brought to parity with the core package
+  (`PackageRequireLicenseAcceptance`, packed `LICENSE`, `MinClientVersion`).
 
 ## [0.1.0] - 2026-05-30
 
@@ -47,5 +64,6 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/systemslibrarian/postquantum-file-encryption/releases/tag/v0.1.0

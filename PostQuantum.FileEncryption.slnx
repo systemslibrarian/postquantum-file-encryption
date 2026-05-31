@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/PostQuantum.FileEncryption.Demo/PostQuantum.FileEncryption.Demo.csproj" />
+    <Project Path="samples/Pqfe.Cli/Pqfe.Cli.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />

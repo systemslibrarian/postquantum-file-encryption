@@ -5,7 +5,7 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`0.1.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`0.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
@@ -24,6 +24,22 @@ Last reviewed against: **`0.1.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **Zeroable passphrases** — `ReadOnlyMemory<byte>` passphrase overloads are available.
 - **Test vectors and fuzzing** — pinned known-answer vectors and a mutation/truncation fuzz
   harness are in the test suite, cross-checked against the Rust/WASM implementation.
+
+## Resolved in `0.2.0`
+
+- **CLI sample** — `samples/Pqfe.Cli` (`pqfe encrypt | decrypt`) makes the README copy-paste
+  runnable and gives the AOT smoke test a real target.
+- **Native-AOT smoke test in CI** — the CLI is `dotnet publish -p:PublishAot=true`-ed and
+  round-trips a real file on every push, so any regression in the `IsAotCompatible` claim
+  fails the build.
+- **macOS in the CI matrix** — `ubuntu-latest`, `windows-latest`, *and* `macos-latest`.
+- **Pre-publish NuGet validation** — `release.yml` now runs
+  `Meziantou.Framework.NuGetPackageValidation.Tool` against every produced `.nupkg`
+  (deterministic build, SourceLink wired, README/LICENSE packed, …) before `nuget push`.
+- **OpenSSF Scorecard** — weekly + push-to-main + dispatch, with SARIF in the Security tab
+  and publish to the public Scorecard dashboard.
+- **Discoverable options helpers** — `PqEncryptionOptions.Argon2id` preset and
+  `WithArgon2id` / `WithPbkdf2` / `WithChunkSize` fluent methods on the immutable options.
 
 ## Still open
 
@@ -87,6 +103,15 @@ lower-level **PostQuantum.FileFormat**. As of this release:
 
 ### Process and assurance gaps
 
+- **Public-API baseline is not enforced.** `Microsoft.CodeAnalysis.PublicApiAnalyzers` and the
+  `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` files are still on the roadmap; until then,
+  preventing accidental breaking changes between releases relies on PR review and the test
+  suite. Tracked in [docs/VERSIONING.md](docs/VERSIONING.md).
+- **Coverage is collected but not published.** CI runs `XPlat Code Coverage` (Coverlet), but
+  the artifact is not yet uploaded to a public dashboard (Codecov / Coveralls). No coverage
+  badge in the README.
+- **No package icon yet.** Both packages currently ship without a `PackageIcon`; release-time
+  validation skips that single rule until one is added.
 - **Not independently audited.** No third-party cryptographic review has been performed.
 - **Continuous fuzzing is wired but young.** Coverage-guided fuzzers run for **both** parsers —
   **cargo-fuzz** (Rust) and **SharpFuzz** (.NET) — validated with no crashes (~330k and ~480k

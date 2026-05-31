@@ -8,20 +8,40 @@ modern defaults. You should not have to read a cryptographic spec to protect a f
 just call a method, and the library does the careful, paranoid, fail-closed thing every
 time.
 
-> **Status: `0.1.0` — first release.** The **symmetric, passphrase-based engine is
-> production-ready** and thoroughly tested. This is a `0.x` release, so the on-disk format may
-> still change before `1.0` — don't archive data you must read with a future major version yet.
-> Post-quantum *public-key* (recipient) encryption is **experimental** — see
+> **Status: `0.2.0`.** The **symmetric, passphrase-based engine is
+> production-ready** and thoroughly tested (106 tests, continuous fuzzing, cross-checked
+> Rust/WASM byte-compatibility, AOT-published smoke test, OpenSSF Scorecard). This is a
+> `0.x` release, so the on-disk format may still change before `1.0` — don't archive data
+> you must read with a future major version yet. Post-quantum *public-key* (recipient)
+> encryption ships as the separate **`PostQuantum.FileEncryption.Hybrid`** package
+> (X25519 + ML-KEM-768, fully managed); see
 > [Post-quantum & the upgrade path](#post-quantum--the-upgrade-path) and
 > [KNOWN-GAPS.md](KNOWN-GAPS.md).
 
 ---
 
-## ▶ Try the demo
+## ▶ Try it
 
-Two demos, same `.pqfe` format — pick whichever fits:
+Three ways to drive the library — all produce the same `.pqfe` format:
 
-### 1. Browser demo — fully client-side (Rust → WebAssembly)
+### 1. Command-line — runs the library natively (also AOT-publishable)
+
+[`samples/Pqfe.Cli`](samples/Pqfe.Cli) is a tiny `pqfe encrypt | decrypt` binary built on
+the public API. It's also the canary that proves `IsAotCompatible=true` end-to-end:
+CI publishes it with `PublishAot=true` and round-trips a real file as the smoke test.
+
+```bash
+# Run via dotnet:
+PQFE_PASS='correct horse battery staple' \
+  dotnet run -c Release --project samples/Pqfe.Cli -- \
+  encrypt report.pdf report.pdf.pqfe --argon2id --passphrase-env PQFE_PASS
+
+# Or publish a single-file native binary:
+dotnet publish samples/Pqfe.Cli -c Release -p:PublishAot=true -o ./bin
+./bin/pqfe --help
+```
+
+### 2. Browser demo — fully client-side (Rust → WebAssembly)
 
 [`samples/pqfe-web`](samples/pqfe-web) is a static page whose **file never leaves your
 browser**: a small Rust core compiled to WebAssembly does passphrase-based **AES-256-GCM**
@@ -40,7 +60,7 @@ with the .NET library: the Rust tests decrypt the .NET known-answer vectors, and
 tests decrypt a Rust-produced container (`CrossImplementationTests`). So a file encrypted in
 the browser opens with the library, and vice versa.
 
-### 2. .NET demo — runs the real library (Blazor Server)
+### 3. .NET demo — runs the real library (Blazor Server)
 
 [`samples/PostQuantum.FileEncryption.Demo`](samples/PostQuantum.FileEncryption.Demo) exercises
 the actual library through a web UI. Files are processed **in memory and never written to disk**.
@@ -83,7 +103,7 @@ encryption is on the roadmap as a separate package — see
 ## Install
 
 ```bash
-dotnet add package PostQuantum.FileEncryption --version 0.1.0
+dotnet add package PostQuantum.FileEncryption --version 0.2.0
 ```
 
 Targets **.NET 10** (`net10.0`). Depends on `Konscious.Security.Cryptography.Argon2` for the
@@ -118,11 +138,21 @@ await new PqFileDecryptor().DecryptFileAsync("report.pdf.pqfe", "report.restored
 ### Use Argon2id instead of PBKDF2
 
 ```csharp
-var options = new PqEncryptionOptions { Kdf = PqKdf.Argon2id }; // memory-hard
-await new PqFileEncryptor(options).EncryptFileAsync("in", "out.pqfe", passphrase);
+// Quickest — preset with OWASP-recommended defaults:
+await new PqFileEncryptor(PqEncryptionOptions.Argon2id)
+    .EncryptFileAsync("in", "out.pqfe", passphrase);
+
+// Or tune the work factor (returns a new options instance — leave the others as-is):
+var stronger = PqEncryptionOptions.Default.WithArgon2id(memoryKiB: 64 * 1024);
+await new PqFileEncryptor(stronger).EncryptFileAsync("in", "out.pqfe", passphrase);
+
 // Decryption needs no options — the KDF and its parameters travel in the container header.
 await new PqFileDecryptor().DecryptFileAsync("out.pqfe", "in.copy", passphrase);
 ```
+
+`PqEncryptionOptions` is immutable; `WithArgon2id`, `WithPbkdf2`, and `WithChunkSize` each
+return a new instance with the requested change and the rest carried through, so you can
+compose them without re-stating every field.
 
 ### Encrypt to a recipient's public key (experimental, post-quantum KEM)
 
@@ -268,7 +298,7 @@ Be clear-eyed about what "post-quantum" means here today:
   requirement, and the content key stays safe if *either* X25519 or ML-KEM is later broken.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 0.1.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 0.2.0
 ```
 
 ```csharp
@@ -347,6 +377,7 @@ src/        PostQuantum.FileEncryption        — the library (symmetric core)
 src/        PostQuantum.FileEncryption.Hybrid — X25519 + ML-KEM-768 hybrid public-key package
 tests/      PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, hybrid, known-answer, cross-impl, property, fuzz tests
 benchmarks/ PostQuantum.FileEncryption.Benchmarks — BenchmarkDotNet throughput suite
+samples/    Pqfe.Cli                           — minimal CLI (encrypt/decrypt; AOT-publishable)
 samples/    PostQuantum.FileEncryption.Demo   — .NET demo (Blazor Server, runs the library)
 samples/    pqfe-wasm                          — Rust → WASM re-implementation of the .pqfe format
 samples/    pqfe-web                           — fully client-side browser demo (GitHub Pages)

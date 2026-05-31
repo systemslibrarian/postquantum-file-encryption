@@ -49,8 +49,70 @@ public sealed class PqEncryptionOptions
     /// </summary>
     public int ChunkSizeBytes { get; init; } = 64 * 1024;
 
-    /// <summary>A shared instance carrying the default options.</summary>
+    /// <summary>A shared instance carrying the default options (PBKDF2-HMAC-SHA256, 600,000 iterations).</summary>
     public static PqEncryptionOptions Default { get; } = new();
+
+    /// <summary>
+    /// A shared preset carrying the Argon2id defaults (19 MiB memory, 2 iterations, parallelism 1) —
+    /// a one-liner alternative to <c>new PqEncryptionOptions { Kdf = PqKdf.Argon2id }</c>.
+    /// </summary>
+    public static PqEncryptionOptions Argon2id { get; } = new() { Kdf = PqKdf.Argon2id };
+
+    /// <summary>
+    /// Returns a copy of these options that uses Argon2id, optionally overriding any of the
+    /// Argon2id tuning parameters. Unspecified parameters keep their current value, so this
+    /// composes cleanly with <see cref="Default"/> or with an existing options instance.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// // Stronger Argon2id (64 MiB) for sensitive archives:
+    /// var opts = PqEncryptionOptions.Default.WithArgon2id(memoryKiB: 64 * 1024);
+    /// </code>
+    /// </example>
+    public PqEncryptionOptions WithArgon2id(
+        int? memoryKiB = null, int? iterations = null, int? parallelism = null) => new()
+        {
+            Kdf = PqKdf.Argon2id,
+            Argon2MemoryKiB = memoryKiB ?? Argon2MemoryKiB,
+            Argon2Iterations = iterations ?? Argon2Iterations,
+            Argon2Parallelism = parallelism ?? Argon2Parallelism,
+            Pbkdf2Iterations = Pbkdf2Iterations,
+            SaltSizeBytes = SaltSizeBytes,
+            ChunkSizeBytes = ChunkSizeBytes,
+        };
+
+    /// <summary>
+    /// Returns a copy of these options that uses PBKDF2-HMAC-SHA256, optionally overriding the
+    /// iteration count. Convenient when you want to keep some shared base options but bump
+    /// (or relax) the work factor.
+    /// </summary>
+    public PqEncryptionOptions WithPbkdf2(int? iterations = null) => new()
+        {
+            Kdf = PqKdf.Pbkdf2HmacSha256,
+            Pbkdf2Iterations = iterations ?? Pbkdf2Iterations,
+            Argon2MemoryKiB = Argon2MemoryKiB,
+            Argon2Iterations = Argon2Iterations,
+            Argon2Parallelism = Argon2Parallelism,
+            SaltSizeBytes = SaltSizeBytes,
+            ChunkSizeBytes = ChunkSizeBytes,
+        };
+
+    /// <summary>
+    /// Returns a copy of these options with a different chunk size. Useful for tuning peak
+    /// memory or throughput without changing key derivation.
+    /// </summary>
+    /// <param name="chunkSizeBytes">Plaintext bytes per authenticated chunk. The supported range
+    /// is between <c>1 KiB</c> and <c>16 MiB</c>; out-of-range values throw at encrypt time.</param>
+    public PqEncryptionOptions WithChunkSize(int chunkSizeBytes) => new()
+        {
+            Kdf = Kdf,
+            Pbkdf2Iterations = Pbkdf2Iterations,
+            Argon2MemoryKiB = Argon2MemoryKiB,
+            Argon2Iterations = Argon2Iterations,
+            Argon2Parallelism = Argon2Parallelism,
+            SaltSizeBytes = SaltSizeBytes,
+            ChunkSizeBytes = chunkSizeBytes,
+        };
 
     // Lower bounds keep the format honest; upper bounds cap the work a (possibly hostile)
     // container header can demand, so a malicious file fails closed instead of exhausting

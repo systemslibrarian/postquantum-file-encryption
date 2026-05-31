@@ -10,13 +10,15 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Hybrid</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
+    <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Hybrid</Title>
-    <Description>Post-quantum hybrid public-key encryption for PostQuantum.FileEncryption. Adds X25519 + ML-KEM-768 (FIPS 203) hybrid recipient encryption and multi-recipient support on top of the core .pqfe format, so a file's content key is protected even if either primitive is later broken. Fully managed via BouncyCastle (no platform ML-KEM dependency).</Description>
-    <PackageReleaseNotes>0.1.0 — first release. X25519 + ML-KEM-768 hybrid combiner (KeySource 3) and multiple recipients (KeySource 4), managed via BouncyCastle. Round-trip and fail-closed tested.</PackageReleaseNotes>
+    <Description>Post-quantum hybrid public-key encryption for PostQuantum.FileEncryption. Adds X25519 + ML-KEM-768 (FIPS 203) hybrid recipient encryption and multi-recipient support on top of the core .pqfe format, so a file's content key is protected even if either primitive is later broken. Fully managed via BouncyCastle (no platform ML-KEM dependency); runs anywhere .NET 10 does.</Description>
+    <PackageReleaseNotes>0.2.0 — production X25519 + ML-KEM-768 hybrid combiner (KeySource 3) and multiple recipients (KeySource 4), managed via BouncyCastle. Round-trip, multi-recipient, fail-closed, and pinned decrypt-KAT tested.</PackageReleaseNotes>
     <PackageTags>post-quantum;pqc;ml-kem;x25519;hybrid;encryption;file-encryption;recipient;cryptography;dotnet</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-file-encryption</PackageProjectUrl>
     <RepositoryUrl>https://github.com/systemslibrarian/postquantum-file-encryption</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -28,6 +30,7 @@
 
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../../LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

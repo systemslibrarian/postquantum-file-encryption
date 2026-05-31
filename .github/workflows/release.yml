@@ -40,6 +40,21 @@ jobs:
           dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj --configuration Release -o artifacts
 
+      - name: Validate NuGet packages
+        # Structural checks on the produced .nupkg files: deterministic builds, SourceLink wired,
+        # README and LICENSE packed, PDBs valid. Catches malformed packages before they hit
+        # nuget.org (where they're effectively immutable). The `Symbols` rule is excluded because
+        # symbols ship as a separate .snupkg (IncludeSymbols + SymbolPackageFormat=snupkg); rule
+        # 32 (icon) is excluded until a package icon is added — tracked in ROADMAP.md.
+        run: |
+          dotnet tool install --global Meziantou.Framework.NuGetPackageValidation.Tool
+          for nupkg in artifacts/*.nupkg; do
+            echo "Validating $nupkg"
+            meziantou.validate-nuget-package "$nupkg" \
+              --excluded-rules Symbols \
+              --excluded-rule-ids 32
+          done
+
       - name: Generate SBOMs (CycloneDX)
         run: |
           dotnet tool install --global CycloneDX

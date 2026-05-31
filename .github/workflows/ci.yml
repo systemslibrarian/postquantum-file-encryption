@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -40,6 +40,42 @@ jobs:
 
       - name: Test (with coverage)
         run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+  aot:
+    name: .NET — AOT publish smoke test
+    # IsAotCompatible=true is set on the core library; this job exercises a real
+    # native-AOT publish of the CLI sample and round-trips a file end-to-end so we
+    # catch any regression that would slip past the analyzers.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install AOT prerequisites
+        # The .NET native-AOT toolchain on Linux needs clang and zlib headers.
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish CLI sample with PublishAot=true
+        run: |
+          dotnet publish samples/Pqfe.Cli/Pqfe.Cli.csproj \
+            --configuration Release \
+            -p:PublishAot=true \
+            -o "$RUNNER_TEMP/pqfe-aot"
+
+      - name: Round-trip a file with the AOT-published binary
+        env:
+          PQFE_PASS: 'aot-smoke-test-passphrase'
+        run: |
+          set -euo pipefail
+          PQFE="$RUNNER_TEMP/pqfe-aot/pqfe"
+          test -x "$PQFE" || { echo "AOT publish produced no executable at $PQFE"; ls -la "$RUNNER_TEMP/pqfe-aot"; exit 1; }
+          echo "the quick brown fox" > "$RUNNER_TEMP/plain.txt"
+          "$PQFE" encrypt "$RUNNER_TEMP/plain.txt" "$RUNNER_TEMP/c.pqfe" --passphrase-env PQFE_PASS
+          "$PQFE" decrypt "$RUNNER_TEMP/c.pqfe"    "$RUNNER_TEMP/out.txt" --passphrase-env PQFE_PASS
+          diff "$RUNNER_TEMP/plain.txt" "$RUNNER_TEMP/out.txt"
 
   rust:
     name: Rust/WASM — test & build
