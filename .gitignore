@@ -50,3 +50,7 @@ samples/**/pkg/
 # Local secrets / scratch
 *.local
 scratch/
+nuget.key.txt
+*.api-key
+*.apikey
+secrets.json
