@@ -115,15 +115,20 @@ public sealed class AtomicWriteIoFailureTests : IDisposable
     }
 
     [Fact]
-    public async Task Mid_write_file_encrypt_cancellation_removes_temp_file()
+    public async Task Cancelled_file_encrypt_leaves_no_output_and_no_temp_file()
     {
-        // Plaintext large enough that the encryptor is mid-stream when cancellation fires.
+        // Pre-cancellation is deterministic across runners (no timer race). The file-API
+        // cleanup path is identical for pre-cancel and mid-write: both throw inside
+        // WriteViaTempAsync's writeBody and hit the same catch { TryDelete; throw; } block,
+        // so this test pins the cleanup invariant without depending on CPU speed. The
+        // genuine mid-write coverage lives in the deterministic unit-level
+        // Mid_write_cancellation_removes_temp_file below.
         string plain = P("plain.bin");
-        await File.WriteAllBytesAsync(plain, RandomBytes(200_000));
+        await File.WriteAllBytesAsync(plain, RandomBytes(50_000));
         string cipher = P("cipher.pqfe");
 
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(TimeSpan.FromMilliseconds(5));
+        cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             new PqFileEncryptor(Fast(64 * 1024))
@@ -134,17 +139,19 @@ public sealed class AtomicWriteIoFailureTests : IDisposable
     }
 
     [Fact]
-    public async Task Mid_write_file_decrypt_cancellation_removes_temp_file()
+    public async Task Cancelled_file_decrypt_leaves_no_output_and_no_temp_file()
     {
-        // Build a real container, then decrypt with a token that cancels mid-write.
+        // Build a real container, then decrypt with an already-cancelled token. The
+        // decrypt path runs the same WriteViaTempAsync cleanup as encrypt, exercised here
+        // for the decrypt side of the API.
         string plain = P("plain.bin");
-        await File.WriteAllBytesAsync(plain, RandomBytes(200_000));
+        await File.WriteAllBytesAsync(plain, RandomBytes(50_000));
         string cipher = P("cipher.pqfe");
         string restored = P("restored.bin");
         await new PqFileEncryptor(Fast(64 * 1024)).EncryptFileAsync(plain, cipher, Passphrase);
 
         using var cts = new CancellationTokenSource();
-        cts.CancelAfter(TimeSpan.FromMilliseconds(5));
+        cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             new PqFileDecryptor().DecryptFileAsync(cipher, restored, Passphrase, cancellationToken: cts.Token));
