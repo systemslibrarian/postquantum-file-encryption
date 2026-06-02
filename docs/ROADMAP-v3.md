@@ -14,9 +14,10 @@ This specifies the public-key upgrade path beyond the symmetric core.
 AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id. That is the engine being finalized for
 release.
 
-The core also includes an **experimental, platform-gated ML-KEM-768 recipient mode**
-(`KeySource = 2`), available only where the platform provides ML-KEM. It is not part of the
-stable symmetric surface and may be superseded by the package below.
+The core also includes an **inline ML-KEM-768-only recipient mode** (`KeySource = 2`),
+platform-gated and available only where the platform provides ML-KEM. **As of `1.0.0-rc.2`
+it is `[Obsolete]` (diagnostic id `PQFE002`) and retained for source-compatibility only;
+new code must use the package below.**
 
 **Decision:** all post-quantum **public-key** features — the classical+PQ hybrid combiner and
 multiple recipients — will ship in a **separate `PostQuantum.FileEncryption.Hybrid` package**,
@@ -31,7 +32,7 @@ using **BouncyCastle.Cryptography** for X25519. Rationale:
 ```
 PostQuantum.FileEncryption          (core, this repo)
   └─ symmetric passphrase AES-256-GCM        ← stable, released
-  └─ experimental ML-KEM-768 recipient       ← platform-gated, may move to Hybrid
+  └─ inline ML-KEM-768 recipient (DEPRECATED ← Obsolete in 1.0.0-rc.2; use Hybrid instead)
 
 PostQuantum.FileEncryption.Hybrid   (future package, depends on BouncyCastle)
   └─ X25519 + ML-KEM-768 hybrid combiner     (KeySource = 3)

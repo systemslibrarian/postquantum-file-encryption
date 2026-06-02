@@ -5,7 +5,7 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`0.3.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`1.0.0-rc.2`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
@@ -57,11 +57,12 @@ Last reviewed against: **`0.3.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
 
 ### Cryptographic scope
 
-- **The core's recipient mode is ML-KEM-only (not a combiner) and experimental.** The
-  productionized public-key path — a **hybrid X25519 + ML-KEM-768 combiner** and
-  **multiple recipients** — is **implemented** in the `PostQuantum.FileEncryption.Hybrid`
-  package (managed BouncyCastle for both primitives; runs anywhere). The core's own
-  `[Experimental]` ML-KEM-only mode is retained but superseded by the Hybrid package.
+- **The core's inline ML-KEM-only recipient mode is DEPRECATED as of `1.0.0-rc.2`.** It is
+  marked `[Obsolete]` with diagnostic id `PQFE002` and retained for source-compatibility
+  only — new code must use the **`PostQuantum.FileEncryption.Hybrid`** package (hybrid
+  X25519 + ML-KEM-768 combiner with multi-recipient support, managed BouncyCastle for
+  both primitives, runs anywhere). Removal of the inline mode is targeted for a future
+  major release; until then it continues to honour the existing fail-closed contract.
 - **Cloud KMS/HSM providers are not implemented yet.** The **envelope seam is implemented** —
   `IContentKeyProvider` plus the built-in, tested `LocalKekContentKeyProvider` (`KeySource = 5`).
   Cloud providers (AWS KMS, Azure Key Vault, Vault, PKCS#11) implement the same interface in
@@ -87,6 +88,13 @@ Last reviewed against: **`0.3.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   the final frame leaves earlier (authentic) chunks already emitted. The **file** APIs avoid
   this with temp-file-plus-atomic-move; stream callers who need strict atomicity should buffer.
 - **No compression, no deduplication, no key files.** Out of scope.
+- **Atomic-write temp-file cleanup is best-effort.** The file-API write path stages every byte
+  in a sibling temp file and only `File.Move`s it into place on full success; on any failure
+  (crypto, format, I/O, cancellation) the temp file's deletion is *attempted* but swallows
+  exceptions, so an OS-level lock (AV scanner, parallel handle) can leave the temp behind.
+  **Destination integrity is preserved either way** — no partial or corrupted file is ever
+  moved to the destination path; only the temp file may linger. Operators who need
+  guaranteed cleanup of orphaned `*.tmp-*` files should run a periodic sweep.
 
 ### Demos
 

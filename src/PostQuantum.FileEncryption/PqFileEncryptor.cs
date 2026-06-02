@@ -93,6 +93,12 @@ public sealed class PqFileEncryptor
     /// <summary>Encrypts <paramref name="inputPath"/> to <paramref name="outputPath"/> for a recipient's public key. <b>Experimental.</b></summary>
     /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
     [Experimental("PQFE001")]
+    [Obsolete(
+        "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
+        "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
+        "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+        DiagnosticId = "PQFE002",
+        UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
     public Task EncryptFileAsync(
         string inputPath, string outputPath, PqRecipientPublicKey recipient,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
@@ -108,6 +114,12 @@ public sealed class PqFileEncryptor
     /// <summary>Encrypts <paramref name="input"/> to <paramref name="output"/> for a recipient's public key. <b>Experimental.</b></summary>
     /// <exception cref="PlatformNotSupportedException">The platform does not provide ML-KEM.</exception>
     [Experimental("PQFE001")]
+    [Obsolete(
+        "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
+        "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
+        "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+        DiagnosticId = "PQFE002",
+        UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
     public Task EncryptAsync(
         Stream input, Stream output, PqRecipientPublicKey recipient, long? totalBytes = null,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)

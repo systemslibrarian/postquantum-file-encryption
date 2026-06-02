@@ -1,18 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids
+
+  Empty as of 1.0.0-rc.2: the 0.2.0 → 1.0.0-rc.1 binary breaks (IProgress parameter
+  additions on the envelope-key bytes APIs) are now part of the rc.1 baseline, so no
+  suppressions are needed against it. Any future intentional break must be added here
+  with a written justification.
+-->
 <Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:PostQuantum.FileEncryption.PqFileDecryptor.DecryptBytesAsync(System.ReadOnlyMemory{System.Byte},PostQuantum.FileEncryption.IContentKeyProvider,System.Threading.CancellationToken)</Target>
-    <Left>lib/net10.0/PostQuantum.FileEncryption.dll</Left>
-    <Right>lib/net10.0/PostQuantum.FileEncryption.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:PostQuantum.FileEncryption.PqFileEncryptor.EncryptBytesAsync(System.ReadOnlyMemory{System.Byte},PostQuantum.FileEncryption.IContentKeyProvider,System.Threading.CancellationToken)</Target>
-    <Left>lib/net10.0/PostQuantum.FileEncryption.dll</Left>
-    <Right>lib/net10.0/PostQuantum.FileEncryption.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
 </Suppressions>

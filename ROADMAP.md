@@ -5,7 +5,7 @@ what is production-ready versus experimental versus planned. See
 [KNOWN-GAPS.md](KNOWN-GAPS.md) for the full ledger and [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md)
 for the detailed hybrid design.
 
-## Now — `0.3.0`
+## Now — `1.0.0-rc.2`
 
 **Production-ready and the recommended path:**
 
@@ -24,10 +24,12 @@ for the detailed hybrid design.
 - **`PostQuantum.FileEncryption.Hybrid`** — X25519 + ML-KEM-768 combiner and multi-recipient
   support, managed via BouncyCastle (runs anywhere, no platform ML-KEM required).
 
-**Experimental in the core package** (not part of the stable surface):
+**Deprecated in the core package** (warning-only; retained for source-compatibility):
 
-- **ML-KEM-768-only recipient mode** — platform-gated via `PqKeyPair.IsSupported`. Superseded
-  by the Hybrid package for new code.
+- **Inline ML-KEM-768-only recipient mode** — `PqKeyPair` and the recipient overloads on
+  `PqFileEncryptor`/`PqFileDecryptor`. Marked `[Obsolete]` with diagnostic id `PQFE002`
+  in 1.0.0-rc.2; superseded by the Hybrid package. Removal targeted for a future major
+  release.
 
 **Supply-chain & release assurance:**
 

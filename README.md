@@ -16,7 +16,7 @@ modern defaults. You should not have to read a cryptographic spec to protect a f
 just call a method, and the library does the careful, paranoid, fail-closed thing every
 time.
 
-> **Status: `1.0.0-rc.1`.** The **symmetric, passphrase-based engine is
+> **Status: `1.0.0-rc.2`.** The **symmetric, passphrase-based engine is
 > production-ready** and thoroughly tested (106 tests, continuous fuzzing, cross-checked
 > Rust/WASM byte-compatibility, AOT-published smoke test, OpenSSF Scorecard, public-API
 > baseline locked by analyzer). The **on-disk `.pqfe` container format is now FROZEN at
@@ -112,7 +112,7 @@ encryption is on the roadmap as a separate package — see
 ## Install
 
 ```bash
-dotnet add package PostQuantum.FileEncryption --version 1.0.0-rc.1
+dotnet add package PostQuantum.FileEncryption --version 1.0.0-rc.2
 ```
 
 Targets **.NET 10** (`net10.0`). Depends on `Konscious.Security.Cryptography.Argon2` for the
@@ -163,14 +163,13 @@ await new PqFileDecryptor().DecryptFileAsync("out.pqfe", "in.copy", passphrase);
 return a new instance with the requested change and the rest carried through, so you can
 compose them without re-stating every field.
 
-### Encrypt to a recipient's public key (experimental, post-quantum KEM)
+### Encrypt to a recipient's public key (DEPRECATED — use PostQuantum.FileEncryption.Hybrid)
 
-> **Experimental & platform-gated.** ML-KEM-768 recipient mode runs only where the platform
-> provides ML-KEM (.NET 10 with OpenSSL 3.5+ or Windows CNG); guard with `PqKeyPair.IsSupported`.
-> It is **not** part of the stable symmetric surface — the productionized public-key path
-> (hybrid X25519 + ML-KEM, multiple recipients) is planned for the separate
-> `PostQuantum.FileEncryption.Hybrid` package. See
-> [Post-quantum & the upgrade path](#post-quantum--the-upgrade-path).
+> **Deprecated in 1.0.0-rc.2 (`PQFE002`).** The inline ML-KEM-768-only recipient mode in the
+> core remains for source-compatibility but emits a deprecation warning. **For new code use
+> [`PostQuantum.FileEncryption.Hybrid`](#post-quantum--the-upgrade-path)** — X25519 + ML-KEM-768
+> hybrid combiner, multi-recipient, fully managed (no platform ML-KEM requirement). The example
+> below is preserved for migrators; new readers should skim it and skip to the Hybrid section.
 
 ```csharp
 if (PqKeyPair.IsSupported)
@@ -299,15 +298,17 @@ Be clear-eyed about what "post-quantum" means here today:
   for the *confidentiality of your data* (≈128-bit security under Grover), so a passphrase-
   encrypted file is sound against a harvest-now-decrypt-later adversary. This is the engine
   being finalized for release.
-- **What's experimental:** an ML-KEM-768-only recipient mode in the **core**, platform-gated
-  (needs native ML-KEM) and not part of the stable surface.
+- **What's deprecated:** the inline ML-KEM-768-only recipient mode in the **core**
+  (`PqKeyPair`, `PqRecipientPublicKey`, `PqRecipientPrivateKey`, recipient overloads on
+  `PqFileEncryptor`/`PqFileDecryptor`). Marked `[Obsolete]` with diagnostic id `PQFE002` in
+  1.0.0-rc.2, kept for source-compatibility only. Migrate to the Hybrid package below.
 - **What's shipped for public-key:** the **`PostQuantum.FileEncryption.Hybrid`** package — a
   **hybrid X25519 + ML-KEM-768 combiner** plus **multiple recipients**. It's fully managed
   (BouncyCastle for *both* primitives), so it runs **anywhere** with no native ML-KEM
   requirement, and the content key stays safe if *either* X25519 or ML-KEM is later broken.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0-rc.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0-rc.2
 ```
 
 ```csharp
@@ -322,9 +323,10 @@ byte[] container = await new PqHybridEncryptor().EncryptBytesAsync(secret, recip
 byte[] plaintext = await new PqHybridDecryptor().DecryptBytesAsync(container, keyPair.PrivateKey);
 ```
 
-So: passphrase encryption is the stable core; **hybrid public-key encryption is available now**
-via the Hybrid package; the core's ML-KEM-only recipient mode remains experimental. Design and
-format details: [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
+So: passphrase encryption is the stable core; **hybrid public-key encryption is the
+recommended public-key path** via the Hybrid package; the core's inline ML-KEM-only
+recipient mode is **deprecated** (`PQFE002`) and retained only for source-compatibility.
+Design and format details: [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
 
 ---
 

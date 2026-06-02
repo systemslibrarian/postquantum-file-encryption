@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using PostQuantum.FileEncryption.Internal;
 using Xunit;
 
 namespace PostQuantum.FileEncryption.Tests;
@@ -181,6 +182,64 @@ public sealed class RoundTripTests : IDisposable
 
         await Assert.ThrowsAsync<PqFormatException>(() =>
             new PqFileDecryptor().DecryptAsync(garbage, restored, Passphrase));
+    }
+
+    [Theory]
+    [InlineData(8)]      // shorter than the 18-byte fixed header → format error
+    [InlineData(120)]    // header parses, body truncated mid-first-chunk → decryption error
+    [InlineData(-8)]     // last 8 bytes (half the final AEAD tag) removed → decryption error
+    public async Task Truncation_at_specific_offsets_is_rejected(int truncateTo)
+    {
+        // Closes the named-offset gap in the existing truncation coverage: prior tests sliced
+        // at one mid-stream offset; these pin three distinct fail-closed paths (header parse,
+        // body parse, AEAD tag verification) so a future change to any of them surfaces here.
+        // Uses DecryptAtomicAsync — its all-or-nothing contract is what we want to assert
+        // here. The streaming DecryptAsync(Stream, Stream, ...) is documented to emit earlier
+        // authentic chunks before a tail-truncation is detected (see KNOWN-GAPS.md and
+        // AtomicWriteIoFailureTests.Stream_decrypt_of_truncated_container_*); use the atomic
+        // API when you need "no bytes written on any failure".
+        byte[] original = RandomBytes(5000);
+        using var cipher = new MemoryStream();
+        await new PqFileEncryptor(FastOptions).EncryptAsync(new MemoryStream(original), cipher, Passphrase);
+        byte[] full = cipher.ToArray();
+        int sliceTo = truncateTo >= 0 ? truncateTo : full.Length + truncateTo;
+        byte[] sliced = full[..sliceTo];
+
+        using var restored = new MemoryStream();
+        if (sliceTo < ContainerFormat.FixedHeaderLength)
+        {
+            await Assert.ThrowsAsync<PqFormatException>(() =>
+                new PqFileDecryptor().DecryptAtomicAsync(new MemoryStream(sliced), restored, Passphrase));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<PqDecryptionException>(() =>
+                new PqFileDecryptor().DecryptAtomicAsync(new MemoryStream(sliced), restored, Passphrase));
+        }
+        Assert.Equal(0, restored.Length); // atomic guarantee — no plaintext on any failure
+    }
+
+    [Fact]
+    [Trait("Category", "LongRunning")]
+    public async Task Round_trip_at_maximum_chunk_size()
+    {
+        // Exercises PqEncryptionOptions.MaxChunkSizeBytes (16 MiB) — closes the upper-bound
+        // gap in the existing chunk-size theory (which tops out at 64 KiB). Two chunks at the
+        // maximum to confirm the final-frame logic still fires when each chunk is the largest
+        // the format allows. Trait-gated as LongRunning so the default per-push lane stays fast;
+        // the fuller CI lane runs Category=LongRunning explicitly.
+        var opts = new PqEncryptionOptions
+        {
+            Pbkdf2Iterations = PqEncryptionOptions.MinPbkdf2Iterations,
+            ChunkSizeBytes = PqEncryptionOptions.MaxChunkSizeBytes,
+        };
+        byte[] original = RandomBytes(PqEncryptionOptions.MaxChunkSizeBytes + 1);
+        using var cipher = new MemoryStream();
+        await new PqFileEncryptor(opts).EncryptAsync(new MemoryStream(original), cipher, Passphrase);
+        cipher.Position = 0;
+        using var restored = new MemoryStream();
+        await new PqFileDecryptor().DecryptAsync(cipher, restored, Passphrase);
+        Assert.Equal(original, restored.ToArray());
     }
 
     /// <summary>An <see cref="IProgress{T}"/> that invokes its callback inline, for deterministic assertions.</summary>

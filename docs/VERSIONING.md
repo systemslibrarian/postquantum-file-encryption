@@ -41,6 +41,34 @@ published version), public-API changes are governed by review:
   minor bump pre-1.0 (major post-1.0) with a clear note.
 - New configuration generally goes on `PqEncryptionOptions` rather than new method overloads.
 
+## Suite versioning — Hybrid lockstep with core
+
+`PostQuantum.FileEncryption.Hybrid` is **always released at the same version as
+`PostQuantum.FileEncryption`**. The two packages are one cryptographic unit:
+
+- The **core** (`PostQuantum.FileEncryption`) owns the `.pqfe` container format, the
+  chunk/AEAD engine, the symmetric/passphrase API, and the `KeyEstablishment` /
+  `IPqContainerCodec` seams.
+- The **Hybrid** package (`PostQuantum.FileEncryption.Hybrid`) plugs into those seams to add
+  the X25519 + ML-KEM-768 combiner and multi-recipient support — it consumes the core's
+  internals (`InternalsVisibleTo`) rather than reimplementing them.
+
+A version skew between the two would mean Hybrid is talking to a different format or engine
+than the one it was designed against — the exact class of subtle inconsistency this
+discipline is meant to prevent. At pack time, Hybrid's `ProjectReference` resolves to a
+same-version `PackageReference` on the core, so `dotnet add package
+PostQuantum.FileEncryption.Hybrid --version X.Y.Z` always pulls in
+`PostQuantum.FileEncryption X.Y.Z`.
+
+This is enforced operationally by the release workflow
+([`.github/workflows/release.yml`](../.github/workflows/release.yml)): a single `v*` tag
+triggers a build that packs both packages, publishes the core first, **waits for it to be
+indexed on nuget.org**, then publishes Hybrid — so a consumer can never see a Hybrid
+version on the feed whose pinned core version is not yet resolvable.
+
+The companion record for each release lives in
+[`VERSION-RECONCILIATION.md`](../VERSION-RECONCILIATION.md).
+
 ## Platform support matrix
 
 | Aspect | Requirement |

@@ -69,9 +69,54 @@ jobs:
           name: release-artifacts
           path: artifacts/*
 
-      - name: Publish to NuGet
+      - name: Publish core to NuGet
+        # The dependency graph requires the core to be live before Hybrid is pushed: Hybrid's
+        # nupkg pins PostQuantum.FileEncryption at the same version (a ProjectReference becomes
+        # a same-version PackageReference on pack), and a consumer's restore of Hybrid will fail
+        # if it cannot resolve the core. The shell glob would alphabetically order core before
+        # Hybrid (".nupkg" sorts before ".Hybrid"), but the order is incidental — make it explicit.
+        # Excludes anything matching *Hybrid* from this step.
         if: ${{ env.NUGET_API_KEY != '' }}
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in artifacts/PostQuantum.FileEncryption.*.nupkg artifacts/PostQuantum.FileEncryption.*.snupkg; do
+            case "$f" in *Hybrid*) continue ;; esac
+            echo "Pushing $f"
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Wait for core to be indexed on nuget.org
+        # nuget.org indexing typically completes in seconds but can take a couple of minutes
+        # on busy days. Without this probe, a consumer's restore of Hybrid in the immediate
+        # post-push window can fail with "unable to resolve PostQuantum.FileEncryption X.Y.Z"
+        # even though the package is published — it just isn't queryable yet.
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          # Strip the leading "v" from the tag — e.g. v1.0.0-rc.2 → 1.0.0-rc.2.
+          version="${GITHUB_REF_NAME#v}"
+          for i in $(seq 1 30); do
+            if curl -fsSL "https://api.nuget.org/v3-flatcontainer/postquantum.fileencryption/index.json" \
+                 | grep -Eq "\"${version}\""; then
+              echo "Core ${version} is indexed."
+              exit 0
+            fi
+            echo "Core ${version} not yet indexed (attempt $i/30); sleeping 10s..."
+            sleep 10
+          done
+          echo "Core ${version} still not indexed after 5 minutes — refusing to push Hybrid." >&2
+          exit 1
+
+      - name: Publish Hybrid to NuGet
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in artifacts/PostQuantum.FileEncryption.Hybrid.*.nupkg artifacts/PostQuantum.FileEncryption.Hybrid.*.snupkg; do
+            echo "Pushing $f"
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
 
       - name: Create GitHub Release
         env:

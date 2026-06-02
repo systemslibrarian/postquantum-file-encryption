@@ -5,8 +5,11 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <!-- Underscored test method names are idiomatic and read as sentences.
-         PQFE001: the tests deliberately exercise the experimental ML-KEM API. -->
-    <NoWarn>$(NoWarn);CA1707;PQFE001</NoWarn>
+         PQFE001: the tests deliberately exercise the experimental ML-KEM API.
+         PQFE002: the tests deliberately exercise the inline ML-KEM recipient mode that was
+         deprecated in 1.0.0-rc.2 — kept exercised here for source-compatibility regression
+         coverage until the inline mode is removed in a future major release. -->
+    <NoWarn>$(NoWarn);CA1707;PQFE001;PQFE002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

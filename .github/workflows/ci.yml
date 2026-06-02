@@ -38,8 +38,17 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build --configuration Release --no-restore
 
-      - name: Test (with coverage)
-        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory "${{ runner.temp }}/coverage"
+      - name: Test (with coverage; default lane, fast)
+        # Excludes the LongRunning category so every push stays fast across all three OSes.
+        # The fuller long-running lane runs once on Linux below.
+        run: dotnet test --configuration Release --no-build --verbosity normal --filter "Category!=LongRunning" --collect:"XPlat Code Coverage" --results-directory "${{ runner.temp }}/coverage"
+
+      - name: Test (LongRunning lane, Linux only)
+        # Big-payload tests (e.g. max-chunk-size 16 MiB round-trip) that don't need to run
+        # on every OS leg. Always run after the fast lane has already produced coverage data,
+        # so this lane writes to a separate directory and doesn't feed Codecov.
+        if: matrix.os == 'ubuntu-latest'
+        run: dotnet test --configuration Release --no-build --verbosity normal --filter "Category=LongRunning"
 
       - name: Upload coverage to Codecov
         # Token-free for public repos. Only upload from one matrix leg to avoid double-counting.
