@@ -7,6 +7,51 @@ and the on-disk format may change before `1.0`.
 
 ## [Unreleased]
 
+## [1.0.0-rc.3] - 2026-06-04
+
+Final polish pass before `1.0.0`. Tracks `PostQuantum.FileEncryption.Hybrid` 1.0.0-rc.3 in
+lockstep. The `.pqfe` container format (v2) remains FROZEN. Source- and binary-compatible
+with `1.0.0-rc.2`.
+
+### Added
+- `docs/MIGRATION.md` — from-other-libraries guide covering age/rage, libsodium
+  `secretstream`, OpenSSL `enc`, .NET `AesGcm`, .NET `ProtectedData` (DPAPI), BouncyCastle
+  CMS/OpenPGP, and Microsoft Data Protection. Includes a cross-cutting pre-flight
+  checklist for production migration.
+- `docs/SUPPLY-CHAIN.md` — one-page verification recipe (build-provenance attestation
+  verify, CycloneDX SBOM inspection, conformance vector round-trip, deterministic-build
+  spot check). Linked prominently from the README.
+- `tests/.../NoOracleTests.cs` — explicitly pins the no-decryption-oracle property: wrong
+  passphrase, flipped ciphertext, flipped tag, and flipped header bytes must all surface
+  as `PqDecryptionException` with the same message. Prevents a future "helpful" error
+  message regression from turning the library into an oracle.
+
+### Changed
+- `README.md` — restructured for production-grade positioning: new "Why this library" and
+  "When to use this" sections, supply-chain visibility surfaced inline with concrete
+  verification commands, public-key path explained around the Hybrid package only,
+  deprecated inline ML-KEM mode no longer shown as a usage example.
+- `ROADMAP.md` — refreshed to reflect 1.0 reality. The pre-`1.0` `v0.4` / "Toward `1.0`"
+  sections (cloud KMS scoping, package validation, format freeze) have been replaced with
+  a "Now → 1.0.0 → 1.x → 2.0" structure that matches what has already shipped.
+- `SECURITY.md` — supported-versions table refreshed (`1.0.x` ✅, `0.x` ❌); language
+  updated to reflect the frozen `.pqfe` v2 format; deprecated inline ML-KEM mode framed
+  as deprecated rather than experimental; supply-chain artifacts (SBOM, attestation)
+  noted explicitly.
+- `KNOWN-GAPS.md` — removed stale entries (format-not-frozen, package-validation-not-yet-
+  enabled) that were already resolved; release-scope section updated to reflect Hybrid
+  shipping and the inline mode being deprecated rather than experimental.
+- Package metadata (`PostQuantum.FileEncryption` and `PostQuantum.FileEncryption.Hybrid`):
+  Description and PackageTags tightened for clarity and search; ReleaseNotes refreshed
+  with the new doc artifacts.
+- `Directory.Build.props`: `PackageValidationBaselineVersion` bumped from `1.0.0-rc.1` to
+  `1.0.0-rc.2` so rc.3's public surface is validated against the published rc.2 baseline.
+
+### Notes
+- No format change. No public-API change. No runtime-dependency change. The published
+  1.0.0-rc.2 nupkgs are immutable on nuget.org; rc.3 supersedes them as the final
+  candidate before `1.0.0`.
+
 ## [1.0.0-rc.2] - 2026-06-01
 
 Tracks `PostQuantum.FileEncryption.Hybrid` 1.0.0-rc.2 in lockstep. The `.pqfe` container
@@ -157,7 +202,8 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.2...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.3...HEAD
+[1.0.0-rc.3]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v0.2.0...v1.0.0-rc.1
 [0.2.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v0.1.0...v0.2.0

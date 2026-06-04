@@ -5,18 +5,20 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`1.0.0-rc.2`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`1.0.0-rc.3`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
 - **The stable, released engine is symmetric and passphrase-based:** AES-256-GCM with
-  PBKDF2-HMAC-SHA256 or Argon2id. AES-256 is quantum-resistant for the *confidentiality of the
-  data itself*. This is what is finalized for release.
-- **The post-quantum *public-key* (key-establishment) story is not finished in the core.** An
-  ML-KEM-768 recipient mode is **included but experimental and platform-gated** (`PqKeyPair`,
-  `PqKeyPair.IsSupported`). The productionized path — a hybrid **X25519 + ML-KEM** combiner and
-  multiple recipients — is **planned for a separate `PostQuantum.FileEncryption.Hybrid`
-  package** (BouncyCastle for X25519); see [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
+  PBKDF2-HMAC-SHA256 or Argon2id. AES-256 is quantum-resistant for the *confidentiality of
+  the data itself*. The `.pqfe` v2 container format is FROZEN for the `1.x` line.
+- **Post-quantum *public-key* encryption ships as the production
+  `PostQuantum.FileEncryption.Hybrid` package** — X25519 + ML-KEM-768 hybrid combiner with
+  multi-recipient support, managed via BouncyCastle (no platform ML-KEM dependency, runs
+  anywhere .NET 10 does). See [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
+- **The inline ML-KEM-768-only recipient mode in the core is deprecated** as of
+  `1.0.0-rc.2` (`PQFE002`) and retained only for source-compatibility. New code must use
+  the Hybrid package; the inline mode is targeted for removal in a future major release.
 
 ## Resolved since the first symmetric cut
 
@@ -78,11 +80,13 @@ Last reviewed against: **`1.0.0-rc.2`**. See [ROADMAP.md](ROADMAP.md) for the fo
 
 ### Format and feature gaps
 
-- **The container format is not frozen.** No cross-version migration tooling exists, and v0.2
-  does not read the v0.1 format. Do not store preview-encrypted data you must read with a
-  `1.0+` build.
+- **The container format is FROZEN at `.pqfe` v2 for the `1.x` line.** No `0.x → 1.x`
+  migration tooling exists; if you have any preview-era ciphertext, decrypt it with the
+  original `0.x` build and re-encrypt with a `1.x` build. A future major version (`2.0`)
+  would carry a new `FormatVersion` and a documented migration path.
 - **Metadata is not protected.** Plaintext length is revealed to within a chunk; file names,
-  paths, and timestamps are not encrypted or carried.
+  paths, and timestamps are not encrypted or carried. Length-hiding padding and encrypted
+  file names are candidates for a future `2.0`.
 - **No streaming all-or-nothing guarantee.** `DecryptAsync(Stream, Stream, …)` authenticates
   each chunk before writing it, but a stream cannot be un-written, so a truncation detected at
   the final frame leaves earlier (authentic) chunks already emitted. The **file** APIs avoid
@@ -110,11 +114,8 @@ Last reviewed against: **`1.0.0-rc.2`**. See [ROADMAP.md](ROADMAP.md) for the fo
 
 ### Process and assurance gaps
 
-- **`<EnablePackageValidation>` is not yet enabled** with a `PackageValidationBaselineVersion`.
-  At `0.x` we still allow binary-breaking changes between minor versions; the right time for
-  baseline-driven package validation is the `1.0` freeze. Tracked in
-  [ROADMAP.md](ROADMAP.md#toward-10).
 - **Not independently audited.** No third-party cryptographic review has been performed.
+  Funded audit engagements are welcome — see [SECURITY.md](SECURITY.md).
 - **Continuous fuzzing is wired but young.** Coverage-guided fuzzers run for **both** parsers —
   **cargo-fuzz** (Rust) and **SharpFuzz** (.NET) — validated with no crashes (~330k and ~480k
   executions) and scheduled nightly in CI with a cached corpus (`.github/workflows/fuzz.yml`).
