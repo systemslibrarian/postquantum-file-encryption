@@ -65,10 +65,15 @@ echo "==> Removing nuget.org repo signature from published copy"
 rm -f "$PUBLISHED_DIR/.signature.p7s"
 rm -f "$LOCAL_DIR/.signature.p7s"
 
-echo "==> Diffing the two trees (excluding pack-time-only metadata)"
-# .psmdcp files (NuGet core-properties) carry a fresh GUID in their filename per pack and
-# are never reproducible by NuGet's design — exclude them, not the bytes we actually ship.
-if diff -r --exclude='*.psmdcp' "$PUBLISHED_DIR" "$LOCAL_DIR" > "$WORK/diff.txt"; then
+echo "==> Diffing the two trees (excluding NuGet's per-pack OPC envelope)"
+# NuGet's Open Packaging Convention envelope is non-reproducible by design at two points:
+#   1. package/services/metadata/core-properties/<GUID>.psmdcp — fresh GUID per pack.
+#   2. _rels/.rels — references the .psmdcp filename, and carries an `Id` attribute that
+#      is also generated per pack.
+# Both files contain only packaging metadata (no security-relevant content), so they are
+# excluded from the diff. Everything substantive — lib/*.dll, lib/*.pdb, lib/*.xml,
+# *.nuspec, LICENSE, README, icon — is still required to match byte-for-byte.
+if diff -r --exclude='*.psmdcp' --exclude='_rels' "$PUBLISHED_DIR" "$LOCAL_DIR" > "$WORK/diff.txt"; then
   echo "==> MATCH — $PKG $VERSION is reproducible from $TAG."
   exit 0
 fi

@@ -18,10 +18,21 @@ A clean rebuild of a tagged release produces:
   corresponding `.nupkg` on nuget.org.
 - **Bit-identical portable PDBs**.
 - **Bit-identical XML documentation files**.
+- **Bit-identical `.nuspec`, `LICENSE`, `README.md`, and `icon.png`** packed into the
+  `.nupkg`.
 
-The `.nupkg` *envelope* (the outer ZIP) is also expected to match, with one exception:
-**packages downloaded from nuget.org carry a `.signature.p7s` file** that nuget.org adds at
-upload time. The verification script below normalises that away before comparing.
+The `.nupkg` *envelope* — the outer ZIP — has three known exceptions that the verification
+script normalises away before comparing:
+
+| Path | Why it differs |
+| --- | --- |
+| `.signature.p7s` | nuget.org applies a repo signature at upload time; not produced by `dotnet pack`. |
+| `package/services/metadata/core-properties/*.psmdcp` | NuGet generates a fresh GUID for the filename per pack. The content is packaging metadata only (no security-relevant content). |
+| `_rels/.rels` | References the per-pack `.psmdcp` filename and carries an `Id` attribute that is also re-generated per pack. Pure OPC envelope metadata. |
+
+These three are inherent to NuGet's Open Packaging Convention envelope and cannot be made
+deterministic at our build layer. Everything substantive about the package content is still
+required to match byte-for-byte.
 
 ## Why this is true
 
