@@ -1,0 +1,67 @@
+name: Benchmarks
+
+# Runs the BenchmarkDotNet throughput suite and uploads the results as a workflow artifact.
+# Numbers from shared GitHub runners are noisy — treat them as a regression detector, not a
+# datasheet. The README's indicative numbers come from a single Codespace run and are not
+# updated here automatically.
+#
+# Triggers:
+#   - workflow_dispatch — run on demand (e.g. before a release).
+#   - weekly schedule — a slow heartbeat so a multi-percent regression doesn't sit unnoticed.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * 0'   # Sundays 05:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    name: BenchmarkDotNet throughput
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build the bench project
+        run: dotnet build benchmarks/PostQuantum.FileEncryption.Benchmarks -c Release
+
+      - name: Run benchmarks
+        run: |
+          # BenchmarkDotNet exits non-zero on any benchmark validation failure; let it.
+          dotnet run --project benchmarks/PostQuantum.FileEncryption.Benchmarks \
+            -c Release --no-build -- \
+            --filter '*' \
+            --exporters json markdown \
+            --artifacts "${{ runner.temp }}/bench"
+
+      - name: Summarise on the Actions run page
+        if: always()
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          {
+            echo '## BenchmarkDotNet results'
+            echo
+            echo 'Runner: `'"$(uname -srm)"'`'
+            echo
+            for md in "${{ runner.temp }}/bench"/results/*-report-github.md; do
+              echo "### $(basename "$md")"
+              echo
+              cat "$md"
+              echo
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: benchmark-results-${{ github.run_id }}
+          path: ${{ runner.temp }}/bench/results/*
+          if-no-files-found: warn
