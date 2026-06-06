@@ -36,7 +36,7 @@ owner and the GitHub attestation infrastructure.
 
 ```bash
 # Download the package you want to verify, then:
-gh attestation verify PostQuantum.FileEncryption.1.0.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.0.1.nupkg \
   --owner systemslibrarian
 
 # The same command works for the Hybrid package and the .snupkg symbol files.
@@ -53,7 +53,7 @@ its version, and its hash.
 
 ```bash
 # Pull from the release:
-gh release download v1.0.0 -p 'sbom.*.cdx.json'
+gh release download v1.0.1 -p 'sbom.*.cdx.json'
 
 # Glance at the core's direct + transitive components:
 jq '.components | map({name, version})' sbom.core.cdx.json
@@ -93,8 +93,8 @@ the verification script, and the CI job that runs it on every release tag are in
 [REPRODUCIBLE-BUILDS.md](REPRODUCIBLE-BUILDS.md):
 
 ```bash
-.github/scripts/verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption
-.github/scripts/verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption.Hybrid
+.github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption
+.github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption.Hybrid
 ```
 
 A failing run is a finding worth a private security report — see
@@ -112,7 +112,7 @@ dotnet nuget locals all --list   # find your global package cache
 strings -n 8 lib/net10.0/PostQuantum.FileEncryption.dll | grep -i sourcelink
 # or use the package-validation tool directly:
 dotnet tool install --global Meziantou.Framework.NuGetPackageValidation.Tool
-meziantou.validate-nuget-package PostQuantum.FileEncryption.1.0.0.nupkg --excluded-rules Symbols
+meziantou.validate-nuget-package PostQuantum.FileEncryption.1.0.1.nupkg --excluded-rules Symbols
 ```
 
 A green result means the package is deterministic, SourceLink-wired, includes the README,
@@ -164,7 +164,7 @@ public Scorecard dashboard (linked from the README badge) shows the score histor
 # - dotnet    (test run + package validation)
 
 # 1. Pull artifacts:
-gh release download v1.0.0
+gh release download v1.0.1
 
 # 2. Verify build provenance on every .nupkg:
 for nupkg in PostQuantum.FileEncryption*.nupkg; do

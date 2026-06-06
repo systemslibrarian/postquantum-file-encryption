@@ -87,9 +87,9 @@ A cryptographic library earns trust slowly. The `1.0` release tries to make that
 ## Try it
 
 ```bash
-dotnet add package PostQuantum.FileEncryption --version 1.0.0
+dotnet add package PostQuantum.FileEncryption --version 1.0.1
 # Add this only if you need public-key (recipient) encryption:
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.1
 ```
 
 A tiny CLI sample at

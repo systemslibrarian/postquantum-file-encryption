@@ -32,17 +32,26 @@ The project pins every known source of non-determinism:
 | `<Deterministic>true</Deterministic>` | `Directory.Build.props` | Derives the assembly MVID and timestamps from the source, not the clock. |
 | `<ContinuousIntegrationBuild>` (set in CI) | `Directory.Build.props` | Normalises embedded paths and SourceLink URLs to the repo, not the build host. |
 | `<EmbedUntrackedSources>true</EmbedUntrackedSources>` | `*.csproj` | Embeds every source the compiler saw, so SourceLink + symbols round-trip. |
+| `.gitattributes` with `* text=auto eol=lf` | repo root | Forces LF line endings on every checkout. Roslyn hashes source files and embeds those hashes in the PDB; without `.gitattributes`, a Windows checkout with default `core.autocrlf=true` would store CRLF locally, change the source hash, and produce a different `.dll` than the Linux-built `.nupkg`. |
 | Git checkout at a tag | the release recipe | The compiler sees the exact same source bytes. |
 | `dotnet pack -c Release` | the release recipe | Identical pack options on every host. |
 | Floor-pinned tool versions | `actions/setup-dotnet@…` SHA + `dotnet-version: '10.0.x'` | The same compiler builds the same output. |
 
-What does **not** affect reproducibility:
+What does **not** affect reproducibility (with the above in place):
 
-- The operating system. Determinism is a property of the .NET SDK and the source — Linux,
-  macOS, and Windows all produce the same bytes. The release workflow runs on
-  `ubuntu-latest`; verifying on Windows works just as well.
+- The operating system of the *verifier*. With `.gitattributes` normalising source line
+  endings on checkout, the source the compiler sees is byte-identical on Linux, macOS, and
+  Windows, and `Deterministic=true` then produces byte-identical assemblies.
 - Local NuGet caches. The compiler reads from `obj/`, which is regenerated from the same
   inputs.
+
+What **does** matter:
+
+- The verifier must check the repo out at the release tag *after* `.gitattributes` was
+  added. Earlier tags (e.g. `v1.0.0`) predate `.gitattributes` and were packed on Windows
+  during a release-key recovery — see the [1.0.1 CHANGELOG entry](../CHANGELOG.md#101---2026-06-06)
+  for the full history. The reproducibility guarantee in this document applies from
+  `v1.0.1` forward.
 
 ## Manual recipe
 
@@ -52,11 +61,11 @@ Verifying one release end-to-end:
 # 1. Pull a published version from nuget.org.
 NUPKG_DIR=$(mktemp -d)
 dotnet nuget locals temp -c >/dev/null
-curl -L "https://www.nuget.org/api/v2/package/PostQuantum.FileEncryption/1.0.0" \
+curl -L "https://www.nuget.org/api/v2/package/PostQuantum.FileEncryption/1.0.1" \
   -o "$NUPKG_DIR/published.nupkg"
 
 # 2. Rebuild from source at the same tag.
-git clone --branch v1.0.0 --depth 1 \
+git clone --branch v1.0.1 --depth 1 \
   https://github.com/systemslibrarian/postquantum-file-encryption /tmp/pqfe-repro
 cd /tmp/pqfe-repro
 CI=true dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj \
@@ -65,7 +74,7 @@ CI=true dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.cs
 # 3. Compare the .dll, .pdb, and .xml inside both .nupkgs.
 unzip -p "$NUPKG_DIR/published.nupkg" 'lib/net10.0/PostQuantum.FileEncryption.dll' \
   | sha256sum
-unzip -p "$NUPKG_DIR/local/PostQuantum.FileEncryption.1.0.0.nupkg" \
+unzip -p "$NUPKG_DIR/local/PostQuantum.FileEncryption.1.0.1.nupkg" \
   'lib/net10.0/PostQuantum.FileEncryption.dll' | sha256sum
 
 # The two sums must match. Repeat for .pdb and .xml. Repeat for the Hybrid package.
@@ -79,8 +88,8 @@ To compare the entire `.nupkg` byte-for-byte (modulo the nuget.org repo signatur
 verification script that the CI job runs:
 
 ```bash
-.github/scripts/verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption
-.github/scripts/verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption.Hybrid
+.github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption
+.github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption.Hybrid
 ```
 
 The script:

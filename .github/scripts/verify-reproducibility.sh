@@ -3,7 +3,7 @@
 # clean rebuild from the same tag's source. See docs/REPRODUCIBLE-BUILDS.md.
 #
 # Usage: verify-reproducibility.sh <tag> <package-id>
-# Example: verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption
+# Example: verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption
 #
 # Exit codes:
 #   0 — published .nupkg matches the local rebuild (modulo nuget.org repo signature).
@@ -65,8 +65,10 @@ echo "==> Removing nuget.org repo signature from published copy"
 rm -f "$PUBLISHED_DIR/.signature.p7s"
 rm -f "$LOCAL_DIR/.signature.p7s"
 
-echo "==> Diffing the two trees"
-if diff -r "$PUBLISHED_DIR" "$LOCAL_DIR" > "$WORK/diff.txt"; then
+echo "==> Diffing the two trees (excluding pack-time-only metadata)"
+# .psmdcp files (NuGet core-properties) carry a fresh GUID in their filename per pack and
+# are never reproducible by NuGet's design — exclude them, not the bytes we actually ship.
+if diff -r --exclude='*.psmdcp' "$PUBLISHED_DIR" "$LOCAL_DIR" > "$WORK/diff.txt"; then
   echo "==> MATCH — $PKG $VERSION is reproducible from $TAG."
   exit 0
 fi

@@ -10,13 +10,13 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Hybrid</PackageId>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <Version>1.0.1</Version>
+    <FileVersion>1.0.1.0</FileVersion>
+    <InformationalVersion>1.0.1</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Hybrid</Title>
     <Description>Production post-quantum hybrid public-key encryption for PostQuantum.FileEncryption. Adds X25519 + ML-KEM-768 (FIPS 203) hybrid recipient encryption and multi-recipient support on top of the FROZEN .pqfe v2 container format — a file's content key stays safe if either primitive is later broken. Fully managed via BouncyCastle for both primitives (no platform ML-KEM dependency); runs anywhere .NET 10 does, including Linux, Windows, macOS, and constrained environments. Authenticated AES-256-GCM data plane via the core package. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release. Recommended path for new code; supersedes the deprecated inline ML-KEM-only recipient mode (PQFE002) in the core package.</Description>
-    <PackageReleaseNotes>1.0.0 — first stable release; tracks PostQuantum.FileEncryption 1.0.0 in lockstep. The .pqfe container format (v2) is FROZEN for the 1.x line. Recommended public-key path: X25519 + ML-KEM-768 hybrid combiner with multi-recipient support, fully managed via BouncyCastle (no platform ML-KEM dependency, runs anywhere .NET 10 does). Same library code as 1.0.0-rc.3 — no format, public-API, or runtime-dependency change. Suite-versioning lockstep with the core is enforced by the release workflow. EnablePackageValidation against the 1.0.0-rc.3 baseline. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.0.1 — re-release of 1.0.0 packaged end-to-end by the standard release workflow; tracks PostQuantum.FileEncryption 1.0.1 in lockstep. The .pqfe container format (v2) is FROZEN for the 1.x line. No library code change since 1.0.0. Closes the supply-chain loop so the published nupkg, the build-provenance attestation, and a clean-room Linux rebuild are all the same bytes. EnablePackageValidation against the 1.0.0 baseline. See CHANGELOG.md.</PackageReleaseNotes>
     <PackageTags>post-quantum;pqc;ml-kem;ml-kem-768;kyber;x25519;hybrid;combiner;multi-recipient;encryption;file-encryption;recipient;authenticated-encryption;aead;cryptography;security;dotnet;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

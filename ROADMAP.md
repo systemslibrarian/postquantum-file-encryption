@@ -5,7 +5,7 @@ what is production-ready, what is deprecated, and what comes after `1.0`. See
 [KNOWN-GAPS.md](KNOWN-GAPS.md) for the full open-issues ledger and
 [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) for the hybrid design.
 
-## Now — `1.0.0`
+## Now — `1.0.1`
 
 The library is at its first stable release. The `.pqfe` v2 container format is FROZEN for
 the entire `1.x` line, the public API surface is locked, and the supply-chain assurances

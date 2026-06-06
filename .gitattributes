@@ -1,0 +1,20 @@
+# Force LF line endings repo-wide for every text file so that contributors on any OS
+# pack the same bytes the release workflow does on Linux. Without this, a Windows
+# checkout with the default `core.autocrlf=true` converts source files to CRLF, which
+# changes Roslyn's embedded source-file SHA in the PDB and propagates into the .dll bytes
+# — silently breaking byte-for-byte reproducibility against the published .nupkg.
+*               text=auto eol=lf
+
+# Binary assets: leave alone, never normalize.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.ico           binary
+*.gif           binary
+*.pdf           binary
+*.snk           binary
+*.pfx           binary
+
+# Container test vectors / binary fixtures: byte-exact, never normalize.
+*.pqfe          binary
+*.bin           binary
