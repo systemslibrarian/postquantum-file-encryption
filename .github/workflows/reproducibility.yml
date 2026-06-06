@@ -1,0 +1,90 @@
+name: Reproducibility
+
+# Independently verifies that the .nupkg published on nuget.org for a tagged release was
+# built from the source at that tag. Runs automatically a few minutes after each release
+# tag (so nuget.org has had time to index), and on workflow_dispatch against any tag.
+#
+# A failure means a clean rebuild from the public source no longer produces the bytes that
+# are on nuget.org — either CI drifted, a non-deterministic input crept in, or (worst case)
+# the artefact was tampered with. See docs/REPRODUCIBLE-BUILDS.md for triage steps.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to verify (e.g. v1.0.0-rc.3)'
+        required: true
+        type: string
+  workflow_run:
+    workflows: ['Release']
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    # Only run after a successful Release workflow, or when manually dispatched.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - PostQuantum.FileEncryption
+          - PostQuantum.FileEncryption.Hybrid
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # workflow_run gives us the head commit of the triggering workflow run; resolve
+            # it to a tag name by asking the API for tags pointing at that SHA.
+            sha="${{ github.event.workflow_run.head_sha }}"
+            tag=$(gh api "repos/${{ github.repository }}/tags" \
+                    --jq ".[] | select(.commit.sha==\"${sha}\") | .name" | head -n1)
+            if [[ -z "$tag" ]]; then
+              echo "no tag points at $sha — nothing to verify" >&2
+              echo "tag=" >> "$GITHUB_OUTPUT"
+            else
+              echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Wait for nuget.org to index the release
+        if: steps.tag.outputs.tag != ''
+        run: |
+          set -euo pipefail
+          tag='${{ steps.tag.outputs.tag }}'
+          version="${tag#v}"
+          pkg='${{ matrix.package }}'
+          pkg_lower=$(echo "$pkg" | tr '[:upper:]' '[:lower:]')
+          for i in $(seq 1 30); do
+            if curl -fsSL "https://api.nuget.org/v3-flatcontainer/${pkg_lower}/index.json" \
+                 | grep -Eq "\"${version}\""; then
+              echo "$pkg $version is indexed."
+              exit 0
+            fi
+            echo "$pkg $version not yet indexed (attempt $i/30); sleeping 10s..."
+            sleep 10
+          done
+          echo "$pkg $version still not indexed after 5 minutes — failing." >&2
+          exit 1
+
+      - name: Verify reproducibility
+        if: steps.tag.outputs.tag != ''
+        run: |
+          chmod +x .github/scripts/verify-reproducibility.sh
+          .github/scripts/verify-reproducibility.sh '${{ steps.tag.outputs.tag }}' '${{ matrix.package }}'

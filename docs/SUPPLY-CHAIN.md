@@ -85,7 +85,22 @@ The cross-implementation test (`CrossImplementationTests.cs`) decrypts a **Rust-
 container with the .NET library, and the Rust suite decrypts the .NET-produced vectors —
 so byte-compatibility is verified in both directions on every CI push.
 
-## 4. Spot-check SourceLink + deterministic build
+## 4. Verify the build is reproducible
+
+A clean rebuild of the tagged source produces the bit-identical `.dll`, `.pdb`, and `.xml`
+inside the published `.nupkg` (modulo the nuget.org-applied repo signature). The full recipe,
+the verification script, and the CI job that runs it on every release tag are in
+[REPRODUCIBLE-BUILDS.md](REPRODUCIBLE-BUILDS.md):
+
+```bash
+.github/scripts/verify-reproducibility.sh v1.0.0-rc.3 PostQuantum.FileEncryption
+.github/scripts/verify-reproducibility.sh v1.0.0-rc.3 PostQuantum.FileEncryption.Hybrid
+```
+
+A failing run is a finding worth a private security report — see
+[SECURITY.md](../SECURITY.md).
+
+## 5. Spot-check SourceLink + deterministic build
 
 The package validation step in the release workflow already enforces this, but you can
 double-check by hand:
@@ -104,7 +119,7 @@ A green result means the package is deterministic, SourceLink-wired, includes th
 LICENSE, and icon, has valid PDBs (or a `.snupkg` symbols package alongside), and meets the
 other rules `meziantou.validate-nuget-package` enforces.
 
-## 5. Confirm the public API surface
+## 6. Confirm the public API surface
 
 Both packages publish a baselined `PublicAPI.Shipped.txt` for every shipped member
 (`Microsoft.CodeAnalysis.PublicApiAnalyzers`). The build fails if a new or removed member is

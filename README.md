@@ -407,6 +407,7 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](docs/SUPPLY-
 | Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](docs/CONFORMANCE.md) |
 | Known-answer test vectors | [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) |
 | Supply chain (SBOM, attestations, verification) | [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md) |
+| Reproducible builds (verify the .nupkg against the source) | [docs/REPRODUCIBLE-BUILDS.md](docs/REPRODUCIBLE-BUILDS.md) |
 | Deployment & hardening | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Versioning & compatibility policy | [docs/VERSIONING.md](docs/VERSIONING.md) |
 | Key management (KMS/HSM, rotation) — design | [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md) |
