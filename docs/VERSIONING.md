@@ -1,16 +1,19 @@
 # Versioning, Compatibility & API Stability
 
-## Semantic Versioning, with `0.x` caveats
+## Semantic Versioning
 
-The package follows [SemVer](https://semver.org). While in `0.x` (pre-1.0):
+The package follows [SemVer](https://semver.org). For the `1.x` line:
 
-- The **public API** and the **on-disk format** may change between minor versions.
-- Breaking changes will be called out in [CHANGELOG.md](../CHANGELOG.md) and the release notes.
-- `[Experimental("PQFE001")]` APIs (ML-KEM recipient mode) may change at any time, independent of
-  the stability of the symmetric surface.
-
-At `1.0` we commit to: a frozen container format, SemVer-disciplined API changes (no breaking
-changes without a major bump), and the guarantees below.
+- The **on-disk `.pqfe` v2 format is FROZEN.** No `1.x` minor or patch may change the byte
+  layout — that requires `2.0`.
+- The **public API** is governed by `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines
+  (`PublicAPI.Shipped.txt`) and `<EnablePackageValidation>` against the previous published
+  version. Removing or changing a public member fails the build.
+- **Additive** public API (a new type, a new overload, a new `PqEncryptionOptions` field) is a
+  minor bump.
+- **`[Obsolete]`** deprecations (e.g. `PQFE002`, the inline ML-KEM-only recipient mode) emit a
+  warning and remain source-compatible until removal — and removal requires a major bump.
+- Breaking changes are called out in [CHANGELOG.md](../CHANGELOG.md) and the release notes.
 
 ## On-disk format stability
 
@@ -20,25 +23,30 @@ changes without a major bump), and the guarantees below.
   [FILE-FORMAT.md](FILE-FORMAT.md) and the [test vectors](TEST-VECTORS.md) in the same change.
 - The format is pinned by byte-exact known-answer vectors checked by both the .NET and Rust
   implementations, so an accidental format change cannot pass CI.
-- **Before `1.0`, do not archive data you must read with a future major version.** At `1.0` the
-  format is frozen and forward-readers will continue to accept it.
+- **`.pqfe` v2 is frozen for the entire `1.x` line.** A file produced by any `1.x` build opens
+  in every other `1.x` build, on every supported platform, in either implementation.
+- Adding a new `KeySource` (with new `KeyParams`) is non-breaking at the format level —
+  existing readers MUST reject unknown `KeySource` values — and ships as a `1.x` minor. See
+  [CONFORMANCE.md §4](CONFORMANCE.md).
 
 ## Migration policy
 
-- When the format changes pre-1.0, the new reader either (a) continues to accept the older
-  version, or (b) ships a one-shot **rewrap/transcode** path (decrypt-then-re-encrypt) when a
-  clean break is taken. The chosen approach is stated in the release notes.
-- A documented rewrap path also covers key rotation — see [KEY-MANAGEMENT.md](KEY-MANAGEMENT.md).
+- Within `1.x`: no format migration is required, ever. The freeze is the migration policy.
+- Across a major (`1.x → 2.0`): the `2.0` release will ship documented migration tooling
+  (a `rewrap` / transcode path), and the preceding `1.x` minor continues to receive
+  security fixes for at least 12 months after `2.0` is tagged — see [SUPPORT.md](../SUPPORT.md).
+- Key rotation within `1.x` uses the same rewrap design — see [KEY-MANAGEMENT.md](KEY-MANAGEMENT.md).
 
 ## API stability discipline
 
-Until a public API baseline can be tracked automatically (the
-`Microsoft.CodeAnalysis.PublicApiAnalyzers` baseline, or `EnablePackageValidation` against a
-published version), public-API changes are governed by review:
+Enforced at build time, not by convention:
 
-- Public API additions/changes must be described in the PR and recorded in `CHANGELOG.md`.
-- Removing or changing a non-experimental public member is a **breaking change** and requires a
-  minor bump pre-1.0 (major post-1.0) with a clear note.
+- **`Microsoft.CodeAnalysis.PublicApiAnalyzers`** baselines every shipped public member in
+  `PublicAPI.Shipped.txt` on both packages. A new or removed public member that is not declared
+  in `PublicAPI.Unshipped.txt` fails the build.
+- **`<EnablePackageValidation>`** is on with `PackageValidationBaselineVersion` set to the
+  previous release, so every pack additionally proves binary compatibility against the last
+  published `.nupkg`.
 - New configuration generally goes on `PqEncryptionOptions` rather than new method overloads.
 
 ## Suite versioning — Hybrid lockstep with core
