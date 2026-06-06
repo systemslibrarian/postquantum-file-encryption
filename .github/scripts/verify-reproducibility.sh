@@ -3,7 +3,7 @@
 # clean rebuild from the same tag's source. See docs/REPRODUCIBLE-BUILDS.md.
 #
 # Usage: verify-reproducibility.sh <tag> <package-id>
-# Example: verify-reproducibility.sh v1.0.0-rc.3 PostQuantum.FileEncryption
+# Example: verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption
 #
 # Exit codes:
 #   0 — published .nupkg matches the local rebuild (modulo nuget.org repo signature).

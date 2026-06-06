@@ -5,10 +5,12 @@ what is production-ready, what is deprecated, and what comes after `1.0`. See
 [KNOWN-GAPS.md](KNOWN-GAPS.md) for the full open-issues ledger and
 [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) for the hybrid design.
 
-## Now — `1.0.0-rc.3` (release candidate)
+## Now — `1.0.0`
 
-The library is feature-complete for `1.0`. This release candidate is the same code that will
-ship as `1.0.0` after the soak window completes.
+The library is at its first stable release. The `.pqfe` v2 container format is FROZEN for
+the entire `1.x` line, the public API surface is locked, and the supply-chain assurances
+below are continuous. Every release from `1.0.0` forward is governed by the [versioning
+policy](docs/VERSIONING.md) (SemVer with package validation against the previous release).
 
 **Production-ready and the recommended path:**
 
@@ -65,15 +67,10 @@ ship as `1.0.0` after the soak window completes.
 - Coverage uploaded to Codecov on every push.
 - Coverage-guided fuzzing for **both** parsers (cargo-fuzz + SharpFuzz) runs nightly with a
   cached corpus; OSS-Fuzz integration files are ready.
-
-## Next — `1.0.0` (final)
-
-When the rc soak window completes and no fixes are needed:
-
-- Tag `v1.0.0`. Same code, dropped pre-release suffix.
-- API and `.pqfe` v2 format are binary-stable from that point onward; everything from `1.0.0`
-  forward is governed by the [versioning policy](docs/VERSIONING.md) (SemVer with package
-  validation against the previous release).
+- **Reproducible-build verification** runs automatically after every release: a clean
+  rebuild of the tagged source is diffed against the published `.nupkg` on nuget.org, with
+  the workflow and the recipe documented in
+  [docs/REPRODUCIBLE-BUILDS.md](docs/REPRODUCIBLE-BUILDS.md).
 
 ## After `1.0` — `1.x` minor work
 

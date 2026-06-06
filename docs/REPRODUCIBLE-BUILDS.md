@@ -52,11 +52,11 @@ Verifying one release end-to-end:
 # 1. Pull a published version from nuget.org.
 NUPKG_DIR=$(mktemp -d)
 dotnet nuget locals temp -c >/dev/null
-curl -L "https://www.nuget.org/api/v2/package/PostQuantum.FileEncryption/1.0.0-rc.3" \
+curl -L "https://www.nuget.org/api/v2/package/PostQuantum.FileEncryption/1.0.0" \
   -o "$NUPKG_DIR/published.nupkg"
 
 # 2. Rebuild from source at the same tag.
-git clone --branch v1.0.0-rc.3 --depth 1 \
+git clone --branch v1.0.0 --depth 1 \
   https://github.com/systemslibrarian/postquantum-file-encryption /tmp/pqfe-repro
 cd /tmp/pqfe-repro
 CI=true dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj \
@@ -65,7 +65,7 @@ CI=true dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.cs
 # 3. Compare the .dll, .pdb, and .xml inside both .nupkgs.
 unzip -p "$NUPKG_DIR/published.nupkg" 'lib/net10.0/PostQuantum.FileEncryption.dll' \
   | sha256sum
-unzip -p "$NUPKG_DIR/local/PostQuantum.FileEncryption.1.0.0-rc.3.nupkg" \
+unzip -p "$NUPKG_DIR/local/PostQuantum.FileEncryption.1.0.0.nupkg" \
   'lib/net10.0/PostQuantum.FileEncryption.dll' | sha256sum
 
 # The two sums must match. Repeat for .pdb and .xml. Repeat for the Hybrid package.
@@ -79,8 +79,8 @@ To compare the entire `.nupkg` byte-for-byte (modulo the nuget.org repo signatur
 verification script that the CI job runs:
 
 ```bash
-.github/scripts/verify-reproducibility.sh v1.0.0-rc.3 PostQuantum.FileEncryption
-.github/scripts/verify-reproducibility.sh v1.0.0-rc.3 PostQuantum.FileEncryption.Hybrid
+.github/scripts/verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption
+.github/scripts/verify-reproducibility.sh v1.0.0 PostQuantum.FileEncryption.Hybrid
 ```
 
 The script:

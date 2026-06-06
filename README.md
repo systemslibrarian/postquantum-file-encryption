@@ -16,7 +16,7 @@ chunked, streaming encryption with strong, modern defaults. You should not have 
 cryptographic spec to protect a file: call a method, and the library does the careful,
 paranoid, fail-closed thing every time.
 
-> **Status: `1.0.0-rc.3` — final polish before `1.0.0`.**
+> **Status: `1.0.0` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -66,10 +66,10 @@ For a side-by-side with other encryption libraries and migration guidance, see
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.0.0-rc.3
+dotnet add package PostQuantum.FileEncryption --version 1.0.0
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0-rc.3
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0
 ```
 
 Targets **.NET 10** (`net10.0`). Core depends only on
@@ -342,11 +342,11 @@ Be clear-eyed about what *post-quantum* means here today:
   broken.
 - **What's deprecated:** the inline ML-KEM-768-only recipient mode in the **core**
   (`PqKeyPair`, `PqRecipientPublicKey`, `PqRecipientPrivateKey`, recipient overloads on
-  `PqFileEncryptor`/`PqFileDecryptor`). Marked `[Obsolete]` with diagnostic id `PQFE002` in
-  `1.0.0-rc.3`, kept for source-compatibility only. Migrate to the Hybrid package.
+  `PqFileEncryptor`/`PqFileDecryptor`). Marked `[Obsolete]` with diagnostic id `PQFE002`
+  since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0-rc.3
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.0
 ```
 
 ```csharp
@@ -377,11 +377,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.0.0-rc.3.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.0.0.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.0.0-rc.3 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.0.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"

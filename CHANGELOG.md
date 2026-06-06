@@ -2,10 +2,56 @@
 
 All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
-[Semantic Versioning](https://semver.org/) — note that `0.x` releases are pre-1.0, so the API
-and the on-disk format may change before `1.0`.
+[Semantic Versioning](https://semver.org/). From `1.0.0` onward the public API surface is
+locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines and `<EnablePackageValidation>`,
+and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-06-05
+
+The first stable release of PostQuantum.FileEncryption. The `.pqfe` v2 container format is
+FROZEN for the `1.x` line. The public API surface is locked.
+
+**No library code change since `1.0.0-rc.3`.** The library, the `.pqfe` v2 format, the public
+API surface, and the runtime dependencies are identical to rc.3. This release adds
+documentation and supply-chain polish on top of that code and drops the pre-release suffix.
+
+### Added
+- `docs/REPRODUCIBLE-BUILDS.md`, `.github/scripts/verify-reproducibility.sh`, and
+  `.github/workflows/reproducibility.yml` — third-party-verifiable recipe to rebuild a
+  tagged release bit-identically and diff against the published `.nupkg`. The workflow
+  runs automatically after every successful Release run (matrixed over both packages) and
+  on demand against any historical tag.
+- `.github/workflows/benchmarks.yml` — on-demand and weekly BenchmarkDotNet throughput
+  runs (encrypt + decrypt over 16 MiB with PBKDF2 and Argon2id). Results uploaded as a
+  workflow artifact and posted to the run summary.
+- `docs/ANNOUNCE.md` — draft "Why we built this" announcement post.
+- `docs/DISCOVERABILITY.md` — pre-flight checklist + awesome-list submission template +
+  aggregator etiquette.
+
+### Changed
+- `SUPPORT.md` — full rewrite for the `1.x` lifecycle: supported-versions table, LTS intent
+  (security fixes on the latest `1.x` minor; at least 12 months of continued support after
+  a hypothetical `2.0`), deprecation policy (`PQFE002`), runtime support matrix.
+- `docs/THREAT-MODEL.md` — residual risks refreshed (the "format not frozen" and
+  "ML-KEM-768 used alone" entries are now obsolete and removed); audit-focus list extended
+  to cover the X25519 + ML-KEM-768 combiner, the multi-recipient envelope, and the legacy
+  KEM-DEM mode.
+- `docs/VERSIONING.md` — dropped pre-1.0 phrasing; describes the `1.x` policy as enforced
+  at build time by PublicApiAnalyzers baselines and `<EnablePackageValidation>`.
+- `ROADMAP.md` — collapsed the rc.3 / 1.0.0 narrative into a single "Now — `1.0.0`"
+  section; reproducible-build verification added to the supply-chain bullets.
+- `README.md` — status banner promoted from "1.0.0-rc.3 — final polish" to "1.0.0 — stable
+  release"; documentation table picks up `docs/REPRODUCIBLE-BUILDS.md`.
+- `docs/SUPPLY-CHAIN.md` — new section pointing at the reproducible-build script and the
+  verification workflow.
+- `Directory.Build.props`: `PackageValidationBaselineVersion` bumped from `1.0.0-rc.2` to
+  `1.0.0-rc.3` so `1.0.0`'s public surface is validated against the published rc.3 baseline.
+
+### Notes
+- The published `1.0.0-rc.3` nupkgs remain on nuget.org as the immediate predecessor.
+- Reproducible-build verification runs for the first time on this release.
 
 ## [1.0.0-rc.3] - 2026-06-04
 
@@ -202,7 +248,8 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.3...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.3...v1.0.0
 [1.0.0-rc.3]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v0.2.0...v1.0.0-rc.1

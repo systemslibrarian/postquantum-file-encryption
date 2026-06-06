@@ -18,7 +18,7 @@
       are listed per project in CompatibilitySuppressions.xml.
     -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>1.0.0-rc.2</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>1.0.0-rc.3</PackageValidationBaselineVersion>
 
     <!-- Reproducibility -->
     <Deterministic>true</Deterministic>
