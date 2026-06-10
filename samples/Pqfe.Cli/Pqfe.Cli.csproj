@@ -5,19 +5,54 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Pqfe.Cli</RootNamespace>
     <AssemblyName>pqfe</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-    <!-- AOT smoke target: this sample is the canary that proves the library's
-         IsAotCompatible claim still holds end-to-end. -->
+    <!-- AOT smoke target: this project is the canary that proves the library's
+         IsAotCompatible claim still holds end-to-end. CI publishes it with
+         -p:PublishAot=true; the packed dotnet tool below is framework-dependent. -->
     <PublishAot>false</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
 
-    <IsPackable>false</IsPackable>
-    <!-- Sample, not a shipped package: don't subject it to the library's strict analysis. -->
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <!-- Run on newer major runtimes once .NET 11+ ships, without a repack. -->
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata: ships as the `pqfe` global tool. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>pqfe</ToolCommandName>
+    <PackageId>PostQuantum.FileEncryption.Tool</PackageId>
+    <Version>1.0.1</Version>
+    <FileVersion>1.0.1.0</FileVersion>
+    <InformationalVersion>1.0.1</InformationalVersion>
+    <MinClientVersion>6.0.0</MinClientVersion>
+    <Title>pqfe — PostQuantum.FileEncryption CLI</Title>
+    <Description>Command-line file encryption built on PostQuantum.FileEncryption: `pqfe encrypt` / `pqfe decrypt` for the FROZEN .pqfe v2 container format. Authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id passphrase derivation, atomic output files, fail-closed decryption (wrong passphrase and tampered ciphertext are indistinguishable errors), and sysexits.h exit codes for scripting. Passphrases come from a no-echo prompt or an environment variable for CI use. Install: dotnet tool install -g PostQuantum.FileEncryption.Tool. Requires the .NET 10 runtime or later.</Description>
+    <PackageReleaseNotes>1.0.1 — first published release of the pqfe command-line tool, packaged from the same source tree, release workflow, and supply-chain pipeline (SBOM, SLSA-style provenance attestation, deterministic build) as PostQuantum.FileEncryption 1.0.1. Bundles the library; the .pqfe v2 container format is FROZEN for the 1.x line.</PackageReleaseNotes>
+    <PackageTags>encryption;file-encryption;cli;dotnet-tool;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;cryptography;security;post-quantum;pqc;dotnet;net10</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-file-encryption</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/postquantum-file-encryption</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- A dotnet tool has no consumable API surface; baseline validation does not apply. -->
+    <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../../LICENSE" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../../assets/icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
   </ItemGroup>
 
