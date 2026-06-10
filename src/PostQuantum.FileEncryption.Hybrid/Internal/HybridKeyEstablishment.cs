@@ -171,17 +171,31 @@ internal static class HybridKeyEstablishment
 
         // ML-KEM decapsulation never fails (implicit rejection yields a pseudorandom secret), so a
         // block meant for someone else simply produces the wrong KEK and the AES-GCM tag mismatches.
+        // BouncyCastle needs byte[] copies of the private keys; zero each copy after its last use.
+        // (BouncyCastle's parameter objects keep their own internal copies we cannot zero.)
         var decapsulator = new MLKemDecapsulator(MLKemParameters.ml_kem_768);
-        decapsulator.Init(MLKemPrivateKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, key.MlKemDecapsulationKey.ToArray()));
-        byte[] sharedSecretPq = new byte[decapsulator.SecretLength];
-        decapsulator.Decapsulate(kemCiphertext, sharedSecretPq);
+        byte[] mlKemKeyCopy = key.MlKemDecapsulationKey.ToArray();
+        byte[] sharedSecretPq;
+        try
+        {
+            decapsulator.Init(MLKemPrivateKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, mlKemKeyCopy));
+            sharedSecretPq = new byte[decapsulator.SecretLength]; // SecretLength is only valid after Init
+            decapsulator.Decapsulate(kemCiphertext, sharedSecretPq);
+        }
+        finally { CryptographicOperations.ZeroMemory(mlKemKeyCopy); }
 
         try
         {
             var agreement = new X25519Agreement();
-            agreement.Init(new X25519PrivateKeyParameters(key.X25519PrivateKey.ToArray()));
-            byte[] sharedSecretClassical = new byte[agreement.AgreementSize];
-            agreement.CalculateAgreement(new X25519PublicKeyParameters(ephemeralPublic), sharedSecretClassical);
+            byte[] x25519KeyCopy = key.X25519PrivateKey.ToArray();
+            byte[] sharedSecretClassical;
+            try
+            {
+                agreement.Init(new X25519PrivateKeyParameters(x25519KeyCopy));
+                sharedSecretClassical = new byte[agreement.AgreementSize];
+                agreement.CalculateAgreement(new X25519PublicKeyParameters(ephemeralPublic), sharedSecretClassical);
+            }
+            finally { CryptographicOperations.ZeroMemory(x25519KeyCopy); }
 
             try
             {

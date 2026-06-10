@@ -30,6 +30,15 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
   self-assessment incl. open gaps), [docs/BENCHMARKS.md](docs/BENCHMARKS.md) (methodology
   and fair-comparison guidance).
 
+### Fixed
+
+- **Key-material hygiene (defense in depth; no exploit, no format or behavior change):**
+  the encrypt orchestration now zeroes the content key in a `finally` even when header
+  construction throws before the codec (which has always zeroed it) is entered, and the
+  hybrid unwrap path zeroes its temporary `byte[]` copies of the ML-KEM and X25519 private
+  keys after their last use. BouncyCastle's own internal key copies cannot be zeroized —
+  documented in [KNOWN-GAPS.md](KNOWN-GAPS.md).
+
 ## [1.0.1] - 2026-06-06
 
 Re-release of `1.0.0` packaged end-to-end by the standard release workflow so the `.nupkg`

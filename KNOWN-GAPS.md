@@ -79,6 +79,11 @@ Last reviewed against: **`1.0.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
 
 - **Argon2id comes from `Konscious.Security.Cryptography`**, a widely used but **not formally
   audited** managed implementation. The default KDF (PBKDF2) avoids this dependency at runtime.
+- **BouncyCastle key objects cannot be zeroized.** The Hybrid package zeroes every temporary
+  private-key copy it creates, but BouncyCastle's parameter objects (`MLKemPrivateKeyParameters`,
+  `X25519PrivateKeyParameters`) keep their own internal copies of key material with no public
+  zeroization API; those copies live until garbage collection. This is a limitation of the
+  dependency, shared by everything built on managed BouncyCastle.
 
 ### Format and feature gaps
 

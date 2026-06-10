@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace PostQuantum.FileEncryption.Internal;
@@ -46,8 +47,14 @@ internal static class PqContainer
         await InstrumentedAsync("encrypt", "passphrase", totalBytes, async () =>
         {
             (byte[] keyParams, byte[] contentKey) = await KeyEstablishment.BuildPassphraseAsync(passphrase, options, saltOverride).ConfigureAwait(false);
-            var header = ContainerHeader.Create(ContainerFormat.KeySourcePassphrase, options.ChunkSizeBytes, keyParams, noncePrefixOverride);
-            await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+            // The codec zeroes contentKey in its own finally; this one covers the window where
+            // header creation throws before the codec is ever entered (re-zeroing is harmless).
+            try
+            {
+                var header = ContainerHeader.Create(ContainerFormat.KeySourcePassphrase, options.ChunkSizeBytes, keyParams, noncePrefixOverride);
+                await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+            }
+            finally { CryptographicOperations.ZeroMemory(contentKey); }
         }).ConfigureAwait(false);
     }
 
@@ -74,8 +81,12 @@ internal static class PqContainer
         await InstrumentedAsync("encrypt", "ml-kem-recipient", totalBytes, async () =>
         {
             (byte[] keyParams, byte[] contentKey) = KeyEstablishment.BuildRecipient(recipient);
-            var header = ContainerHeader.Create(ContainerFormat.KeySourceMlKemRecipient, options.ChunkSizeBytes, keyParams);
-            await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var header = ContainerHeader.Create(ContainerFormat.KeySourceMlKemRecipient, options.ChunkSizeBytes, keyParams);
+                await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+            }
+            finally { CryptographicOperations.ZeroMemory(contentKey); }
         }).ConfigureAwait(false);
     }
 
@@ -104,9 +115,13 @@ internal static class PqContainer
         await InstrumentedAsync("encrypt", "key-provider", totalBytes, async () =>
         {
             (byte[] contentKey, byte[] wrapInfo) = await provider.WrapNewKeyAsync(cancellationToken).ConfigureAwait(false);
-            byte[] keyParams = SerializeKeyProviderParams(provider.ProviderId, wrapInfo);
-            var header = ContainerHeader.Create(ContainerFormat.KeySourceKeyProvider, options.ChunkSizeBytes, keyParams);
-            await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                byte[] keyParams = SerializeKeyProviderParams(provider.ProviderId, wrapInfo);
+                var header = ContainerHeader.Create(ContainerFormat.KeySourceKeyProvider, options.ChunkSizeBytes, keyParams);
+                await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
+            }
+            finally { CryptographicOperations.ZeroMemory(contentKey); }
         }).ConfigureAwait(false);
     }
 
