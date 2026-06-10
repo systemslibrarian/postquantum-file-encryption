@@ -52,7 +52,7 @@ public sealed class PqHybridEncryptor
     // ------------------------------------------------------------------ multiple recipients
 
     /// <summary>Encrypts <paramref name="input"/> so that any one of <paramref name="recipients"/> can open it.</summary>
-    public Task EncryptToAsync(
+    public async Task EncryptToAsync(
         Stream input, Stream output, IReadOnlyList<PqHybridPublicKey> recipients, long? totalBytes = null,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -60,10 +60,22 @@ public sealed class PqHybridEncryptor
         ArgumentNullException.ThrowIfNull(output);
         ValidateRecipients(recipients);
 
-        (byte keySource, byte[] keyParams, byte[] contentKey) = Establish(recipients);
-        long? total = totalBytes ?? (input.CanSeek ? input.Length - input.Position : null);
-        var header = ContainerHeader.Create(keySource, _options.ChunkSizeBytes, keyParams);
-        return PqContainerEngine.EncryptCoreAsync(input, output, contentKey, header, total, progress, cancellationToken);
+        byte[] contentKey = RandomNumberGenerator.GetBytes(32);
+        // The engine zeroes contentKey in its own finally; this one covers the window where key
+        // wrapping or header creation throws before the engine is entered (re-zeroing is harmless).
+        try
+        {
+            (byte keySource, byte[] keyParams) = recipients.Count == 1
+                ? (ContainerFormat.KeySourceHybridRecipient, HybridKeyEstablishment.WrapToRecipient(recipients[0], contentKey))
+                : (ContainerFormat.KeySourceMultiRecipient, HybridKeyEstablishment.WrapToRecipients(recipients, contentKey));
+            long? total = totalBytes ?? (input.CanSeek ? input.Length - input.Position : null);
+            var header = ContainerHeader.Create(keySource, _options.ChunkSizeBytes, keyParams);
+            await PqContainerEngine.EncryptCoreAsync(input, output, contentKey, header, total, progress, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(contentKey);
+        }
     }
 
     /// <summary>Encrypts a file so that any one of <paramref name="recipients"/> can open it (atomic output).</summary>
@@ -94,16 +106,6 @@ public sealed class PqHybridEncryptor
 
     // ------------------------------------------------------------------ helpers
 
-    private static (byte keySource, byte[] keyParams, byte[] contentKey) Establish(IReadOnlyList<PqHybridPublicKey> recipients)
-    {
-        byte[] contentKey = RandomNumberGenerator.GetBytes(32);
-        if (recipients.Count == 1)
-        {
-            return (ContainerFormat.KeySourceHybridRecipient, HybridKeyEstablishment.WrapToRecipient(recipients[0], contentKey), contentKey);
-        }
-        return (ContainerFormat.KeySourceMultiRecipient, HybridKeyEstablishment.WrapToRecipients(recipients, contentKey), contentKey);
-    }
-
     private static void ValidateRecipients(IReadOnlyList<PqHybridPublicKey> recipients)
     {
         ArgumentNullException.ThrowIfNull(recipients);
@@ -111,9 +113,11 @@ public sealed class PqHybridEncryptor
         {
             throw new ArgumentException("At least one recipient is required.", nameof(recipients));
         }
-        if (recipients.Count > byte.MaxValue)
+        if (recipients.Count > HybridKeyEstablishment.MaxRecipients)
         {
-            throw new ArgumentException($"At most {byte.MaxValue} recipients are supported.", nameof(recipients));
+            throw new ArgumentException(
+                $"At most {HybridKeyEstablishment.MaxRecipients} recipients are supported " +
+                "(the container header's key-parameters block is capped at 64 KiB).", nameof(recipients));
         }
         foreach (var recipient in recipients)
         {

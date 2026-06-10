@@ -40,7 +40,20 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
     }
 
     /// <summary>Creates a provider over a fresh random 256-bit KEK (e.g. for tests).</summary>
-    public static LocalKekContentKeyProvider Generate() => new(RandomNumberGenerator.GetBytes(KekLength));
+    public static LocalKekContentKeyProvider Generate()
+    {
+        // The constructor clones the KEK into _kek; zero this intermediate copy so disposing
+        // the provider really does remove every copy this type created.
+        byte[] kek = RandomNumberGenerator.GetBytes(KekLength);
+        try
+        {
+            return new LocalKekContentKeyProvider(kek);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(kek);
+        }
+    }
 
     /// <summary>Returns a copy of the KEK. Handle it as a secret and zero it when done.</summary>
     public byte[] ExportKek()

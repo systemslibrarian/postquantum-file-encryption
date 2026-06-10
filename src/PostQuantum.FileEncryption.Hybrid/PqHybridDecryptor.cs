@@ -27,6 +27,9 @@ public sealed class PqHybridDecryptor
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(privateKey);
 
+        // Capture the total before the header is consumed: the engine expects the whole
+        // container's length and derives the plaintext total for progress reporting from it.
+        long? total = input.CanSeek ? input.Length - input.Position : null;
         ContainerHeader header = await PqContainerEngine.ReadHeaderAsync(input, cancellationToken).ConfigureAwait(false);
         byte[] contentKey = header.KeySource switch
         {
@@ -35,7 +38,6 @@ public sealed class PqHybridDecryptor
             _ => throw new PqDecryptionException("This container is not a hybrid-recipient container (use the matching decryptor)."),
         };
 
-        long? total = input.CanSeek ? input.Length - input.Position : null;
         await PqContainerEngine.DecryptCoreAsync(input, output, contentKey, header, total, progress, cancellationToken).ConfigureAwait(false);
     }
 

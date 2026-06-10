@@ -128,6 +128,32 @@ public sealed class RoundTripTests : IDisposable
         Assert.Equal(1.0, reports[^1].Fraction);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(1024)]    // exactly one chunk
+    [InlineData(2048)]    // exactly two chunks
+    [InlineData(5000)]    // several chunks, ragged last one
+    public async Task Decrypt_progress_reports_exact_plaintext_total(int size)
+    {
+        byte[] original = RandomBytes(size);
+        string plain = Path2("plain.bin");
+        string cipher = Path2("cipher.pqfe");
+        string restored = Path2("restored.bin");
+        await File.WriteAllBytesAsync(plain, original);
+        await new PqFileEncryptor(FastOptions).EncryptFileAsync(plain, cipher, Passphrase);
+
+        var reports = new List<PqProgress>();
+        var progress = new SynchronousProgress(reports.Add);
+        await new PqFileDecryptor().DecryptFileAsync(cipher, restored, Passphrase, progress);
+
+        // The plaintext total is derived exactly from the container length, so the final
+        // snapshot must be plaintext-vs-plaintext and reach 1.0 — not ciphertext-skewed.
+        Assert.NotEmpty(reports);
+        Assert.Equal(original.Length, reports[^1].BytesProcessed);
+        Assert.Equal(original.Length, reports[^1].TotalBytes);
+        Assert.Equal(1.0, reports[^1].Fraction);
+    }
+
     [Fact]
     public async Task Wrong_passphrase_fails_closed_and_leaves_no_output()
     {

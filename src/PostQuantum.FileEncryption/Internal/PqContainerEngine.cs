@@ -121,18 +121,21 @@ internal static class PqContainerEngine
     /// Decrypts the body of a container (the caller has already read and parsed
     /// <paramref name="header"/>) into <paramref name="destination"/>, using
     /// <paramref name="contentKey"/>. The content key is zeroed before returning.
+    /// <paramref name="totalContainerBytes"/> is the whole container's length (header included),
+    /// from which the plaintext total reported through <paramref name="progress"/> is derived.
     /// </summary>
     public static async Task DecryptCoreAsync(
         Stream source,
         Stream destination,
         byte[] contentKey,
         ContainerHeader header,
-        long? totalCiphertextBytes,
+        long? totalContainerBytes,
         IProgress<PqProgress>? progress,
         CancellationToken cancellationToken)
     {
         try
         {
+            long? totalPlaintextBytes = DerivePlaintextTotal(totalContainerBytes, header);
             using var aes = new AesGcm(contentKey, ContainerFormat.TagLength);
 
             byte[] ciphertext = new byte[header.ChunkSize];
@@ -195,7 +198,7 @@ internal static class PqContainerEngine
                 await destination.WriteAsync(plaintext.AsMemory(0, (int)length), cancellationToken).ConfigureAwait(false);
 
                 processed += (int)length;
-                progress?.Report(new PqProgress(processed, totalCiphertextBytes));
+                progress?.Report(new PqProgress(processed, totalPlaintextBytes));
                 counter++;
 
                 if (frameType == ContainerFormat.FrameFinal)
@@ -217,6 +220,29 @@ internal static class PqContainerEngine
         {
             CryptographicOperations.ZeroMemory(contentKey);
         }
+    }
+
+    /// <summary>
+    /// Derives the exact plaintext total from the container length. The body after the header is
+    /// n frames of (5-byte frame header + ciphertext + 16-byte tag) where every frame but the
+    /// last carries exactly <see cref="ContainerHeader.ChunkSize"/> plaintext bytes, so n — and
+    /// therefore the plaintext size — is fully determined by the body length.
+    /// </summary>
+    private static long? DerivePlaintextTotal(long? totalContainerBytes, ContainerHeader header)
+    {
+        const long FrameOverhead = 5 + ContainerFormat.TagLength;
+        if (totalContainerBytes is not long total)
+        {
+            return null;
+        }
+        long body = total - header.HeaderBytes.Length;
+        if (body < FrameOverhead)
+        {
+            return null; // not a well-formed container; decryption will fail closed regardless
+        }
+        long frames = (body + header.ChunkSize + FrameOverhead - 1) / (header.ChunkSize + FrameOverhead);
+        long plaintext = body - frames * FrameOverhead;
+        return plaintext >= 0 ? plaintext : null;
     }
 
     /// <summary>Reads and validates the container header from <paramref name="source"/>.</summary>

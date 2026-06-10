@@ -8,7 +8,9 @@ namespace PostQuantum.FileEncryption;
 /// <param name="BytesProcessed">Plaintext bytes processed so far.</param>
 /// <param name="TotalBytes">
 /// Total plaintext bytes expected, or <see langword="null"/> when the total is unknown
-/// (for example, encrypting a non-seekable stream without an explicit length).
+/// (for example, a non-seekable stream without an explicit length). During decryption this
+/// is derived exactly from the container length, so <see cref="Fraction"/> reaches 1.0 on
+/// completion in both directions.
 /// </param>
 public readonly record struct PqProgress(long BytesProcessed, long? TotalBytes)
 {

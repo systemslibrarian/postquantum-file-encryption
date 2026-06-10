@@ -81,6 +81,50 @@ public sealed class HybridTests
             new PqHybridDecryptor().DecryptBytesAsync(container, outsider.PrivateKey));
     }
 
+    // 55 is the format-implied maximum: each hybrid recipient entry is 1186 bytes and the
+    // whole multi-recipient body must fit the header's uint16 KeyParams length (65535).
+    [Fact]
+    public async Task Recipient_count_above_the_format_limit_is_rejected_up_front()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        var tooMany = Enumerable.Repeat(keyPair.PublicKey, 56).ToArray();
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            new PqHybridEncryptor(Fast()).EncryptBytesToAsync(RandomBytes(100), tooMany));
+        Assert.Contains("55", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Maximum_recipient_count_round_trips()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        var recipients = Enumerable.Repeat(keyPair.PublicKey, 55).ToArray();
+
+        byte[] original = RandomBytes(1000);
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesToAsync(original, recipients);
+        Assert.Equal(original, await new PqHybridDecryptor().DecryptBytesAsync(container, keyPair.PrivateKey));
+    }
+
+    [Fact]
+    public async Task Decrypt_progress_reports_exact_plaintext_total()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] original = RandomBytes(5000);
+
+        using var cipher = new MemoryStream();
+        await new PqHybridEncryptor(Fast()).EncryptAsync(new MemoryStream(original), cipher, keyPair.PublicKey);
+        cipher.Position = 0;
+
+        var progress = new RecordingProgress();
+        using var restored = new MemoryStream();
+        await new PqHybridDecryptor().DecryptAsync(cipher, restored, keyPair.PrivateKey, progress);
+
+        Assert.NotEmpty(progress.Reports);
+        Assert.Equal(original.Length, progress.Reports[^1].BytesProcessed);
+        Assert.Equal(original.Length, progress.Reports[^1].TotalBytes);
+        Assert.Equal(1.0, progress.Reports[^1].Fraction);
+    }
+
     [Fact]
     public async Task Stream_and_file_apis_round_trip()
     {

@@ -5,6 +5,7 @@ using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Kems;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
+using PostQuantum.FileEncryption.Internal;
 
 namespace PostQuantum.FileEncryption.Hybrid.Internal;
 
@@ -27,6 +28,16 @@ internal static class HybridKeyEstablishment
 
     private static readonly byte[] KekInfo = "PostQuantum.FileEncryption/v3 hybrid kek"u8.ToArray();
     private static readonly byte[] WrapAad = "PostQuantum.FileEncryption/v3 cek-wrap"u8.ToArray();
+
+    /// <summary>One serialized KeySource-3 block: KemId(1) + C(2) + KemCt + EphX25519 + Nonce + Tag + WrappedKey.</summary>
+    private const int BlockLength = 3 + KemCiphertextLength + HybridSizes.X25519Key + NonceLength + TagLength + CekLength;
+
+    /// <summary>
+    /// The most recipients a KeySource-4 body can hold. Each entry is Mode(1) + BlockLength(2) +
+    /// block after a 1-byte count, and the whole body must fit the container header's uint16
+    /// KeyParams length — 55 with today's fixed block size.
+    /// </summary>
+    public const int MaxRecipients = (ContainerFormat.MaxKeyParamsLength - 1) / (3 + BlockLength);
 
     // ---- single recipient (KeySource = 3) ----
 

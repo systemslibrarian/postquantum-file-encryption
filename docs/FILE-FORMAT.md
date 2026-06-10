@@ -147,6 +147,10 @@ then N times:
 A decryptor tries each block with its private key and uses the first that authenticates; if none
 do, it fails closed with no oracle about which recipients are present.
 
+Although `RecipientCount` is a `uint8`, the whole KeyParams block must fit the header's
+`uint16` length field. With today's fixed hybrid block size (1183 bytes; 1186 per entry) that
+caps a container at **55 recipients**; encryptors enforce this limit up front.
+
 ### KeyParams when `KeySource = 5` (external key provider)
 
 The CEK is wrapped by an external envelope provider (`IContentKeyProvider`: KMS, HSM, or the

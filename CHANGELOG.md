@@ -38,6 +38,22 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
   hybrid unwrap path zeroes its temporary `byte[]` copies of the ML-KEM and X25519 private
   keys after their last use. BouncyCastle's own internal key copies cannot be zeroized —
   documented in [KNOWN-GAPS.md](KNOWN-GAPS.md).
+- **The hybrid multi-recipient limit is enforced as 55, not 255.** Each recipient entry is
+  1186 bytes and the whole block must fit the container header's `uint16` key-parameters
+  length, so 56+ recipients always failed — but only *after* all the ML-KEM/X25519 wrapping
+  work, with a confusing header error. The encryptor now rejects oversized recipient lists
+  up front with a clear message, and the cap is documented in
+  [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md). (Clarification of an existing format-implied
+  limit; no container that could be produced before is affected.)
+- **Hybrid encryption zeroes the content key on pre-engine failure paths** — `PqHybridEncryptor`
+  now wraps key wrapping and header creation in a `finally` that zeroes the CEK, matching the
+  hardening already applied to the core orchestration.
+- **Decryption progress now reports the exact plaintext total.** `PqProgress.TotalBytes` was
+  fed the ciphertext/container length during decryption, so `Fraction` could never reach 1.0.
+  The plaintext total is now derived exactly from the container length (the chunked frame
+  layout is deterministic), so decrypt progress is plaintext-vs-plaintext and completes at 1.0.
+- **`LocalKekContentKeyProvider.Generate()` zeroes its intermediate KEK copy**, so disposing
+  the provider removes every KEK copy the type created.
 
 ## [1.0.1] - 2026-06-06
 
