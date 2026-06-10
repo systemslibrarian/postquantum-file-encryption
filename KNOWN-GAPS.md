@@ -42,7 +42,9 @@ Last reviewed against: **`1.0.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
 ## Resolved in `0.2.0`
 
 - **CLI sample** — `samples/Pqfe.Cli` (`pqfe encrypt | decrypt`) makes the README copy-paste
-  runnable and gives the AOT smoke test a real target.
+  runnable and gives the AOT smoke test a real target. It now also ships as the installable
+  `PostQuantum.FileEncryption.Tool` dotnet tool (passphrase mode only — recipient/hybrid
+  encryption remains library-only).
 - **Native-AOT smoke test in CI** — the CLI is `dotnet publish -p:PublishAot=true`-ed and
   round-trips a real file on every push, so any regression in the `IsAotCompatible` claim
   fails the build.
@@ -109,8 +111,10 @@ Last reviewed against: **`1.0.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
   **Rust → WASM** re-implementation of the `.pqfe` format (`samples/pqfe-wasm`). Because it is a
   second implementation, it is a separate codebase to keep in step with the format; it is held
   byte-compatible by cross-implementation tests (Rust decrypts the .NET vectors; .NET decrypts a
-  Rust-produced container). It currently supports only the **passphrase** key source — **ML-KEM
-  recipient mode is not implemented in the Rust/WASM core**.
+  Rust-produced container) **and a live interop CI job** that round-trips fresh random payloads
+  in both directions, across chunk boundaries, on every push (`ci.yml` → `interop`). It
+  currently supports only the **passphrase** key source — **hybrid/ML-KEM recipient mode is not
+  implemented in the Rust/WASM core**.
 
 ### Process and assurance gaps
 

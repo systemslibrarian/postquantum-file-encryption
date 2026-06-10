@@ -103,6 +103,10 @@ verification script that the CI job runs:
 .github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption.Hybrid
 ```
 
+The script also accepts `PostQuantum.FileEncryption.Extensions.DependencyInjection` and
+`PostQuantum.FileEncryption.Tool` for tags that include those packages (first published
+after `1.0.1`).
+
 The script:
 
 1. Downloads the published `.nupkg` from nuget.org.

@@ -70,6 +70,10 @@ dotnet add package PostQuantum.FileEncryption --version 1.0.1
 
 # Add this only if you need public-key (recipient) encryption
 dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.1
+
+# Optional: Microsoft.Extensions.DependencyInjection integration
+# (AddPqFileEncryption() / AddPqHybridFileEncryption())
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.0.1
 ```
 
 Targets **.NET 10** (`net10.0`). Core depends only on
@@ -83,14 +87,23 @@ else is from .NET's `System.Security.Cryptography`. The Hybrid package additiona
 
 Three ways to drive the library — all produce the same `.pqfe` format:
 
-### 1. Command-line — runs the library natively (also AOT-publishable)
+### 1. Command-line — install the `pqfe` dotnet tool
 
-[`samples/Pqfe.Cli`](samples/Pqfe.Cli) is a tiny `pqfe encrypt | decrypt` binary built on
-the public API. It's also the canary that proves `IsAotCompatible=true` end-to-end:
-CI publishes it with `PublishAot=true` and round-trips a real file as the smoke test.
+No code required:
 
 ```bash
-# Run via dotnet:
+dotnet tool install -g PostQuantum.FileEncryption.Tool
+
+pqfe encrypt report.pdf report.pdf.pqfe --argon2id     # prompts for a passphrase
+pqfe decrypt report.pdf.pqfe report.pdf
+```
+
+The source lives at [`samples/Pqfe.Cli`](samples/Pqfe.Cli) and is built on the public
+API. It's also the canary that proves `IsAotCompatible=true` end-to-end: CI publishes it
+with `PublishAot=true` and round-trips a real file as the smoke test.
+
+```bash
+# Run from source via dotnet:
 PQFE_PASS='correct horse battery staple' \
   dotnet run -c Release --project samples/Pqfe.Cli -- \
   encrypt report.pdf report.pdf.pqfe --argon2id --passphrase-env PQFE_PASS
@@ -318,12 +331,16 @@ For deeper references:
 - [KNOWN-GAPS.md](KNOWN-GAPS.md) — the honest open-issues ledger
 - [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
 - [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) — the on-disk container specification
+- [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) — the X25519 + ML-KEM-768 combiner,
+  vs. X-Wing / HPKE / RFC 9794
 - [docs/CONFORMANCE.md](docs/CONFORMANCE.md) — the contract another implementation must meet
 - [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) — pinned known-answer vectors
 
 > Cryptographic software earns trust slowly. This library has **not been independently
 > audited**; please review the code, the format, and [KNOWN-GAPS.md](KNOWN-GAPS.md) before
 > depending on it. Funded audit engagements are welcome — contact the maintainer.
+> A criteria-by-criteria self-assessment — including what's still missing — is published
+> at [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md).
 
 ---
 
@@ -400,13 +417,16 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](docs/SUPPLY-
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 | Migrating from other libraries (age / libsodium / OpenSSL / .NET) | [docs/MIGRATION.md](docs/MIGRATION.md) |
 | Comparison vs. age / libsodium / OpenSSL | [docs/COMPARISON.md](docs/COMPARISON.md) |
+| Benchmarks (methodology + reproduce-it-yourself) | [docs/BENCHMARKS.md](docs/BENCHMARKS.md) |
 | Security policy & disclosure | [SECURITY.md](SECURITY.md) |
 | Threat model (assets, adversaries, audit focus) | [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) |
 | Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md) |
 | On-disk container format | [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) |
+| Hybrid combiner rationale (vs. X-Wing, HPKE, RFC 9794) | [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) |
 | Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](docs/CONFORMANCE.md) |
 | Known-answer test vectors | [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) |
 | Supply chain (SBOM, attestations, verification) | [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md) |
+| Gold-standard self-assessment (incl. open gaps) | [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) |
 | Reproducible builds (verify the .nupkg against the source) | [docs/REPRODUCIBLE-BUILDS.md](docs/REPRODUCIBLE-BUILDS.md) |
 | Deployment & hardening | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Versioning & compatibility policy | [docs/VERSIONING.md](docs/VERSIONING.md) |
@@ -447,6 +467,9 @@ The default PBKDF2 cost is 600,000 iterations (OWASP), so small files are KDF-bo
 design; raise/lower it (or pick Argon2id) via `PqEncryptionOptions` to trade hardening for
 speed.
 
+Full methodology, hybrid/multi-recipient numbers, and how to compare fairly against
+other tools: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
 ---
 
 ## Project layout
@@ -454,6 +477,7 @@ speed.
 ```
 src/        PostQuantum.FileEncryption        — the library (symmetric core)
 src/        PostQuantum.FileEncryption.Hybrid — X25519 + ML-KEM-768 hybrid public-key package
+src/        PostQuantum.FileEncryption.Extensions.DependencyInjection — IServiceCollection integration
 tests/      PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, hybrid, known-answer, cross-impl, property, fuzz tests
 benchmarks/ PostQuantum.FileEncryption.Benchmarks — BenchmarkDotNet throughput suite
 samples/    Pqfe.Cli                           — minimal CLI (encrypt/decrypt; AOT-publishable)

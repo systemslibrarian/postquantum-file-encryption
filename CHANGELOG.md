@@ -8,6 +8,28 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Added
+
+- **`pqfe` ships as an installable dotnet tool** — `samples/Pqfe.Cli` is now packed as
+  `PostQuantum.FileEncryption.Tool` (`dotnet tool install -g PostQuantum.FileEncryption.Tool`)
+  and published by the release workflow with the same SBOM/provenance/validation pipeline
+  as the library packages. The project now builds under the repository's strict analysis.
+- **Live cross-implementation interop CI** (`ci.yml` → `interop`) — fresh random payloads
+  are encrypted by .NET and decrypted by the Rust core (and vice versa) on every push,
+  across chunk-boundary sizes, including an Argon2id container and wrong-passphrase
+  fail-closed agreement. Adds the native `pqfe_io` example driver to `samples/pqfe-wasm`.
+- **Hybrid benchmarks** — `HybridThroughputBenchmarks` (single and 10-recipient
+  encrypt/decrypt, key-pair generation) joins the BenchmarkDotNet suite.
+- **`PostQuantum.FileEncryption.Extensions.DependencyInjection`** — new NuGet package with
+  `AddPqFileEncryption()` / `AddPqHybridFileEncryption()` extension methods registering the
+  encryptor/decryptor types as singletons in `Microsoft.Extensions.DependencyInjection`
+  hosts. Versioned in lockstep with the core and Hybrid packages; published by the release
+  workflow after Hybrid is indexed.
+- **Docs:** [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) (combiner design rationale
+  vs. X-Wing / HPKE / RFC 9794), [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) (public
+  self-assessment incl. open gaps), [docs/BENCHMARKS.md](docs/BENCHMARKS.md) (methodology
+  and fair-comparison guidance).
+
 ## [1.0.1] - 2026-06-06
 
 Re-release of `1.0.0` packaged end-to-end by the standard release workflow so the `.nupkg`

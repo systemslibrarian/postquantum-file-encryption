@@ -43,6 +43,10 @@ case "$PKG" in
     CSPROJ="$WORK/src/src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" ;;
   PostQuantum.FileEncryption.Hybrid)
     CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" ;;
+  PostQuantum.FileEncryption.Extensions.DependencyInjection)
+    CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj" ;;
+  PostQuantum.FileEncryption.Tool)
+    CSPROJ="$WORK/src/samples/Pqfe.Cli/Pqfe.Cli.csproj" ;;
   *) echo "unknown package id: $PKG" >&2; exit 2 ;;
 esac
 

@@ -39,6 +39,8 @@ jobs:
         run: |
           dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj --configuration Release -o artifacts
+          dotnet pack src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj --configuration Release -o artifacts
+          dotnet pack samples/Pqfe.Cli/Pqfe.Cli.csproj --configuration Release -o artifacts
 
       - name: Validate NuGet packages
         # Structural checks on the produced .nupkg files: deterministic builds, SourceLink wired,
@@ -57,6 +59,8 @@ jobs:
           dotnet tool install --global CycloneDX
           dotnet CycloneDX src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj -o artifacts --json --filename sbom.core.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj -o artifacts --json --filename sbom.hybrid.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj -o artifacts --json --filename sbom.di.cdx.json
+          dotnet CycloneDX samples/Pqfe.Cli/Pqfe.Cli.csproj -o artifacts --json --filename sbom.tool.cdx.json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
@@ -75,13 +79,13 @@ jobs:
         # a same-version PackageReference on pack), and a consumer's restore of Hybrid will fail
         # if it cannot resolve the core. The shell glob would alphabetically order core before
         # Hybrid (".nupkg" sorts before ".Hybrid"), but the order is incidental — make it explicit.
-        # Excludes anything matching *Hybrid* from this step.
+        # Excludes anything matching *Hybrid*, *Extensions*, or *Tool* from this step.
         if: ${{ env.NUGET_API_KEY != '' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           for f in artifacts/PostQuantum.FileEncryption.*.nupkg artifacts/PostQuantum.FileEncryption.*.snupkg; do
-            case "$f" in *Hybrid*) continue ;; esac
+            case "$f" in *Hybrid*|*Extensions*|*Tool*) continue ;; esac
             echo "Pushing $f"
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
@@ -114,6 +118,48 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           for f in artifacts/PostQuantum.FileEncryption.Hybrid.*.nupkg artifacts/PostQuantum.FileEncryption.Hybrid.*.snupkg; do
+            echo "Pushing $f"
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Wait for Hybrid to be indexed on nuget.org
+        # Same reasoning as the core wait above: the DI extensions nupkg pins BOTH the core
+        # and Hybrid at the same version, so Hybrid must be queryable before the DI package
+        # is pushed or an immediate consumer restore can fail.
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          for i in $(seq 1 30); do
+            if curl -fsSL "https://api.nuget.org/v3-flatcontainer/postquantum.fileencryption.hybrid/index.json" \
+                 | grep -Eq "\"${version}\""; then
+              echo "Hybrid ${version} is indexed."
+              exit 0
+            fi
+            echo "Hybrid ${version} not yet indexed (attempt $i/30); sleeping 10s..."
+            sleep 10
+          done
+          echo "Hybrid ${version} still not indexed after 5 minutes — refusing to push the DI extensions package." >&2
+          exit 1
+
+      - name: Publish the DI extensions package to NuGet
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in artifacts/PostQuantum.FileEncryption.Extensions.DependencyInjection.*.nupkg artifacts/PostQuantum.FileEncryption.Extensions.DependencyInjection.*.snupkg; do
+            echo "Pushing $f"
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Publish the pqfe tool to NuGet
+        # The tool bundles the library in its tools/ payload (PackAsTool), so unlike Hybrid
+        # it has no package dependency on the core and no indexing-order constraint.
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in artifacts/PostQuantum.FileEncryption.Tool.*.nupkg; do
             echo "Pushing $f"
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
