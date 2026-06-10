@@ -8,6 +8,12 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-10
+
+Two new packages join the family — the `pqfe` dotnet tool and the dependency-injection
+extensions — plus live Rust↔.NET interop CI and a round of key-material-hygiene and
+correctness fixes from external review. No format change: `.pqfe` v2 stays frozen.
+
 ### Added
 
 - **`pqfe` ships as an installable dotnet tool** — `samples/Pqfe.Cli` is now packed as
@@ -351,7 +357,8 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.3...v1.0.0
 [1.0.0-rc.3]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.2...v1.0.0-rc.3

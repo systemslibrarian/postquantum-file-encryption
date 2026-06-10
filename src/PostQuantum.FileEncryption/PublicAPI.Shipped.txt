@@ -105,3 +105,5 @@ static PostQuantum.FileEncryption.PqEncryptionOptions.Argon2id.get -> PostQuantu
 static PostQuantum.FileEncryption.PqEncryptionOptions.Default.get -> PostQuantum.FileEncryption.PqEncryptionOptions!
 static PostQuantum.FileEncryption.PqProgress.operator !=(PostQuantum.FileEncryption.PqProgress left, PostQuantum.FileEncryption.PqProgress right) -> bool
 static PostQuantum.FileEncryption.PqProgress.operator ==(PostQuantum.FileEncryption.PqProgress left, PostQuantum.FileEncryption.PqProgress right) -> bool
+PostQuantum.FileEncryption.PqFileDecryptor.DecryptBytes(System.ReadOnlySpan<byte> container, System.ReadOnlySpan<char> passphrase) -> byte[]!
+PostQuantum.FileEncryption.PqFileEncryptor.EncryptBytes(System.ReadOnlySpan<byte> plaintext, System.ReadOnlySpan<char> passphrase) -> byte[]!
