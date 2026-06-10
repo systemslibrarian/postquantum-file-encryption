@@ -74,6 +74,9 @@ also available, with atomic file output and progress reporting.
 X25519 ECDH and ML-KEM-768 encapsulation each produce a shared secret; HKDF-SHA256 combines them
 (`ss_pq ‖ ss_classical`) into a key-wrapping key that AES-256-GCM uses to wrap a random content
 key. See [the format spec](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md)
-(`KeySource = 3` and `4`) and [docs/ROADMAP-v3.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md).
+(`KeySource = 3` and `4`),
+[docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md)
+(design rationale — how this relates to X-Wing, HPKE, and RFC 9794 terminology), and
+[docs/ROADMAP-v3.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md).
 
 *To God be the glory — 1 Corinthians 10:31.*
