@@ -1,12 +1,14 @@
 # PostQuantum.FileEncryption
 
-[![CI](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/ci.yml/badge.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/codeql.yml/badge.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/systemslibrarian/postquantum-file-encryption/badge)](https://securityscorecards.dev/viewer/?uri=github.com/systemslibrarian/postquantum-file-encryption)
+<!-- Badge images are served via img.shields.io so they render on nuget.org,
+     which only displays images from an allow-list of trusted domains. -->
+[![CI](https://img.shields.io/github/actions/workflow/status/systemslibrarian/postquantum-file-encryption/ci.yml?branch=main&label=CI)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/ci.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/systemslibrarian/postquantum-file-encryption/codeql.yml?branch=main&label=CodeQL)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/systemslibrarian/postquantum-file-encryption?label=openssf%20scorecard)](https://securityscorecards.dev/viewer/?uri=github.com/systemslibrarian/postquantum-file-encryption)
 [![codecov](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption/branch/main/graph/badge.svg)](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption)
 [![NuGet](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.svg)](https://www.nuget.org/packages/PostQuantum.FileEncryption/)
 [![NuGet Hybrid](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.Hybrid.svg?label=nuget%20hybrid)](https://www.nuget.org/packages/PostQuantum.FileEncryption.Hybrid/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/LICENSE)
 
 **A high-level, fail-closed file and stream encryptor for .NET — production-ready, frozen
 format, and post-quantum aware.**
