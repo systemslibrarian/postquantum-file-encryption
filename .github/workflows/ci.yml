@@ -117,6 +117,86 @@ jobs:
         working-directory: samples/pqfe-wasm
         run: wasm-pack build --target web --release --out-dir ../pqfe-web/pkg
 
+  interop:
+    name: Cross-implementation interop (.NET ⇄ Rust)
+    # Live byte-compatibility proof: fresh random payloads every run, encrypted by one
+    # implementation and decrypted by the other, in both directions, across chunk-boundary
+    # sizes. Complements the pinned known-answer vectors, which cannot catch drift on
+    # inputs they don't cover. Passphrase key source only — the Rust core does not
+    # implement recipient mode (see KNOWN-GAPS.md).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Rust (stable)
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Build the Rust interop driver
+        working-directory: samples/pqfe-wasm
+        run: cargo build --release --locked --example pqfe_io
+
+      - name: Build the .NET CLI
+        run: dotnet publish samples/Pqfe.Cli/Pqfe.Cli.csproj -c Release -o "$RUNNER_TEMP/pqfe-cli"
+
+      - name: Round-trip fresh payloads in both directions
+        run: |
+          set -euo pipefail
+          DOTNET="$RUNNER_TEMP/pqfe-cli/pqfe"
+          RUST="samples/pqfe-wasm/target/release/examples/pqfe_io"
+          export PQFE_PASS="$(openssl rand -hex 24)"
+
+          # Sizes straddle the 64 KiB chunk boundary plus empty, tiny, and multi-chunk.
+          for size in 0 1 65535 65536 65537 5242880; do
+            head -c "$size" /dev/urandom > "$RUNNER_TEMP/plain.bin"
+
+            "$DOTNET" encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/dotnet.pqfe" --passphrase-env PQFE_PASS
+            "$RUST"   decrypt "$RUNNER_TEMP/dotnet.pqfe" "$RUNNER_TEMP/dotnet.out"
+            cmp "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/dotnet.out"
+
+            "$RUST"   encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/rust.pqfe"
+            "$DOTNET" decrypt "$RUNNER_TEMP/rust.pqfe" "$RUNNER_TEMP/rust.out" --passphrase-env PQFE_PASS
+            cmp "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/rust.out"
+
+            echo "size $size: both directions OK"
+          done
+
+      - name: Argon2id container crosses implementations
+        run: |
+          set -euo pipefail
+          DOTNET="$RUNNER_TEMP/pqfe-cli/pqfe"
+          RUST="samples/pqfe-wasm/target/release/examples/pqfe_io"
+          export PQFE_PASS="$(openssl rand -hex 24)"
+
+          head -c 100000 /dev/urandom > "$RUNNER_TEMP/plain.bin"
+          "$DOTNET" encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/argon.pqfe" --argon2id --passphrase-env PQFE_PASS
+          "$RUST"   decrypt "$RUNNER_TEMP/argon.pqfe" "$RUNNER_TEMP/argon.out"
+          cmp "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/argon.out"
+          echo "Argon2id .NET → Rust OK"
+
+      - name: Fail-closed agreement (wrong passphrase rejected by both)
+        run: |
+          set -euo pipefail
+          DOTNET="$RUNNER_TEMP/pqfe-cli/pqfe"
+          RUST="samples/pqfe-wasm/target/release/examples/pqfe_io"
+          export PQFE_PASS="$(openssl rand -hex 24)"
+          export PQFE_WRONG="not-the-passphrase"
+
+          head -c 4096 /dev/urandom > "$RUNNER_TEMP/plain.bin"
+          "$DOTNET" encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/c.pqfe" --passphrase-env PQFE_PASS
+
+          if PQFE_PASS="$PQFE_WRONG" "$RUST" decrypt "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/x.out"; then
+            echo "Rust accepted a wrong passphrase — fail-closed violation" >&2; exit 1
+          fi
+          "$RUST" encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/r.pqfe"
+          if "$DOTNET" decrypt "$RUNNER_TEMP/r.pqfe" "$RUNNER_TEMP/y.out" --passphrase-env PQFE_WRONG; then
+            echo ".NET accepted a wrong passphrase — fail-closed violation" >&2; exit 1
+          fi
+          echo "Both implementations fail closed on a wrong passphrase"
+
   audit:
     name: Rust — dependency audit
     runs-on: ubuntu-latest
