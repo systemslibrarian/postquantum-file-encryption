@@ -8,8 +8,20 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-12
+
+The security-review release: two independent AI-assisted static self-reviews of the full
+tree were run, published under [docs/audits/](docs/audits/), and every actionable finding
+remediated. The fail-closed contract held against all critical attack classes; what
+follows is availability hardening. No format change: `.pqfe` v2 stays frozen.
+
 ### Added
 
+- **Security-review transparency record** — [docs/audits/](docs/audits/) publishes both
+  self-review reports (clearly labeled as self-review, not an independent audit) with a
+  per-finding disposition table, plus [docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md), the
+  reviewer-facing entry point: the ~1,700-line attack-surface map, the invariants to
+  attack, suggested first questions, and how to run the fail-closed evidence.
 - **`PqDecryptionLimits` — decrypt-time cost ceilings for untrusted input.** A container's
   KDF cost and chunk size are read from its (attacker-controllable) header and honored
   before anything authenticates, so a hostile ~30-byte file could legally demand the format
@@ -20,12 +32,6 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
   conservative preset; the default constructor keeps the permissive format maxima, so
   existing behavior and every legal container are unchanged. Found by static security
   review (finding PQFE-001).
-
-- **[docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md)** — a reviewer-facing entry point to lower
-  the cost of independent review: the ~1,700-line attack-surface map (every
-  security-critical file with its role), the six invariants to attack, suggested first
-  questions, how to run the fail-closed evidence, and how to report. Linked from the
-  README and [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) §6.
 
 ### Fixed
 
@@ -48,8 +54,9 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 - Package-validation baseline bumped from `1.0.0` to `1.1.0`, so binary compatibility is
   now checked against the most recent published release.
-- README and [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) version references brought up
-  to `1.1.0`.
+- README performance section now carries same-machine passphrase *and* hybrid numbers,
+  including the sub-millisecond per-recipient "hybrid tax" measurement
+  ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 
 ## [1.1.0] - 2026-06-10
 

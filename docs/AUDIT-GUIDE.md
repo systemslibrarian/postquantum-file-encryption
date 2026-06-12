@@ -100,7 +100,7 @@ auditor at first:
 
 ```bash
 dotnet build -c Release
-dotnet test  -c Release                  # full suite, 141 tests
+dotnet test  -c Release                  # full suite, 150 tests
 
 # Just the adversarial / fail-closed evidence:
 dotnet test -c Release --filter "FullyQualifiedName~NoOracle|FullyQualifiedName~Fuzz|FullyQualifiedName~ErrorHandling|FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"
@@ -121,12 +121,13 @@ dotnet test -c Release --filter "FullyQualifiedName~NoOracle|FullyQualifiedName~
 
 ## Prior external review
 
-External review has found real issues, and they were fixed and disclosed in the changelog
-rather than quietly patched — see the `1.1.0` *Fixed* section
-([CHANGELOG.md](../CHANGELOG.md)): key-zeroing gaps on early-failure paths, the
-multi-recipient cap being enforced late, and inexact decrypt progress, all from an
-external reading of the code. That is exactly the kind of review this guide is written to
-invite.
+Review has found real issues, and they were fixed and disclosed in the changelog rather
+than quietly patched — see the `1.1.0` *Fixed* section ([CHANGELOG.md](../CHANGELOG.md)):
+key-zeroing gaps on early-failure paths, the multi-recipient cap being enforced late, and
+inexact decrypt progress, all from an external reading of the code. Two AI-assisted static
+self-reviews of the full tree are published in [audits/](audits/) with a per-finding
+disposition table — the `1.2.0` decrypt-time cost ceilings (`PqDecryptionLimits`) came out
+of them. That is exactly the kind of review this guide is written to invite.
 
 ## Reporting and credit
 

@@ -1,14 +1,1 @@
 #nullable enable
-PostQuantum.FileEncryption.PqDecryptionLimits
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2Iterations.get -> int
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2Iterations.init -> void
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2MemoryKiB.get -> int
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2MemoryKiB.init -> void
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxChunkSizeBytes.get -> int
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxChunkSizeBytes.init -> void
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxPbkdf2Iterations.get -> int
-PostQuantum.FileEncryption.PqDecryptionLimits.MaxPbkdf2Iterations.init -> void
-PostQuantum.FileEncryption.PqDecryptionLimits.PqDecryptionLimits() -> void
-PostQuantum.FileEncryption.PqFileDecryptor.PqFileDecryptor(PostQuantum.FileEncryption.PqDecryptionLimits! limits) -> void
-static PostQuantum.FileEncryption.PqDecryptionLimits.Default.get -> PostQuantum.FileEncryption.PqDecryptionLimits!
-static PostQuantum.FileEncryption.PqDecryptionLimits.Untrusted.get -> PostQuantum.FileEncryption.PqDecryptionLimits!

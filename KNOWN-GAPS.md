@@ -5,7 +5,7 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`1.1.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
@@ -20,7 +20,7 @@ Last reviewed against: **`1.1.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   `1.0.0-rc.2` (`PQFE002`) and retained only for source-compatibility. New code must use
   the Hybrid package; the inline mode is targeted for removal in a future major release.
 
-## Resolved since `1.1.0` (unreleased)
+## Resolved in `1.2.0`
 
 - **Decrypt-time cost ceilings.** A container's KDF cost parameters and chunk size are
   honored before anything authenticates, so a hostile ~30-byte header could legally demand
