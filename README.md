@@ -62,6 +62,20 @@ paranoid, fail-closed thing every time.
 For a side-by-side with other encryption libraries and migration guidance, see
 [docs/MIGRATION.md](docs/MIGRATION.md).
 
+### Not the right tool if
+
+Being clear about scope is part of the security contract. Reach for something else when:
+
+- You need **full-disk or volume encryption** — use BitLocker, FileVault, LUKS, or VeraCrypt.
+- You need to **hide metadata** — file names, paths, sizes, and timestamps are *not* protected;
+  plaintext length is revealed to within a chunk (see [KNOWN-GAPS.md](KNOWN-GAPS.md)).
+- You want **key management at rest** (generation, storage, rotation of long-lived keys) — this
+  library encrypts data; pair it with a KMS/HSM via `IContentKeyProvider`.
+- You expect **a standardized, cross-tool container** — `.pqfe` is its own
+  [documented format](docs/FILE-FORMAT.md), not PGP, CMS, age, or JOSE, and will not open in
+  those tools.
+- You need **binary content typing, compression, or de-duplication** — all out of scope by design.
+
 ---
 
 ## Install
@@ -148,6 +162,26 @@ dotnet run --project samples/PostQuantum.FileEncryption.Demo
 It's a **Blazor Server** app on purpose: .NET's `AesGcm` is unsupported in browser
 WebAssembly, so the cryptography runs on the server runtime. (The browser demo above
 sidesteps this with the Rust/WASM core.)
+
+---
+
+## Public API at a glance
+
+The surface is small on purpose — these are the types you actually touch:
+
+| Type | Package | What it does |
+| --- | --- | --- |
+| `PqFileEncryptor` | core | Encrypts files, streams, and bytes with a passphrase or an envelope-key provider. |
+| `PqFileDecryptor` | core | Fail-closed decryption, including `DecryptAtomicAsync` (all-or-nothing streams). |
+| `PqEncryptionOptions` | core | Immutable options (KDF choice, work factor, chunk size) with `WithArgon2id` / `WithPbkdf2` / `WithChunkSize`. |
+| `PqProgress` | core | Progress reporting payload for `IProgress<PqProgress>`. |
+| `IContentKeyProvider` / `LocalKekContentKeyProvider` | core | Envelope encryption seam (KMS/HSM) and a built-in local-KEK implementation. |
+| `PqDecryptionException` / `PqFormatException` | core | Fail-closed signals — generic by design, never a decryption oracle. |
+| `PqHybridEncryptor` / `PqHybridDecryptor` | Hybrid | X25519 + ML-KEM-768 public-key encryption, single- or multi-recipient. |
+| `PqHybridKeyPair` / `PqHybridPublicKey` / `PqHybridPrivateKey` | Hybrid | Hybrid recipient key pair; `Export()` / `Import()` for storage and transport. |
+| `AddPqFileEncryption()` / `AddPqHybridFileEncryption()` | DI Extensions | `IServiceCollection` registration for the encryptor/decryptor pairs. |
+
+Every member is XML-documented; the generated reference lives under [Documentation](#documentation).
 
 ---
 
