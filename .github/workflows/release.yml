@@ -100,16 +100,18 @@ jobs:
           set -euo pipefail
           # Strip the leading "v" from the tag — e.g. v1.0.0-rc.2 → 1.0.0-rc.2.
           version="${GITHUB_REF_NAME#v}"
-          for i in $(seq 1 30); do
+          # 90 × 10s = 15 minutes: the v1.2.0 release hit a slow indexing day where the
+          # previous 5-minute budget expired with the package published but not yet queryable.
+          for i in $(seq 1 90); do
             if curl -fsSL "https://api.nuget.org/v3-flatcontainer/postquantum.fileencryption/index.json" \
                  | grep -Eq "\"${version}\""; then
               echo "Core ${version} is indexed."
               exit 0
             fi
-            echo "Core ${version} not yet indexed (attempt $i/30); sleeping 10s..."
+            echo "Core ${version} not yet indexed (attempt $i/90); sleeping 10s..."
             sleep 10
           done
-          echo "Core ${version} still not indexed after 5 minutes — refusing to push Hybrid." >&2
+          echo "Core ${version} still not indexed after 15 minutes — refusing to push Hybrid." >&2
           exit 1
 
       - name: Publish Hybrid to NuGet
