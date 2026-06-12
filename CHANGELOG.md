@@ -8,6 +8,12 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-12
+
+The reach release: the library family now runs on .NET 8 LTS, and a fifth package adds
+sender authenticity. No format change: `.pqfe` v2 stays frozen, and containers remain
+byte-identical regardless of which target produced them.
+
 ### Added
 
 - **`PostQuantum.FileEncryption.Signing` — detached hybrid signatures.** Encryption proves a
@@ -22,15 +28,7 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
   BouncyCastle (fully managed; runs on `net8.0` and `net10.0`). The sidecar format v1 is
   byte-exactly specified in [docs/SIGNATURE-FORMAT.md](docs/SIGNATURE-FORMAT.md); the
   detached-signature limits (no name/path/time binding, strip-and-resign) are recorded in
-  [KNOWN-GAPS.md](KNOWN-GAPS.md). **No change to the `.pqfe` v2 container format**, which
-  remains FROZEN for the `1.x` line.
-
-## [1.3.0] - 2026-06-12
-
-The reach release: the library family now runs on .NET 8 LTS. No format change: `.pqfe` v2
-stays frozen, and containers remain byte-identical regardless of which target produced them.
-
-### Added
+  [KNOWN-GAPS.md](KNOWN-GAPS.md).
 
 - **.NET 8 (LTS) support.** `PostQuantum.FileEncryption`, `PostQuantum.FileEncryption.Hybrid`,
   and `PostQuantum.FileEncryption.Extensions.DependencyInjection` now multi-target `net8.0`
