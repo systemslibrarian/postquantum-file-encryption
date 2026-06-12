@@ -33,18 +33,18 @@ paranoid, fail-closed thing every time.
   output, cancellation, progress, and zeroable secrets. 150 tests, continuous fuzzing,
   byte-compatible Rust/WASM reference, native-AOT smoke-tested in CI.
 - **Frozen format.** `.pqfe` v2 is pinned by [cross-checked known-answer
-  vectors](docs/TEST-VECTORS.md) and a [conformance specification](docs/CONFORMANCE.md). A
+  vectors](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) and a [conformance specification](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md). A
   file you encrypt today opens with every `1.x` build, on every platform, in either
   implementation.
 - **Locked public API.** `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines every public
   member; `<EnablePackageValidation>` checks binary compatibility against the previous
   release at pack time. Accidental breakage fails the build.
 - **Honest supply chain.** Every release artifact ships with a [CycloneDX
-  SBOM](docs/SUPPLY-CHAIN.md), a [SLSA-style build-provenance
-  attestation](docs/SUPPLY-CHAIN.md#verify-build-provenance-attestation), and SourceLink. The
+  SBOM](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SUPPLY-CHAIN.md), a [SLSA-style build-provenance
+  attestation](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SUPPLY-CHAIN.md#verify-build-provenance-attestation), and SourceLink. The
   release workflow runs `Meziantou.Framework.NuGetPackageValidation` against every `.nupkg`
   before publish.
-- **Honest about limits.** The [Known Gaps](KNOWN-GAPS.md) ledger lists everything that is
+- **Honest about limits.** The [Known Gaps](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) ledger lists everything that is
   not yet done. The library has not been independently audited; engagements are welcome.
 
 ## When to use this
@@ -56,11 +56,11 @@ paranoid, fail-closed thing every time.
   the Hybrid package.
 - You want **enterprise affordances**: telemetry, atomic output, a documented format with
   test vectors, a published threat model, signed releases, and a locked API.
-- You want a [comparison vs. `age`, libsodium, and OpenSSL](docs/COMPARISON.md) before
+- You want a [comparison vs. `age`, libsodium, and OpenSSL](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COMPARISON.md) before
   committing.
 
 For a side-by-side with other encryption libraries and migration guidance, see
-[docs/MIGRATION.md](docs/MIGRATION.md).
+[docs/MIGRATION.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/MIGRATION.md).
 
 ### Not the right tool if
 
@@ -68,11 +68,11 @@ Being clear about scope is part of the security contract. Reach for something el
 
 - You need **full-disk or volume encryption** — use BitLocker, FileVault, LUKS, or VeraCrypt.
 - You need to **hide metadata** — file names, paths, sizes, and timestamps are *not* protected;
-  plaintext length is revealed to within a chunk (see [KNOWN-GAPS.md](KNOWN-GAPS.md)).
+  plaintext length is revealed to within a chunk (see [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md)).
 - You want **key management at rest** (generation, storage, rotation of long-lived keys) — this
   library encrypts data; pair it with a KMS/HSM via `IContentKeyProvider`.
 - You expect **a standardized, cross-tool container** — `.pqfe` is its own
-  [documented format](docs/FILE-FORMAT.md), not PGP, CMS, age, or JOSE, and will not open in
+  [documented format](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md), not PGP, CMS, age, or JOSE, and will not open in
   those tools.
 - You need **binary content typing, compression, or de-duplication** — all out of scope by design.
 
@@ -114,7 +114,7 @@ pqfe encrypt report.pdf report.pdf.pqfe --argon2id     # prompts for a passphras
 pqfe decrypt report.pdf.pqfe report.pdf
 ```
 
-The source lives at [`samples/Pqfe.Cli`](samples/Pqfe.Cli) and is built on the public
+The source lives at [`samples/Pqfe.Cli`](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/samples/Pqfe.Cli) and is built on the public
 API. It's also the canary that proves `IsAotCompatible=true` end-to-end: CI publishes it
 with `PublishAot=true` and round-trips a real file as the smoke test.
 
@@ -131,10 +131,10 @@ dotnet publish samples/Pqfe.Cli -c Release -p:PublishAot=true -o ./bin
 
 ### 2. Browser demo — fully client-side (Rust → WebAssembly)
 
-[`samples/pqfe-web`](samples/pqfe-web) is a static page whose **file never leaves your
+[`samples/pqfe-web`](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/samples/pqfe-web) is a static page whose **file never leaves your
 browser**: a small Rust core compiled to WebAssembly does passphrase-based AES-256-GCM
 locally. It's hostable on **GitHub Pages** with no server (see the
-[Pages workflow](.github/workflows/pages.yml)).
+[Pages workflow](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/.github/workflows/pages.yml)).
 
 ```bash
 cd samples/pqfe-wasm
@@ -150,7 +150,7 @@ the browser opens with the library, and vice versa.
 
 ### 3. .NET demo — runs the real library (Blazor Server)
 
-[`samples/PostQuantum.FileEncryption.Demo`](samples/PostQuantum.FileEncryption.Demo)
+[`samples/PostQuantum.FileEncryption.Demo`](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/samples/PostQuantum.FileEncryption.Demo)
 exercises the actual library through a web UI. Files are processed **in memory and never
 written to disk**.
 
@@ -318,7 +318,7 @@ await new PqFileDecryptor().DecryptAtomicAsync(input, output, passphrase);
 Prefer this (or the file API, which is atomic via temp-file-plus-rename) for stream input
 you don't control: plain `DecryptAsync(Stream, Stream, …)` writes each chunk as it
 authenticates, so a truncated container can emit an authentic plaintext *prefix* before the
-failure is raised (see [KNOWN-GAPS.md](KNOWN-GAPS.md)).
+failure is raised (see [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md)).
 
 ### Decrypting untrusted input — cost ceilings
 
@@ -340,7 +340,7 @@ container still opens.
 Encrypt under an external key provider so the master key never enters your process. A
 built-in, dependency-free local-KEK provider is included; cloud providers (AWS KMS, Azure
 Key Vault, …) implement the same `IContentKeyProvider` interface in separate packages — see
-the [`1.x` minor roadmap](ROADMAP.md#after-10--1x-minor-work).
+the [`1.x` minor roadmap](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/ROADMAP.md#after-10--1x-minor-work).
 
 ```csharp
 using var provider = LocalKekContentKeyProvider.Generate();   // or new(kek), or a KMS-backed provider
@@ -348,14 +348,14 @@ byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, provide
 byte[] plaintext = await new PqFileDecryptor().DecryptBytesAsync(container, provider);
 ```
 
-See [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md).
+See [docs/KEY-MANAGEMENT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-MANAGEMENT.md).
 
 ### Telemetry (SIEM / OpenTelemetry)
 
 The library emits non-sensitive events on an `EventSource` named
 `PostQuantum.FileEncryption` (operation, KDF/key-source label, byte counts, elapsed time,
 failure category — **never** keys or plaintext). Subscribe via `EventListener`,
-`dotnet-trace`, EventPipe, or OpenTelemetry. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+`dotnet-trace`, EventPipe, or OpenTelemetry. See [docs/DEPLOYMENT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/DEPLOYMENT.md).
 
 ---
 
@@ -385,23 +385,23 @@ PostQuantum.FileEncryption is built to be **boring and predictable** where it ma
 
 For deeper references:
 
-- [SECURITY.md](SECURITY.md) — supported versions, disclosure process, and the explicit
+- [SECURITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/SECURITY.md) — supported versions, disclosure process, and the explicit
   *"does NOT defend against"* list
-- [KNOWN-GAPS.md](KNOWN-GAPS.md) — the honest open-issues ledger
-- [docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md) — the reviewer's entry point: the ~1,700-line
+- [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) — the honest open-issues ledger
+- [docs/AUDIT-GUIDE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/AUDIT-GUIDE.md) — the reviewer's entry point: the ~1,700-line
   attack surface, the invariants to attack, and how to run the evidence
-- [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
-- [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) — the on-disk container specification
-- [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) — the X25519 + ML-KEM-768 combiner,
+- [docs/THREAT-MODEL.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
+- [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) — the on-disk container specification
+- [docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md) — the X25519 + ML-KEM-768 combiner,
   vs. X-Wing / HPKE / RFC 9794
-- [docs/CONFORMANCE.md](docs/CONFORMANCE.md) — the contract another implementation must meet
-- [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) — pinned known-answer vectors
+- [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) — the contract another implementation must meet
+- [docs/TEST-VECTORS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) — pinned known-answer vectors
 
 > Cryptographic software earns trust slowly. This library has **not been independently
-> audited**; please review the code, the format, and [KNOWN-GAPS.md](KNOWN-GAPS.md) before
+> audited**; please review the code, the format, and [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) before
 > depending on it. Funded audit engagements are welcome — contact the maintainer.
 > A criteria-by-criteria self-assessment — including what's still missing — is published
-> at [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md).
+> at [docs/GOLD-STANDARD.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/GOLD-STANDARD.md).
 
 ---
 
@@ -439,7 +439,7 @@ byte[] container = await new PqHybridEncryptor().EncryptBytesAsync(secret, recip
 byte[] plaintext = await new PqHybridDecryptor().DecryptBytesAsync(container, keyPair.PrivateKey);
 ```
 
-Design and format details: [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md).
+Design and format details: [docs/ROADMAP-v3.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md).
 
 ---
 
@@ -466,7 +466,7 @@ dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~Cr
 ```
 
 The full verification recipe — including how to re-run conformance vectors against the
-Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md).
+Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SUPPLY-CHAIN.md).
 
 ---
 
@@ -474,30 +474,30 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](docs/SUPPLY-
 
 | Topic | Doc |
 | --- | --- |
-| Roadmap (`1.0` / `1.x` / beyond) | [ROADMAP.md](ROADMAP.md) |
-| Changelog | [CHANGELOG.md](CHANGELOG.md) |
-| Migrating from other libraries (age / libsodium / OpenSSL / .NET) | [docs/MIGRATION.md](docs/MIGRATION.md) |
-| Comparison vs. age / libsodium / OpenSSL | [docs/COMPARISON.md](docs/COMPARISON.md) |
-| Benchmarks (methodology + reproduce-it-yourself) | [docs/BENCHMARKS.md](docs/BENCHMARKS.md) |
-| Security policy & disclosure | [SECURITY.md](SECURITY.md) |
-| Threat model (assets, adversaries, audit focus) | [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) |
-| Auditor's guide (attack surface, invariants, evidence) | [docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md) |
-| Security reviews (reports + per-finding dispositions) | [docs/audits/](docs/audits/) |
-| Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md) |
-| On-disk container format | [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) |
-| Hybrid combiner rationale (vs. X-Wing, HPKE, RFC 9794) | [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) |
-| Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](docs/CONFORMANCE.md) |
-| Known-answer test vectors | [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md) |
-| Supply chain (SBOM, attestations, verification) | [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md) |
-| Gold-standard self-assessment (incl. open gaps) | [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) |
-| Reproducible builds (verify the .nupkg against the source) | [docs/REPRODUCIBLE-BUILDS.md](docs/REPRODUCIBLE-BUILDS.md) |
-| Deployment & hardening | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
-| Versioning & compatibility policy | [docs/VERSIONING.md](docs/VERSIONING.md) |
-| Key management (KMS/HSM, rotation) — design | [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md) |
-| Hybrid & multi-recipient — design | [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) |
-| Fuzzing (cargo-fuzz + SharpFuzz + OSS-Fuzz) | [docs/FUZZING.md](docs/FUZZING.md) |
-| Known gaps (the honest ledger) | [KNOWN-GAPS.md](KNOWN-GAPS.md) |
-| Support & lifecycle | [SUPPORT.md](SUPPORT.md) · Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Roadmap (`1.0` / `1.x` / beyond) | [ROADMAP.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/ROADMAP.md) |
+| Changelog | [CHANGELOG.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/CHANGELOG.md) |
+| Migrating from other libraries (age / libsodium / OpenSSL / .NET) | [docs/MIGRATION.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/MIGRATION.md) |
+| Comparison vs. age / libsodium / OpenSSL | [docs/COMPARISON.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COMPARISON.md) |
+| Benchmarks (methodology + reproduce-it-yourself) | [docs/BENCHMARKS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/BENCHMARKS.md) |
+| Security policy & disclosure | [SECURITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/SECURITY.md) |
+| Threat model (assets, adversaries, audit focus) | [docs/THREAT-MODEL.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/THREAT-MODEL.md) |
+| Auditor's guide (attack surface, invariants, evidence) | [docs/AUDIT-GUIDE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/AUDIT-GUIDE.md) |
+| Security reviews (reports + per-finding dispositions) | [docs/audits/](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/docs/audits) |
+| Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SECURITY-ARCHITECTURE.md) |
+| On-disk container format | [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) |
+| Hybrid combiner rationale (vs. X-Wing, HPKE, RFC 9794) | [docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md) |
+| Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) |
+| Known-answer test vectors | [docs/TEST-VECTORS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) |
+| Supply chain (SBOM, attestations, verification) | [docs/SUPPLY-CHAIN.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SUPPLY-CHAIN.md) |
+| Gold-standard self-assessment (incl. open gaps) | [docs/GOLD-STANDARD.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/GOLD-STANDARD.md) |
+| Reproducible builds (verify the .nupkg against the source) | [docs/REPRODUCIBLE-BUILDS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/REPRODUCIBLE-BUILDS.md) |
+| Deployment & hardening | [docs/DEPLOYMENT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/DEPLOYMENT.md) |
+| Versioning & compatibility policy | [docs/VERSIONING.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/VERSIONING.md) |
+| Key management (KMS/HSM, rotation) — design | [docs/KEY-MANAGEMENT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-MANAGEMENT.md) |
+| Hybrid & multi-recipient — design | [docs/ROADMAP-v3.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md) |
+| Fuzzing (cargo-fuzz + SharpFuzz + OSS-Fuzz) | [docs/FUZZING.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FUZZING.md) |
+| Known gaps (the honest ledger) | [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) |
+| Support & lifecycle | [SUPPORT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/SUPPORT.md) · Contributing: [CONTRIBUTING.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/CONTRIBUTING.md) |
 
 API reference (DocFX) is generated from the XML docs — see `docfx/`.
 
@@ -539,7 +539,7 @@ design; raise/lower it (or pick Argon2id) via `PqEncryptionOptions` to trade har
 speed.
 
 Full methodology, hybrid/multi-recipient numbers, and how to compare fairly against
-other tools: [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+other tools: [docs/BENCHMARKS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/BENCHMARKS.md).
 
 ---
 
@@ -580,7 +580,7 @@ dotnet pack  src/PostQuantum.FileEncryption -c Release
 
 ## License
 
-[MIT](LICENSE).
+[MIT](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/LICENSE).
 
 ---
 
