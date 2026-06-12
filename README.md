@@ -5,7 +5,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/systemslibrarian/postquantum-file-encryption/ci.yml?branch=main&label=CI)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/ci.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/systemslibrarian/postquantum-file-encryption/codeql.yml?branch=main&label=CodeQL)](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/systemslibrarian/postquantum-file-encryption?label=openssf%20scorecard)](https://securityscorecards.dev/viewer/?uri=github.com/systemslibrarian/postquantum-file-encryption)
-[![codecov](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption/branch/main/graph/badge.svg)](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption)
+[![codecov](https://img.shields.io/codecov/c/github/systemslibrarian/postquantum-file-encryption/main?label=codecov)](https://codecov.io/gh/systemslibrarian/postquantum-file-encryption)
 [![NuGet](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.svg)](https://www.nuget.org/packages/PostQuantum.FileEncryption/)
 [![NuGet Hybrid](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.Hybrid.svg?label=nuget%20hybrid)](https://www.nuget.org/packages/PostQuantum.FileEncryption.Hybrid/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/LICENSE)
@@ -18,7 +18,7 @@ chunked, streaming encryption with strong, modern defaults. You should not have 
 cryptographic spec to protect a file: call a method, and the library does the careful,
 paranoid, fail-closed thing every time.
 
-> **Status: `1.2.0` — stable release.**
+> **Status: `1.2.1` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -82,14 +82,14 @@ Being clear about scope is part of the security contract. Reach for something el
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.2.0
+dotnet add package PostQuantum.FileEncryption --version 1.2.1
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.2.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.2.1
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.2.0
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.2.1
 ```
 
 Targets **.NET 10** (`net10.0`). Core depends only on
@@ -424,7 +424,7 @@ Be clear-eyed about what *post-quantum* means here today:
   since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.2.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.2.1
 ```
 
 ```csharp
@@ -455,11 +455,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.2.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.2.1.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.2.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.2.1 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"

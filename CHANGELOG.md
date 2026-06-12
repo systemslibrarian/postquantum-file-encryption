@@ -8,6 +8,19 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-06-12
+
+Packaging-only patch — no code change; binaries are identical to `1.2.0` apart from the
+version stamp.
+
+### Fixed
+
+- **The packed README now renders correctly on nuget.org.** Relative documentation links
+  (`docs/*`, `KNOWN-GAPS.md`, `samples/*`) were dead on the package page because nuget.org
+  renders the README with no repository context; every link is now an absolute
+  `github.com` URL. The codecov badge is now served via `img.shields.io` like the other
+  badges, so no image falls outside nuget.org's trusted-domain allow-list.
+
 ## [1.2.0] - 2026-06-12
 
 The security-review release: two independent AI-assisted static self-reviews of the full
