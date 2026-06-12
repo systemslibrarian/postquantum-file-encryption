@@ -8,6 +8,29 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Added
+
+- **[docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md)** — a reviewer-facing entry point to lower
+  the cost of independent review: the ~1,700-line attack-surface map (every
+  security-critical file with its role), the six invariants to attack, suggested first
+  questions, how to run the fail-closed evidence, and how to report. Linked from the
+  README and [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) §6.
+
+### Fixed
+
+- **The hybrid benchmarks never ran.** `benchmarks/.../Program.cs` registered only
+  `ThroughputBenchmarks` with the `BenchmarkSwitcher`, so `HybridThroughputBenchmarks`
+  (added in 1.1.0) was silently skipped everywhere, including the weekly benchmark CI.
+  Both classes are now registered, and the first measured hybrid numbers are published in
+  [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
+### Changed
+
+- Package-validation baseline bumped from `1.0.0` to `1.1.0`, so binary compatibility is
+  now checked against the most recent published release.
+- README and [docs/GOLD-STANDARD.md](docs/GOLD-STANDARD.md) version references brought up
+  to `1.1.0`.
+
 ## [1.1.0] - 2026-06-10
 
 Two new packages join the family — the `pqfe` dotnet tool and the dependency-injection

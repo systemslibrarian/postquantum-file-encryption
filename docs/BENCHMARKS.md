@@ -31,20 +31,39 @@ regression record.
 
 ## Indicative numbers
 
-Measured on a shared GitHub Codespace (x64, hardware AES); 16 MiB payloads, one KDF
-derivation included per operation. Treat as rough:
+Measured 2026-06-12 on a Windows 11 x64 machine (hardware AES, .NET 10.0.8, BenchmarkDotNet
+in-process toolchain). All rows come from **the same machine in the same session**, so the
+cross-mode comparisons below are meaningful even though the absolute numbers will differ
+on your hardware. 16 MiB payloads; every operation includes its full key establishment:
 
-| Operation | Key establishment | Approx. throughput |
-| --------- | --- | ------------------ |
-| Encrypt | PBKDF2 (100k) | ~210 MiB/s |
-| Decrypt | PBKDF2 (100k) | ~300 MiB/s |
-| Encrypt | Argon2id (8 MiB, 1 pass) | ~390 MiB/s |
-| Decrypt | Argon2id (8 MiB, 1 pass) | ~450 MiB/s |
+| Operation | Key establishment | Mean | Approx. throughput |
+| --------- | --- | ---: | ------------------ |
+| Encrypt | PBKDF2 (100k) | 23.7 ms | ~675 MiB/s |
+| Decrypt | PBKDF2 (100k) | 21.2 ms | ~755 MiB/s |
+| Encrypt | Argon2id (8 MiB, 1 pass) | 44.1 ms | ~360 MiB/s |
+| Decrypt | Argon2id (8 MiB, 1 pass) | 29.2 ms | ~550 MiB/s |
+| Encrypt | Hybrid (X25519 + ML-KEM-768), 1 recipient | 16.8 ms | ~955 MiB/s |
+| Decrypt | Hybrid, 1 recipient | 13.5 ms | ~1.16 GiB/s |
+| Encrypt | Hybrid, 10 recipients | 21.6 ms | ~740 MiB/s |
+| Decrypt | Hybrid, 10 recipients (last key — worst case) | 13.3 ms | ~1.18 GiB/s |
+| Generate | Hybrid key pair | < 0.1 ms | — |
 
-Hybrid-mode numbers (single and 10-recipient) are produced by the same suite; the first
-published set will land with the next weekly CI run — check the latest
+**The "hybrid tax" is sub-millisecond.** The slope between the 1- and 10-recipient encrypt
+rows puts the *entire* hybrid key establishment — ML-KEM-768 encapsulation **plus** X25519
+agreement plus HKDF plus the AES-GCM key wrap — at **~0.5 ms per recipient**, a fixed
+per-file cost independent of payload size; the post-quantum share of it is strictly less.
+Hybrid public-key encryption is *faster* end-to-end than passphrase mode because a KEM is
+cheap while a KDF is expensive on purpose. Worst-case multi-recipient decryption (the
+last of 10 keys, nine failed unwraps first) was statistically indistinguishable from
+single-recipient decryption.
+
+The weekly CI run (`.github/workflows/benchmarks.yml`) attaches full reports as artifacts —
+that history is the regression record; check the latest
 [Benchmarks workflow artifacts](https://github.com/systemslibrarian/postquantum-file-encryption/actions/workflows/benchmarks.yml)
-for current reports.
+for current reports. (Note: hybrid numbers earlier than 2026-06-12 do not exist — a
+benchmark-switcher registration bug, fixed in the same change that published this table,
+had silently excluded `HybridThroughputBenchmarks` from every prior run. See the
+changelog.)
 
 ## How to read the numbers
 

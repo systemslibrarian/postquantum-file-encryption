@@ -6,7 +6,7 @@ validation — the point of publishing it is that every claim below is checkable
 is named, and the list of what's *missing* is as load-bearing as the list of what's done.
 
 Status legend: ✅ done and verifiable · ⚠️ partial, with the limitation stated · ❌ not
-done. Last reviewed against: **`1.0.1`**.
+done. Last reviewed against: **`1.1.0`**.
 
 ## 1. Cryptographic design
 
@@ -26,8 +26,8 @@ done. Last reviewed against: **`1.0.1`**.
 | Criterion | Status | Evidence |
 | --- | --- | --- |
 | Warnings as errors, latest-recommended analyzers | ✅ | `Directory.Build.props` |
-| Public API surface locked against accidental breaks | ✅ | PublicApiAnalyzers, `PublicAPI.Shipped.txt` in both packages |
-| Binary compatibility validated against the published baseline | ✅ | `EnablePackageValidation` vs. 1.0.0 |
+| Public API surface locked against accidental breaks | ✅ | PublicApiAnalyzers, `PublicAPI.Shipped.txt` in all three library packages |
+| Binary compatibility validated against the published baseline | ✅ | `EnablePackageValidation` vs. 1.1.0 |
 | Key material zeroed (`CryptographicOperations.ZeroMemory` in `finally`) | ✅ | Throughout `Internal/`; reviewed per change |
 | AOT/trim compatible, proven end-to-end | ✅ | `IsAotCompatible` + CI native-AOT publish & round-trip smoke test |
 | Async + cancellation honored on all I/O | ✅ | Public API contract; cancellation cleanup tests |
@@ -73,7 +73,7 @@ done. Last reviewed against: **`1.0.1`**.
 
 | Criterion | Status | Evidence |
 | --- | --- | --- |
-| Independent cryptographic audit | ❌ | **Not performed.** The project cannot self-fund one; applications to funded-audit programs (OSTIF, GitHub Secure Open Source Fund) are the active path. A scoped audit brief — combiner, multi-recipient logic, container parsing — is effectively pre-written across [HYBRID-COMBINER.md](HYBRID-COMBINER.md) and [THREAT-MODEL.md](THREAT-MODEL.md). Funded engagements welcome: see [SECURITY.md](../SECURITY.md). |
+| Independent cryptographic audit | ❌ | **Not performed.** The project cannot self-fund one; applications to funded-audit programs (OSTIF, GitHub Secure Open Source Fund, NLnet/NGI Zero) are the active path. The reviewer's entry point — attack-surface map, invariants to attack, suggested first questions — is published as [AUDIT-GUIDE.md](AUDIT-GUIDE.md), alongside [HYBRID-COMBINER.md](HYBRID-COMBINER.md) and [THREAT-MODEL.md](THREAT-MODEL.md). Funded engagements welcome: see [SECURITY.md](../SECURITY.md). |
 | External adoption / production case studies | ❌ | None published yet |
 | Bug bounty | ❌ | No paid bounty; private disclosure + public credit offered |
 

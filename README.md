@@ -18,7 +18,7 @@ chunked, streaming encryption with strong, modern defaults. You should not have 
 cryptographic spec to protect a file: call a method, and the library does the careful,
 paranoid, fail-closed thing every time.
 
-> **Status: `1.0.1` — stable release.**
+> **Status: `1.1.0` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -30,7 +30,7 @@ paranoid, fail-closed thing every time.
 ## Why this library
 
 - **Production-ready core.** Authenticated AES-256-GCM with chunked streaming, atomic file
-  output, cancellation, progress, and zeroable secrets. 106+ tests, continuous fuzzing,
+  output, cancellation, progress, and zeroable secrets. 141 tests, continuous fuzzing,
   byte-compatible Rust/WASM reference, native-AOT smoke-tested in CI.
 - **Frozen format.** `.pqfe` v2 is pinned by [cross-checked known-answer
   vectors](docs/TEST-VECTORS.md) and a [conformance specification](docs/CONFORMANCE.md). A
@@ -68,14 +68,14 @@ For a side-by-side with other encryption libraries and migration guidance, see
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.0.1
+dotnet add package PostQuantum.FileEncryption --version 1.1.0
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.1.0
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.0.1
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.1.0
 ```
 
 Targets **.NET 10** (`net10.0`). Core depends only on
@@ -331,6 +331,8 @@ For deeper references:
 - [SECURITY.md](SECURITY.md) — supported versions, disclosure process, and the explicit
   *"does NOT defend against"* list
 - [KNOWN-GAPS.md](KNOWN-GAPS.md) — the honest open-issues ledger
+- [docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md) — the reviewer's entry point: the ~1,700-line
+  attack surface, the invariants to attack, and how to run the evidence
 - [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
 - [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) — the on-disk container specification
 - [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) — the X25519 + ML-KEM-768 combiner,
@@ -365,7 +367,7 @@ Be clear-eyed about what *post-quantum* means here today:
   since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.0.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.1.0
 ```
 
 ```csharp
@@ -396,11 +398,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.0.1.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.1.0.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.0.1 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.1.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"
@@ -422,6 +424,7 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](docs/SUPPLY-
 | Benchmarks (methodology + reproduce-it-yourself) | [docs/BENCHMARKS.md](docs/BENCHMARKS.md) |
 | Security policy & disclosure | [SECURITY.md](SECURITY.md) |
 | Threat model (assets, adversaries, audit focus) | [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) |
+| Auditor's guide (attack surface, invariants, evidence) | [docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md) |
 | Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md) |
 | On-disk container format | [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) |
 | Hybrid combiner rationale (vs. X-Wing, HPKE, RFC 9794) | [docs/HYBRID-COMBINER.md](docs/HYBRID-COMBINER.md) |
@@ -448,16 +451,24 @@ Throughput is dominated by two things: the **AES-256-GCM data plane** (which use
 AES and runs at multiple GB/s) and a **one-time key derivation** per file (a deliberate
 cost that hardens passphrases). The bigger the file, the more the KDF amortizes.
 
-Indicative end-to-end numbers (16 MiB, *including* one KDF derivation), measured with the
-included BenchmarkDotNet project on a shared GitHub Codespace — treat as rough, not
-lab-grade:
+Indicative end-to-end numbers (16 MiB, *including* full key establishment), measured with
+the included BenchmarkDotNet project on one Windows 11 x64 machine in one session — treat
+as rough, not lab-grade:
 
-| Operation | KDF | Approx. throughput |
+| Operation | Key establishment | Approx. throughput |
 | --------- | --- | ------------------ |
-| Encrypt   | PBKDF2 (100k) | ~210 MiB/s |
-| Decrypt   | PBKDF2 (100k) | ~300 MiB/s |
-| Encrypt   | Argon2id (8 MiB, 1 pass) | ~390 MiB/s |
-| Decrypt   | Argon2id (8 MiB, 1 pass) | ~450 MiB/s |
+| Encrypt   | PBKDF2 (100k) | ~675 MiB/s |
+| Decrypt   | PBKDF2 (100k) | ~755 MiB/s |
+| Encrypt   | Argon2id (8 MiB, 1 pass) | ~360 MiB/s |
+| Decrypt   | Argon2id (8 MiB, 1 pass) | ~550 MiB/s |
+| Encrypt   | Hybrid (X25519 + ML-KEM-768), 1 recipient | ~955 MiB/s |
+| Decrypt   | Hybrid, 1 recipient | ~1.16 GiB/s |
+
+**The post-quantum "hybrid tax" is sub-millisecond.** The entire hybrid key establishment
+— ML-KEM-768 *plus* X25519, HKDF, and the key wrap — measures ~0.5 ms per recipient, a
+fixed per-file cost independent of payload size. Hybrid public-key encryption is *faster*
+end-to-end than passphrase mode, because a KEM is cheap while a KDF is expensive on
+purpose.
 
 Run it yourself (and tune the KDF cost):
 
