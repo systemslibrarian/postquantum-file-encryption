@@ -112,6 +112,19 @@ Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   the final frame leaves earlier (authentic) chunks already emitted. The **file** APIs avoid
   this with temp-file-plus-atomic-move; stream callers who need strict atomicity should buffer.
 - **No compression, no deduplication, no key files.** Out of scope.
+- **Signatures are detached, with the standard detached-signature limits.** The Signing
+  package (`PostQuantum.FileEncryption.Signing`, Ed25519 + ML-DSA-65 over a SHA-512 pre-hash)
+  proves *who signed the bytes*, but a `.sig` sidecar is not bound to a file name, path, or
+  time, and it cannot prevent **strip-and-resign**: anyone able to read the bytes can discard
+  the sidecar and sign the same bytes with their own key. Authenticity is anchored in which
+  public key the verifier trusts — distribute public keys over a trusted channel. Signatures
+  *embedded in the container* (which would also authenticate the signer to the decryptor)
+  require a format change and are a candidate for a future `2.0`. See
+  [docs/SIGNATURE-FORMAT.md](docs/SIGNATURE-FORMAT.md).
+- **Containers are not sender-authenticated by encryption alone.** AES-GCM proves a container
+  was not altered after creation, and recipient encryption proves only that the sender knew
+  the recipient's *public* key — which is public. Use the Signing package when "who produced
+  this file" matters.
 - **Atomic-write temp-file cleanup is best-effort.** The file-API write path stages every byte
   in a sibling temp file and only `File.Move`s it into place on full success; on any failure
   (crypto, format, I/O, cancellation) the temp file's deletion is *attempted* but swallows

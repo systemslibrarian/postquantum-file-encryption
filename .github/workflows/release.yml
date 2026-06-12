@@ -42,6 +42,7 @@ jobs:
         run: |
           dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj --configuration Release -o artifacts
+          dotnet pack src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj --configuration Release -o artifacts
           dotnet pack samples/Pqfe.Cli/Pqfe.Cli.csproj --configuration Release -o artifacts
 
@@ -62,6 +63,7 @@ jobs:
           dotnet tool install --global CycloneDX
           dotnet CycloneDX src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj -o artifacts --json --filename sbom.core.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj -o artifacts --json --filename sbom.hybrid.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj -o artifacts --json --filename sbom.signing.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj -o artifacts --json --filename sbom.di.cdx.json
           dotnet CycloneDX samples/Pqfe.Cli/Pqfe.Cli.csproj -o artifacts --json --filename sbom.tool.cdx.json
 
@@ -82,13 +84,13 @@ jobs:
         # a same-version PackageReference on pack), and a consumer's restore of Hybrid will fail
         # if it cannot resolve the core. The shell glob would alphabetically order core before
         # Hybrid (".nupkg" sorts before ".Hybrid"), but the order is incidental — make it explicit.
-        # Excludes anything matching *Hybrid*, *Extensions*, or *Tool* from this step.
+        # Excludes anything matching *Hybrid*, *Signing*, *Extensions*, or *Tool* from this step.
         if: ${{ env.NUGET_API_KEY != '' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           for f in artifacts/PostQuantum.FileEncryption.*.nupkg artifacts/PostQuantum.FileEncryption.*.snupkg; do
-            case "$f" in *Hybrid*|*Extensions*|*Tool*) continue ;; esac
+            case "$f" in *Hybrid*|*Signing*|*Extensions*|*Tool*) continue ;; esac
             echo "Pushing $f"
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
@@ -123,6 +125,18 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           for f in artifacts/PostQuantum.FileEncryption.Hybrid.*.nupkg artifacts/PostQuantum.FileEncryption.Hybrid.*.snupkg; do
+            echo "Pushing $f"
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Publish Signing to NuGet
+        # Signing pins only the core (same-version PackageReference on pack), so it needs the
+        # core indexed — already guaranteed above — but has no ordering constraint vs Hybrid.
+        if: ${{ env.NUGET_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in artifacts/PostQuantum.FileEncryption.Signing.*.nupkg artifacts/PostQuantum.FileEncryption.Signing.*.snupkg; do
             echo "Pushing $f"
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done

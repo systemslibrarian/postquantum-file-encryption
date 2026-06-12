@@ -58,6 +58,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PostQuantum.FileEncryption.Tests" />
     <InternalsVisibleTo Include="PostQuantum.FileEncryption.Hybrid" />
+    <InternalsVisibleTo Include="PostQuantum.FileEncryption.Signing" />
   </ItemGroup>
 
 </Project>

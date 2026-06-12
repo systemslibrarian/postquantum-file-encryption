@@ -98,6 +98,9 @@ dotnet add package PostQuantum.FileEncryption --version 1.3.0
 # Add this only if you need public-key (recipient) encryption
 dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
 
+# Optional: detached Ed25519 + ML-DSA-65 signatures (sender authenticity)
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.3.0
+
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
 dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.3.0
@@ -266,6 +269,27 @@ combiner** that keeps the content key safe if either X25519 or ML-KEM is later b
 > the core package are **deprecated (`PQFE002`)** and retained for source-compatibility
 > only. Migrate to the Hybrid package shown above.
 
+### Detached signatures — use `PostQuantum.FileEncryption.Signing`
+
+Encryption proves a container wasn't altered; a signature proves **who produced it**. The
+Signing package signs any file or stream with **Ed25519 + ML-DSA-65 (FIPS 204) together**
+and writes a small detached `.sig` sidecar — unforgeable even if either algorithm is later
+broken, and constant-memory for files of any size (streaming SHA-512 pre-hash).
+
+```csharp
+using PostQuantum.FileEncryption.Signing;
+
+using var keyPair = PqSigningKeyPair.Generate();
+
+// Sign the finished container; verification is fail-closed (throws on any mismatch):
+await new PqSigner().SignFileAsync("report.pdf.pqfe", "report.pdf.pqfe.sig", keyPair.PrivateKey);
+await new PqVerifier().VerifyFileAsync("report.pdf.pqfe", "report.pdf.pqfe.sig", keyPair.PublicKey);
+```
+
+The sidecar format is versioned and byte-exactly specified in
+[docs/SIGNATURE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SIGNATURE-FORMAT.md);
+the `.pqfe` v2 container format itself is unchanged and stays **FROZEN**.
+
 ### Streams
 
 ```csharp
@@ -404,6 +428,8 @@ For deeper references:
   attack surface, the invariants to attack, and how to run the evidence
 - [docs/THREAT-MODEL.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
 - [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) — the on-disk container specification
+- [docs/SIGNATURE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SIGNATURE-FORMAT.md) — the detached `.sig` sidecar specification
+  (Ed25519 + ML-DSA-65)
 - [docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md) — the X25519 + ML-KEM-768 combiner,
   vs. X-Wing / HPKE / RFC 9794
 - [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) — the contract another implementation must meet
@@ -497,6 +523,7 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](https://gith
 | Security reviews (reports + per-finding dispositions) | [docs/audits/](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/docs/audits) |
 | Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SECURITY-ARCHITECTURE.md) |
 | On-disk container format | [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) |
+| Detached-signature sidecar format | [docs/SIGNATURE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SIGNATURE-FORMAT.md) |
 | Hybrid combiner rationale (vs. X-Wing, HPKE, RFC 9794) | [docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md) |
 | Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) |
 | Known-answer test vectors | [docs/TEST-VECTORS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) |

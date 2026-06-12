@@ -8,6 +8,23 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Added
+
+- **`PostQuantum.FileEncryption.Signing` — detached hybrid signatures.** Encryption proves a
+  container wasn't altered; a signature proves *who produced it*. `PqSigner`/`PqVerifier`
+  sign any file, stream, or buffer with **Ed25519 + ML-DSA-65 (FIPS 204) together** — both
+  components must verify, so a signature stays unforgeable if either algorithm is later
+  broken — and write a 3,379-byte detached `.sig` sidecar (atomic file output). The content
+  is pre-hashed with streaming SHA-512, so signing runs in constant memory for inputs of any
+  size. Verification is fail-closed: structural problems raise `PqFormatException` before any
+  cryptographic work, and every cryptographic mismatch raises the same generic
+  `PqSignatureException` (no oracle for which component failed). Both primitives come from
+  BouncyCastle (fully managed; runs on `net8.0` and `net10.0`). The sidecar format v1 is
+  byte-exactly specified in [docs/SIGNATURE-FORMAT.md](docs/SIGNATURE-FORMAT.md); the
+  detached-signature limits (no name/path/time binding, strip-and-resign) are recorded in
+  [KNOWN-GAPS.md](KNOWN-GAPS.md). **No change to the `.pqfe` v2 container format**, which
+  remains FROZEN for the `1.x` line.
+
 ## [1.3.0] - 2026-06-12
 
 The reach release: the library family now runs on .NET 8 LTS. No format change: `.pqfe` v2

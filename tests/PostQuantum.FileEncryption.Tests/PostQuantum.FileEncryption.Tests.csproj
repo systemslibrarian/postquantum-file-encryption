@@ -28,6 +28,7 @@
     <ProjectReference Include="../../src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />
   </ItemGroup>
 
 </Project>
