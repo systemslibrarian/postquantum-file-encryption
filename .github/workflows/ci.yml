@@ -30,7 +30,10 @@ jobs:
 
       - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
-          dotnet-version: '10.0.x'
+          # 8.0.x provides the runtime for the net8.0 test leg; 10.0.x is the build SDK.
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore

@@ -32,7 +32,10 @@ exists, the engine is self-contained behind the `IPqContainerCodec` seam. See
 
 ## Code conventions
 
-- **Target:** `net10.0` only. `Nullable` and `ImplicitUsings` are on.
+- **Targets:** `net8.0` and `net10.0` (multi-targeted). `Nullable` and `ImplicitUsings` are on.
+  The public API surface must stay identical across both targets; net10-only platform crypto
+  (e.g. `System.Security.Cryptography.MLKem`) is gated with `#if NET10_0_OR_GREATER` and the
+  net8.0 path fails closed with `PlatformNotSupportedException` / `IsSupported == false`.
 - **Warnings are errors.** `TreatWarningsAsErrors` and `latest-recommended` analysis are set
   in `Directory.Build.props`. Fix the cause; suppress only with a written justification.
 - **Public API is fully XML-documented**, including remarks on security-relevant behavior.

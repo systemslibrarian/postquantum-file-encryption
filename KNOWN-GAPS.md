@@ -147,7 +147,13 @@ Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   tests self-skip there. The capability gating *is* tested everywhere.
 - **NuGet author-signing** requires a code-signing certificate (not configured); nuget.org applies
   repository signatures on publish. The release workflow produces an SBOM and a provenance attestation.
-- **Single target framework.** `net10.0` only; no down-level support.
+- **Two target frameworks.** `net8.0` and `net10.0`. The public API is identical on both, with
+  one behavioral difference: the *deprecated* inline ML-KEM-only recipient mode (PQFE002) relies
+  on platform ML-KEM, which ships in .NET 10 — on `net8.0`, `PqKeyPair.IsSupported` is always
+  `false` and the mode throws `PlatformNotSupportedException`, exactly as on a .NET 10 host
+  without OpenSSL 3.5+/CNG support. The supported path for recipient encryption on either target
+  is the Hybrid package, whose ML-KEM-768 and X25519 come from BouncyCastle (fully managed).
+  No `netstandard2.0`/`net462` support.
 
 ---
 

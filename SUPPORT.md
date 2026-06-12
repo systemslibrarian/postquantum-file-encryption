@@ -58,8 +58,8 @@ maintainer.
 
 | Aspect | Requirement |
 | --- | --- |
-| Target framework | `net10.0` only |
-| Operating system | Windows, Linux, macOS — anywhere .NET 10 + AES-GCM runs |
+| Target frameworks | `net8.0` (LTS) and `net10.0`. Identical public API on both; the deprecated inline ML-KEM-only mode (PQFE002) requires platform ML-KEM and reports `IsSupported == false` on `net8.0` — the Hybrid package works on both targets. |
+| Operating system | Windows, Linux, macOS — anywhere .NET 8/10 + AES-GCM runs |
 | Browser WebAssembly | Not supported (.NET `AesGcm` is `[UnsupportedOSPlatform("browser")]`). Use the Rust → WASM core in `samples/pqfe-wasm` for a fully client-side reader. |
 | Trimming / Native AOT | Compatible (`IsAotCompatible=true`, smoke-tested in CI on every push) |
 | FIPS mode | Argon2id is not FIPS-validated (Konscious). PBKDF2-HMAC-SHA256 + AES-GCM use platform primitives. |

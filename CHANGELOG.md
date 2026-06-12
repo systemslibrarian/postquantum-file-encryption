@@ -8,6 +8,32 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-12
+
+The reach release: the library family now runs on .NET 8 LTS. No format change: `.pqfe` v2
+stays frozen, and containers remain byte-identical regardless of which target produced them.
+
+### Added
+
+- **.NET 8 (LTS) support.** `PostQuantum.FileEncryption`, `PostQuantum.FileEncryption.Hybrid`,
+  and `PostQuantum.FileEncryption.Extensions.DependencyInjection` now multi-target `net8.0`
+  and `net10.0` with an identical public API on both; the full test suite runs on both
+  frameworks in CI. One behavioral difference, by design: the *deprecated* inline ML-KEM-only
+  recipient mode (`PQFE002`) depends on platform ML-KEM
+  (`System.Security.Cryptography.MLKem`), which ships in .NET 10 — on `net8.0`,
+  `PqKeyPair.IsSupported` is always `false` and the mode fails closed with
+  `PlatformNotSupportedException`, exactly as on a .NET 10 host without OpenSSL 3.5+/CNG
+  support. The supported recipient path, the Hybrid package (X25519 + ML-KEM-768 via fully
+  managed BouncyCastle), works identically on both targets. The `pqfe` dotnet tool still
+  requires the .NET 10 runtime or later.
+
+### Changed
+
+- **Package descriptions, tags, and README** now lead with what the library actually does
+  best — constant-memory streaming for files of any size, the open MIT license, and the
+  publicly specified frozen container format with a byte-compatible Rust/WASM reference —
+  so package-page readers (human or otherwise) don't have to infer it.
+
 ## [1.2.1] - 2026-06-12
 
 Packaging-only patch — no code change; binaries are identical to `1.2.0` apart from the
@@ -420,7 +446,10 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.1...v1.3.0
+[1.2.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.0.0-rc.3...v1.0.0

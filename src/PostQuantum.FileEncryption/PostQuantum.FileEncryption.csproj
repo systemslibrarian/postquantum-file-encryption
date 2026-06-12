@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <RootNamespace>PostQuantum.FileEncryption</RootNamespace>
     <AssemblyName>PostQuantum.FileEncryption</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -17,14 +17,14 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption</PackageId>
-    <Version>1.2.1</Version>
-    <FileVersion>1.1.0.0</FileVersion>
-    <InformationalVersion>1.1.0</InformationalVersion>
+    <Version>1.3.0</Version>
+    <FileVersion>1.3.0.0</FileVersion>
+    <InformationalVersion>1.3.0</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption</Title>
-    <Description>Production-ready, fail-closed file and stream encryption for .NET 10. Authenticated AES-256-GCM containers with chunked streaming and progress, PBKDF2-HMAC-SHA256 or Argon2id key derivation, atomic file output, zeroable passphrases, and a non-sensitive EventSource for SIEM/OpenTelemetry. The IContentKeyProvider envelope-key seam wraps content keys with an external KMS/HSM so the master key never enters your process. AES-256 keeps data confidential against a harvest-now-decrypt-later quantum adversary. The .pqfe v2 container format is FROZEN for the 1.x line — pinned by published cross-implementation test vectors against a Rust/WASM reference. Production post-quantum public-key encryption ships as the companion package PostQuantum.FileEncryption.Hybrid (X25519 + ML-KEM-768 combiner with multi-recipient support). AOT-compatible; deterministic builds; SourceLink; CycloneDX SBOM and SLSA-style build-provenance attestation on every release; public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers.</Description>
-    <PackageReleaseNotes>1.1.0 — the package family grows: pqfe ships as the installable dotnet tool PostQuantum.FileEncryption.Tool, and PostQuantum.FileEncryption.Extensions.DependencyInjection adds AddPqFileEncryption()/AddPqHybridFileEncryption() for Microsoft.Extensions.DependencyInjection hosts, both versioned in lockstep. Live Rust↔.NET cross-implementation interop CI now round-trips fresh payloads in both directions on every push. Fixes: decryption progress reports the exact plaintext total (Fraction now reaches 1.0); key-material hygiene hardening — the content key is zeroed even when header construction fails, and LocalKekContentKeyProvider.Generate() zeroes its intermediate KEK copy. No format change: the .pqfe v2 container format remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
-    <PackageTags>encryption;file-encryption;stream-encryption;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;cryptography;security;streaming;post-quantum;pqc;ml-kem;harvest-now-decrypt-later;envelope-encryption;kms;hsm;dotnet;net10;aot</PackageTags>
+    <Description>Open-source (MIT), fail-closed file and stream encryption for .NET 8 and .NET 10. Constant-memory chunked streaming encrypts files of any size — multi-gigabyte backups and media run in roughly 130 KB of working memory — stream-to-stream or file-to-file, with authenticated AES-256-GCM, progress reporting, cancellation, atomic file output, and zeroable passphrases. Key derivation is PBKDF2-HMAC-SHA256 (OWASP-default 600,000 iterations) or Argon2id, with decrypt-time cost ceilings for untrusted input. The .pqfe v2 container format is FROZEN for the 1.x line and publicly specified — pinned by cross-implementation test vectors against a byte-compatible Rust/WASM reference, so containers are portable across platforms and implementations. AES-256 keeps data confidential against a harvest-now-decrypt-later quantum adversary; production post-quantum public-key encryption ships as the companion package PostQuantum.FileEncryption.Hybrid (X25519 + ML-KEM-768 combiner with multi-recipient support). The IContentKeyProvider envelope-key seam wraps content keys with an external KMS/HSM so the master key never enters your process. Non-sensitive EventSource telemetry for SIEM/OpenTelemetry. AOT-compatible; deterministic builds; SourceLink; CycloneDX SBOM and SLSA-style build-provenance attestation on every release; public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers.</Description>
+    <PackageReleaseNotes>1.3.0 — .NET 8 LTS support: the package now multi-targets net8.0 and net10.0 with an identical public API on both. The full test suite runs on both frameworks in CI. One behavioral note: the deprecated inline ML-KEM-only recipient mode (PQFE002) depends on platform ML-KEM, which ships in .NET 10 — on net8.0 PqKeyPair.IsSupported is always false and the mode fails closed with PlatformNotSupportedException, exactly as on .NET 10 hosts without OpenSSL 3.5+/CNG. The supported recipient path, PostQuantum.FileEncryption.Hybrid (X25519 + ML-KEM-768 via fully managed BouncyCastle), runs on both targets. No format change: the .pqfe v2 container format remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageTags>encryption;file-encryption;stream-encryption;large-files;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;cryptography;security;streaming;post-quantum;pqc;ml-kem;harvest-now-decrypt-later;envelope-encryption;kms;hsm;dotnet;net8;net10;aot</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>

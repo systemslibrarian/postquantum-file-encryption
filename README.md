@@ -10,15 +10,19 @@
 [![NuGet Hybrid](https://img.shields.io/nuget/v/PostQuantum.FileEncryption.Hybrid.svg?label=nuget%20hybrid)](https://www.nuget.org/packages/PostQuantum.FileEncryption.Hybrid/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/LICENSE)
 
-**A high-level, fail-closed file and stream encryptor for .NET — production-ready, frozen
-format, and post-quantum aware.**
+**Open-source (MIT), fail-closed file and stream encryption for .NET 8 and .NET 10 —
+constant-memory streaming for files of any size, a frozen and publicly specified container
+format, and a production post-quantum upgrade path.**
 
 Two friendly classes — `PqFileEncryptor` and `PqFileDecryptor` — handle authenticated,
-chunked, streaming encryption with strong, modern defaults. You should not have to read a
-cryptographic spec to protect a file: call a method, and the library does the careful,
-paranoid, fail-closed thing every time.
+chunked, streaming encryption with strong, modern defaults. A 10 GB backup encrypts in
+roughly 130 KB of working memory, stream-to-stream or file-to-file. You should not have to
+read a cryptographic spec to protect a file: call a method, and the library does the
+careful, paranoid, fail-closed thing every time. And because the code, the format
+specification, the test vectors, the threat model, and the gaps ledger are all public,
+you never have to take that on faith.
 
-> **Status: `1.2.1` — stable release.**
+> **Status: `1.3.0` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -29,9 +33,11 @@ paranoid, fail-closed thing every time.
 
 ## Why this library
 
-- **Production-ready core.** Authenticated AES-256-GCM with chunked streaming, atomic file
-  output, cancellation, progress, and zeroable secrets. 150 tests, continuous fuzzing,
-  byte-compatible Rust/WASM reference, native-AOT smoke-tested in CI.
+- **Production-ready core.** Authenticated AES-256-GCM with constant-memory chunked
+  streaming — files of any size, multi-gigabyte included, in ~130 KB of working memory —
+  plus atomic file output, cancellation, progress, and zeroable secrets. 150 tests on both
+  target frameworks, continuous fuzzing, byte-compatible Rust/WASM reference, native-AOT
+  smoke-tested in CI.
 - **Frozen format.** `.pqfe` v2 is pinned by [cross-checked known-answer
   vectors](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) and a [conformance specification](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md). A
   file you encrypt today opens with every `1.x` build, on every platform, in either
@@ -49,8 +55,13 @@ paranoid, fail-closed thing every time.
 
 ## When to use this
 
-- You're on **.NET 10** and want a drop-in, fail-closed file/stream encryptor with
-  excellent defaults and no FFI.
+- You're on **.NET 8 or .NET 10** and want a drop-in, fail-closed file/stream encryptor
+  with excellent defaults and no FFI.
+- You stream **large files** — backups, media, exports — and need encryption that runs in
+  constant memory regardless of size, with progress and cancellation.
+- You want your cryptography **open**: MIT-licensed code, a published format specification,
+  cross-implementation test vectors, and a public threat model — not a proprietary binary
+  with a license-activation call.
 - You need **post-quantum data confidentiality today** (AES-256 against a harvest-now-
   decrypt-later adversary) and a clear path to **post-quantum public-key encryption** via
   the Hybrid package.
@@ -82,17 +93,18 @@ Being clear about scope is part of the security contract. Reach for something el
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.2.1
+dotnet add package PostQuantum.FileEncryption --version 1.3.0
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.2.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.2.1
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.3.0
 ```
 
-Targets **.NET 10** (`net10.0`). Core depends only on
+Targets **.NET 8 and .NET 10** (`net8.0`; `net10.0`), with an identical public API on
+both. Core depends only on
 `Konscious.Security.Cryptography.Argon2` (and only when you select Argon2id); everything
 else is from .NET's `System.Security.Cryptography`. The Hybrid package additionally pulls in
 `BouncyCastle.Cryptography` so it runs on every platform without a native ML-KEM dependency.
@@ -424,7 +436,7 @@ Be clear-eyed about what *post-quantum* means here today:
   since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.2.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
 ```
 
 ```csharp
@@ -455,11 +467,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.2.1.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.3.0.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.2.1 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.3.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"

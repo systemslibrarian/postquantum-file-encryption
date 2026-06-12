@@ -8,7 +8,7 @@ namespace PostQuantum.FileEncryption;
 [Obsolete(
     "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
     "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
-    "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+    "fully managed, runs anywhere .NET 8 or later does). See docs/ROADMAP-v3.md.",
     DiagnosticId = "PQFE002",
     UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
 public enum PqKemAlgorithm
@@ -36,7 +36,7 @@ internal static class KemSizes
 [Obsolete(
     "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
     "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
-    "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+    "fully managed, runs anywhere .NET 8 or later does). See docs/ROADMAP-v3.md.",
     DiagnosticId = "PQFE002",
     UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
 public sealed class PqRecipientPublicKey
@@ -76,7 +76,7 @@ public sealed class PqRecipientPublicKey
 [Obsolete(
     "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
     "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
-    "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+    "fully managed, runs anywhere .NET 8 or later does). See docs/ROADMAP-v3.md.",
     DiagnosticId = "PQFE002",
     UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
 public sealed class PqRecipientPrivateKey : IDisposable
@@ -150,7 +150,7 @@ public sealed class PqRecipientPrivateKey : IDisposable
 [Obsolete(
     "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
     "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
-    "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+    "fully managed, runs anywhere .NET 8 or later does). See docs/ROADMAP-v3.md.",
     DiagnosticId = "PQFE002",
     UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
 public sealed class PqKeyPair : IDisposable
@@ -180,23 +180,34 @@ public sealed class PqKeyPair : IDisposable
         {
             throw new ArgumentOutOfRangeException(nameof(algorithm));
         }
-        if (!MLKem.IsSupported)
+        if (!IsSupported)
         {
             throw new PlatformNotSupportedException(
                 "ML-KEM is not available on this platform. Recipient (public-key) encryption requires .NET 10 with platform PQC support (OpenSSL 3.5+ or Windows CNG).");
         }
 
+#if NET10_0_OR_GREATER
         using MLKem kem = MLKem.GenerateKey(MLKemAlgorithm.MLKem768);
         var publicKey = new PqRecipientPublicKey(algorithm, kem.ExportEncapsulationKey());
         var privateKey = new PqRecipientPrivateKey(algorithm, kem.ExportDecapsulationKey());
         return new PqKeyPair(publicKey, privateKey);
+#else
+        throw new PlatformNotSupportedException(
+            "ML-KEM is not available on this platform. Recipient (public-key) encryption requires .NET 10 with platform PQC support (OpenSSL 3.5+ or Windows CNG).");
+#endif
     }
 
     /// <summary>
     /// Whether recipient (public-key) encryption is available on this platform. When
-    /// <see langword="false"/>, use passphrase-based encryption instead.
+    /// <see langword="false"/>, use passphrase-based encryption instead. Always
+    /// <see langword="false"/> on the <c>net8.0</c> target: platform ML-KEM ships in .NET 10.
     /// </summary>
-    public static bool IsSupported => MLKem.IsSupported;
+    public static bool IsSupported =>
+#if NET10_0_OR_GREATER
+        MLKem.IsSupported;
+#else
+        false;
+#endif
 
     /// <summary>Disposes the private key, zeroing it from memory.</summary>
     public void Dispose() => PrivateKey.Dispose();

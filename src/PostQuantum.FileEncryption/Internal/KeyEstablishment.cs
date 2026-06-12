@@ -179,6 +179,9 @@ internal static class KeyEstablishment
     /// </summary>
     public static (byte[] keyParams, byte[] contentKey) BuildRecipient(PqRecipientPublicKey recipient)
     {
+#if !NET10_0_OR_GREATER
+        throw MlKemNotSupported();
+#else
         EnsureMlKemSupported();
 
         byte[] contentKey = RandomNumberGenerator.GetBytes(ContainerFormat.KeyLength);
@@ -209,11 +212,15 @@ internal static class KeyEstablishment
         {
             CryptographicOperations.ZeroMemory(sharedSecret);
         }
+#endif
     }
 
     /// <summary>Recovers the content key from a recipient container using the private key.</summary>
     public static byte[] UnwrapRecipientKey(ContainerHeader header, PqRecipientPrivateKey privateKey)
     {
+#if !NET10_0_OR_GREATER
+        throw MlKemNotSupported();
+#else
         EnsureMlKemSupported();
 
         var p = header.KeyParams.AsSpan();
@@ -265,8 +272,10 @@ internal static class KeyEstablishment
         {
             CryptographicOperations.ZeroMemory(sharedSecret);
         }
+#endif
     }
 
+#if NET10_0_OR_GREATER
     private static byte[] SerializeRecipientParams(byte[] kemCiphertext, byte[] wrapNonce, byte[] wrapTag, byte[] wrappedKey)
     {
         var buffer = new byte[3 + kemCiphertext.Length + wrapNonce.Length + wrapTag.Length + wrappedKey.Length];
@@ -284,8 +293,11 @@ internal static class KeyEstablishment
     {
         if (!MLKem.IsSupported)
         {
-            throw new PlatformNotSupportedException(
-                "ML-KEM is not available on this platform. Recipient (public-key) encryption requires .NET 10 with platform PQC support (OpenSSL 3.5+ or Windows CNG).");
+            throw MlKemNotSupported();
         }
     }
+#endif
+
+    private static PlatformNotSupportedException MlKemNotSupported() => new(
+        "ML-KEM is not available on this platform. Recipient (public-key) encryption requires .NET 10 with platform PQC support (OpenSSL 3.5+ or Windows CNG).");
 }

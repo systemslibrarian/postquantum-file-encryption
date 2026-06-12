@@ -95,7 +95,7 @@ public sealed class PqFileDecryptor
     [Obsolete(
         "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
         "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
-        "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+        "fully managed, runs anywhere .NET 8 or later does). See docs/ROADMAP-v3.md.",
         DiagnosticId = "PQFE002",
         UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
     public Task DecryptFileAsync(
@@ -116,7 +116,7 @@ public sealed class PqFileDecryptor
     [Obsolete(
         "ML-KEM-only recipient mode in PostQuantum.FileEncryption is deprecated as of 1.0.0-rc.2. " +
         "Use the PostQuantum.FileEncryption.Hybrid package (X25519 + ML-KEM-768 combiner, multi-recipient, " +
-        "fully managed, runs anywhere .NET 10 does). See docs/ROADMAP-v3.md.",
+        "fully managed, runs anywhere .NET 8 or later does). See docs/ROADMAP-v3.md.",
         DiagnosticId = "PQFE002",
         UrlFormat = "https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-v3.md#{0}")]
     public Task DecryptAsync(
