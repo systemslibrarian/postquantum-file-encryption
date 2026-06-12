@@ -60,8 +60,11 @@ finding.
    material, so the split reveals nothing an attacker doesn't already know.
 4. **Untrusted headers cannot cause unbounded work or out-of-bounds reads.** KDF
    parameters read from a container are range-checked before use
-   (`KeyEstablishment.DerivePassphraseKeyAsync`); frame lengths are checked against the
-   declared chunk size; recipient-block lengths must match exactly.
+   (`KeyEstablishment.DerivePassphraseKeyAsync`), and a caller-configurable
+   `PqDecryptionLimits` can lower those ceilings further for untrusted input — rejection
+   happens before any derivation work. Frame lengths are checked against the declared
+   chunk size; chunk buffers are additionally capped by the container's known length;
+   recipient-block lengths must match exactly.
 5. **Key material is zeroed.** Every derived or copied secret (CEK, KEK, shared secrets,
    IKM, private-key copies) is zeroed with `CryptographicOperations.ZeroMemory` in a
    `finally`, on success and failure paths alike. Known, documented exceptions:

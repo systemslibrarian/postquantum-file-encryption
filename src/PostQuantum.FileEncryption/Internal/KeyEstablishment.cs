@@ -50,8 +50,13 @@ internal static class KeyEstablishment
         return (keyParams, contentKey);
     }
 
-    /// <summary>Re-derives the content key from a passphrase and a parsed header's KeyParams.</summary>
-    public static async Task<byte[]> DerivePassphraseKeyAsync(ReadOnlyMemory<byte> passphrase, ContainerHeader header)
+    /// <summary>
+    /// Re-derives the content key from a passphrase and a parsed header's KeyParams.
+    /// <paramref name="limits"/> caps the KDF cost an untrusted header may demand; parameters
+    /// above a limit are rejected with <see cref="PqFormatException"/> before any derivation work.
+    /// </summary>
+    public static async Task<byte[]> DerivePassphraseKeyAsync(
+        ReadOnlyMemory<byte> passphrase, ContainerHeader header, PqDecryptionLimits limits)
     {
         var p = header.KeyParams.AsSpan();
         if (p.Length < 2)
@@ -82,6 +87,11 @@ internal static class KeyEstablishment
                 {
                     throw new PqFormatException($"Container declares an out-of-range PBKDF2 iteration count of {iterations}.");
                 }
+                if (iterations > limits.MaxPbkdf2Iterations)
+                {
+                    throw new PqFormatException(
+                        $"Container demands {iterations} PBKDF2 iterations, above this decryptor's configured limit of {limits.MaxPbkdf2Iterations} (see PqDecryptionLimits).");
+                }
                 return DerivePbkdf2(passphrase.Span, salt, (int)iterations);
             }
             case ContainerFormat.KdfArgon2id:
@@ -100,6 +110,11 @@ internal static class KeyEstablishment
                     parallelism < 1)
                 {
                     throw new PqFormatException("Container declares out-of-range Argon2id parameters.");
+                }
+                if (memoryKiB > limits.MaxArgon2MemoryKiB || iterations > limits.MaxArgon2Iterations)
+                {
+                    throw new PqFormatException(
+                        $"Container demands Argon2id with {memoryKiB} KiB memory and {iterations} iterations, above this decryptor's configured limits of {limits.MaxArgon2MemoryKiB} KiB / {limits.MaxArgon2Iterations} (see PqDecryptionLimits).");
                 }
                 return await DeriveArgon2idAsync(passphrase, salt, (int)memoryKiB, (int)iterations, parallelism).ConfigureAwait(false);
             }

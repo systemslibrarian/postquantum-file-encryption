@@ -59,7 +59,7 @@ internal static class PqContainer
     }
 
     public static async Task DecryptPassphraseAsync(
-        Stream source, Stream destination, ReadOnlyMemory<byte> passphrase,
+        Stream source, Stream destination, ReadOnlyMemory<byte> passphrase, PqDecryptionLimits limits,
         long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken)
     {
         await InstrumentedAsync("decrypt", "passphrase", totalBytes, async () =>
@@ -69,7 +69,8 @@ internal static class PqContainer
             {
                 throw new PqDecryptionException("This container is encrypted to a recipient key, not a passphrase.");
             }
-            byte[] contentKey = await KeyEstablishment.DerivePassphraseKeyAsync(passphrase, header).ConfigureAwait(false);
+            EnforceChunkLimit(header, limits);
+            byte[] contentKey = await KeyEstablishment.DerivePassphraseKeyAsync(passphrase, header, limits).ConfigureAwait(false);
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
     }
@@ -91,7 +92,7 @@ internal static class PqContainer
     }
 
     public static async Task DecryptRecipientAsync(
-        Stream source, Stream destination, PqRecipientPrivateKey privateKey,
+        Stream source, Stream destination, PqRecipientPrivateKey privateKey, PqDecryptionLimits limits,
         long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken)
     {
         await InstrumentedAsync("decrypt", "ml-kem-recipient", totalBytes, async () =>
@@ -101,6 +102,7 @@ internal static class PqContainer
             {
                 throw new PqDecryptionException("This container is encrypted with a passphrase, not a recipient key.");
             }
+            EnforceChunkLimit(header, limits);
             byte[] contentKey = KeyEstablishment.UnwrapRecipientKey(header, privateKey);
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
@@ -126,7 +128,7 @@ internal static class PqContainer
     }
 
     public static async Task DecryptKeyProviderAsync(
-        Stream source, Stream destination, IContentKeyProvider provider,
+        Stream source, Stream destination, IContentKeyProvider provider, PqDecryptionLimits limits,
         long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken)
     {
         await InstrumentedAsync("decrypt", "key-provider", totalBytes, async () =>
@@ -136,6 +138,7 @@ internal static class PqContainer
             {
                 throw new PqDecryptionException("This container was not encrypted with an external key provider.");
             }
+            EnforceChunkLimit(header, limits);
             (string providerId, byte[] wrapInfo) = ParseKeyProviderParams(header.KeyParams);
             if (!string.Equals(providerId, provider.ProviderId, StringComparison.Ordinal))
             {
@@ -145,6 +148,20 @@ internal static class PqContainer
             byte[] contentKey = await provider.UnwrapKeyAsync(wrapInfo, cancellationToken).ConfigureAwait(false);
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Rejects a header whose declared chunk size exceeds the decryptor's configured ceiling.
+    /// Runs before key establishment and before the engine allocates chunk buffers, so a
+    /// hostile header above the limit costs nothing. Key-independent, so no oracle.
+    /// </summary>
+    private static void EnforceChunkLimit(ContainerHeader header, PqDecryptionLimits limits)
+    {
+        if (header.ChunkSize > limits.MaxChunkSizeBytes)
+        {
+            throw new PqFormatException(
+                $"Container declares a {header.ChunkSize}-byte chunk size, above this decryptor's configured limit of {limits.MaxChunkSizeBytes} bytes (see PqDecryptionLimits).");
+        }
     }
 
     // KeyParams (KeySource=5): ProviderIdLength(1) | ProviderId(UTF-8) | WrapInfoLength(2 BE) | WrapInfo

@@ -16,13 +16,27 @@ namespace PostQuantum.FileEncryption;
 /// left at the destination — for file output, the partially written temporary file is deleted
 /// before the exception propagates.
 /// </remarks>
-[System.Diagnostics.CodeAnalysis.SuppressMessage(
-    "Performance", "CA1822:Mark members as static",
-    Justification = "Kept as instance methods for symmetry with PqFileEncryptor and to carry decryptor options in a future release.")]
 public sealed class PqFileDecryptor
 {
+    private readonly PqDecryptionLimits _limits;
+
     /// <summary>Creates a decryptor. Decryption parameters are read from each container's header.</summary>
-    public PqFileDecryptor() { }
+    public PqFileDecryptor() : this(PqDecryptionLimits.Default) { }
+
+    /// <summary>
+    /// Creates a decryptor that enforces <paramref name="limits"/> on every container it opens.
+    /// Use <see cref="PqDecryptionLimits.Untrusted"/> (or your own ceilings) when decrypting
+    /// containers from untrusted sources, so a hostile header cannot demand gibibytes of memory
+    /// or minutes of CPU before the first authentication check. A header above a limit is
+    /// rejected with <see cref="PqFormatException"/> before any key derivation work.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">A limit is outside the format's supported range.</exception>
+    public PqFileDecryptor(PqDecryptionLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(limits);
+        limits.Validate();
+        _limits = limits;
+    }
 
     // ------------------------------------------------------------------ Passphrase: file
 
@@ -47,7 +61,7 @@ public sealed class PqFileDecryptor
         ArgumentException.ThrowIfNullOrEmpty(outputPath);
 
         return DecryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
-            PqContainer.DecryptPassphraseAsync(input, output, passphrase, total, progress, cancellationToken));
+            PqContainer.DecryptPassphraseAsync(input, output, passphrase, _limits, total, progress, cancellationToken));
     }
 
     // ------------------------------------------------------------------ Passphrase: stream
@@ -70,7 +84,7 @@ public sealed class PqFileDecryptor
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
         long? total = input.CanSeek ? input.Length - input.Position : null;
-        return PqContainer.DecryptPassphraseAsync(input, output, passphrase, total, progress, cancellationToken);
+        return PqContainer.DecryptPassphraseAsync(input, output, passphrase, _limits, total, progress, cancellationToken);
     }
 
     // ------------------------------------------------------------------ Recipient: file & stream
@@ -93,7 +107,7 @@ public sealed class PqFileDecryptor
         ArgumentNullException.ThrowIfNull(privateKey);
 
         return DecryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
-            PqContainer.DecryptRecipientAsync(input, output, privateKey, total, progress, cancellationToken));
+            PqContainer.DecryptRecipientAsync(input, output, privateKey, _limits, total, progress, cancellationToken));
     }
 
     /// <summary>Decrypts a recipient-encrypted container read from <paramref name="input"/> to <paramref name="output"/> using a private key. <b>Experimental.</b></summary>
@@ -113,7 +127,7 @@ public sealed class PqFileDecryptor
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(privateKey);
         long? total = input.CanSeek ? input.Length - input.Position : null;
-        return PqContainer.DecryptRecipientAsync(input, output, privateKey, total, progress, cancellationToken);
+        return PqContainer.DecryptRecipientAsync(input, output, privateKey, _limits, total, progress, cancellationToken);
     }
 
     // ------------------------------------------------------------------ Envelope key provider
@@ -129,7 +143,7 @@ public sealed class PqFileDecryptor
         ArgumentNullException.ThrowIfNull(keyProvider);
 
         return DecryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
-            PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, total, progress, cancellationToken));
+            PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, _limits, total, progress, cancellationToken));
     }
 
     /// <summary>Decrypts the container read from <paramref name="input"/> to <paramref name="output"/> using an envelope-key provider.</summary>
@@ -141,7 +155,7 @@ public sealed class PqFileDecryptor
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(keyProvider);
         long? total = input.CanSeek ? input.Length - input.Position : null;
-        return PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, total, progress, cancellationToken);
+        return PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, _limits, total, progress, cancellationToken);
     }
 
     /// <summary>Decrypts an in-memory container using an envelope-key provider and returns the plaintext.</summary>
@@ -152,7 +166,7 @@ public sealed class PqFileDecryptor
         ArgumentNullException.ThrowIfNull(keyProvider);
         using var input = new MemoryStream(container.ToArray(), writable: false);
         using var output = new MemoryStream(container.Length);
-        await PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, container.Length, progress, cancellationToken).ConfigureAwait(false);
+        await PqContainer.DecryptKeyProviderAsync(input, output, keyProvider, _limits, container.Length, progress, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
     }
 
@@ -219,7 +233,7 @@ public sealed class PqFileDecryptor
         using var input = new MemoryStream(container.ToArray(), writable: false);
         using var output = new MemoryStream(container.Length);
         await PqContainer.DecryptPassphraseAsync(
-            input, output, passphrase, container.Length, null, cancellationToken).ConfigureAwait(false);
+            input, output, passphrase, _limits, container.Length, null, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
     }
 

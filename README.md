@@ -315,6 +315,26 @@ as a decryption oracle.
 await new PqFileDecryptor().DecryptAtomicAsync(input, output, passphrase);
 ```
 
+Prefer this (or the file API, which is atomic via temp-file-plus-rename) for stream input
+you don't control: plain `DecryptAsync(Stream, Stream, …)` writes each chunk as it
+authenticates, so a truncated container can emit an authentic plaintext *prefix* before the
+failure is raised (see [KNOWN-GAPS.md](KNOWN-GAPS.md)).
+
+### Decrypting untrusted input — cost ceilings
+
+A container's KDF cost and chunk size live in its header and are honored *before* anything
+authenticates, so a hostile file could legally demand the format maximum (2 GiB of Argon2id
+memory) from a few dozen bytes. If you open files from sources you don't control, cap it:
+
+```csharp
+var decryptor = new PqFileDecryptor(PqDecryptionLimits.Untrusted); // or your own ceilings
+// Headers demanding more than the limits throw PqFormatException before any KDF work.
+await decryptor.DecryptFileAsync("untrusted.pqfe", "out.bin", passphrase);
+```
+
+The default `new PqFileDecryptor()` keeps the permissive format maxima, so every legal
+container still opens.
+
 ### Envelope encryption (KMS / HSM)
 
 Encrypt under an external key provider so the master key never enters your process. A
@@ -353,7 +373,10 @@ PostQuantum.FileEncryption is built to be **boring and predictable** where it ma
 - **Unique nonces by construction**, **fresh key material per file**, and **no decryption
   oracle** — every authentication failure raises the same generic `PqDecryptionException`.
 - **Bounded work on untrusted input.** KDF cost parameters read from a container are
-  range-checked, so a malicious header cannot force unbounded memory or CPU.
+  range-checked, so a malicious header cannot force unbounded memory or CPU — and
+  `PqDecryptionLimits` lets callers who open untrusted files lower those ceilings further
+  (the buffer for a container of known length is additionally capped by what the container
+  could actually hold).
 - **Key hygiene.** Derived keys, wrapped secrets, and private keys are zeroed with
   `CryptographicOperations.ZeroMemory`.
 - **No novel cryptography.** Primitives come from .NET's `System.Security.Cryptography`,

@@ -10,6 +10,17 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ### Added
 
+- **`PqDecryptionLimits` — decrypt-time cost ceilings for untrusted input.** A container's
+  KDF cost and chunk size are read from its (attacker-controllable) header and honored
+  before anything authenticates, so a hostile ~30-byte file could legally demand the format
+  maximum (2 GiB of Argon2id memory, 10,000 passes) on open. The new
+  `PqFileDecryptor(PqDecryptionLimits)` constructor caps PBKDF2 iterations, Argon2id
+  memory/iterations, and chunk size; headers above a limit are rejected with
+  `PqFormatException` *before* any key-derivation work. `PqDecryptionLimits.Untrusted` is a
+  conservative preset; the default constructor keeps the permissive format maxima, so
+  existing behavior and every legal container are unchanged. Found by static security
+  review (finding PQFE-001).
+
 - **[docs/AUDIT-GUIDE.md](docs/AUDIT-GUIDE.md)** — a reviewer-facing entry point to lower
   the cost of independent review: the ~1,700-line attack-surface map (every
   security-critical file with its role), the six invariants to attack, suggested first
@@ -18,6 +29,15 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ### Fixed
 
+- **Chunk buffers are now capped by the container's known length** (finding PQFE-002).
+  Decryption allocated two buffers of the header-declared chunk size before the first
+  frame authenticated, so a tiny hostile container declaring a 16 MiB chunk drove a
+  ~32 MiB allocation. When the container's total length is known (file and bytes APIs,
+  seekable streams) the buffers are now sized to what the body could actually hold;
+  unknown-length streams keep the declared (range-checked) size, optionally lowered via
+  `PqDecryptionLimits.MaxChunkSizeBytes`.
+- **The `pqfe` CLI's `--passphrase-env` help now states the tradeoff** (finding PQFE-004):
+  environment variables are visible to child processes and can surface in crash dumps.
 - **The hybrid benchmarks never ran.** `benchmarks/.../Program.cs` registered only
   `ThroughputBenchmarks` with the `BenchmarkSwitcher`, so `HybridThroughputBenchmarks`
   (added in 1.1.0) was silently skipped everywhere, including the weekly benchmark CI.

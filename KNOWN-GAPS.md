@@ -20,6 +20,19 @@ Last reviewed against: **`1.1.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   `1.0.0-rc.2` (`PQFE002`) and retained only for source-compatibility. New code must use
   the Hybrid package; the inline mode is targeted for removal in a future major release.
 
+## Resolved since `1.1.0` (unreleased)
+
+- **Decrypt-time cost ceilings.** A container's KDF cost parameters and chunk size are
+  honored before anything authenticates, so a hostile ~30-byte header could legally demand
+  the format maximum — up to 2 GiB of Argon2id memory — on open. Found by a static security
+  review (it was a hardening gap, not a contradiction of any documented bound). Now:
+  `PqDecryptionLimits` lets callers who decrypt untrusted containers cap PBKDF2/Argon2id
+  cost and chunk size (`PqDecryptionLimits.Untrusted` preset, or custom ceilings), with
+  over-limit headers rejected as `PqFormatException` before any derivation work; and the
+  engine caps its chunk buffers to what a container of known length could actually hold,
+  so a tiny container declaring a 16 MiB chunk no longer drives a ~32 MiB allocation.
+  Defaults are unchanged — every legal container still opens.
+
 ## Resolved since the first symmetric cut
 
 - **Memory-hard KDF** — Argon2id is selectable via `PqEncryptionOptions.Kdf`.

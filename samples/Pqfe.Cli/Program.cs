@@ -241,6 +241,9 @@ internal static class Program
                                     Decryption reads the KDF from the container header — no flag needed.
               --passphrase-env VAR  Read the passphrase from environment variable VAR
                                     instead of prompting. Recommended for scripts and CI.
+                                    Caveat: environment variables are visible to child
+                                    processes and can surface in crash dumps and process
+                                    inspection — scope VAR to the single invocation.
 
             Exit codes follow sysexits.h conventions: 0 ok, 64 usage,
             65 data error (wrong key or tamper), 66 missing input, 74 i/o.

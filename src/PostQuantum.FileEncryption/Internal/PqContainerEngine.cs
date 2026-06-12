@@ -25,6 +25,9 @@ namespace PostQuantum.FileEncryption.Internal;
 /// </remarks>
 internal static class PqContainerEngine
 {
+    // Each frame on disk is 1 byte frame type + 4 bytes length + ciphertext + 16-byte tag.
+    private const long FrameOverhead = 5 + ContainerFormat.TagLength;
+
     private static void BuildNonce(ReadOnlySpan<byte> noncePrefix, ulong counter, Span<byte> nonce)
     {
         noncePrefix.CopyTo(nonce);
@@ -138,8 +141,20 @@ internal static class PqContainerEngine
             long? totalPlaintextBytes = DerivePlaintextTotal(totalContainerBytes, header);
             using var aes = new AesGcm(contentKey, ContainerFormat.TagLength);
 
-            byte[] ciphertext = new byte[header.ChunkSize];
-            byte[] plaintext = new byte[header.ChunkSize];
+            // When the container's total length is known (file and bytes APIs, seekable
+            // streams), no frame's ciphertext can exceed the body minus one frame's overhead —
+            // so a tiny hostile container that declares a huge chunk size cannot drive a huge
+            // allocation. Unknown-length streams fall back to the declared (range-checked)
+            // chunk size.
+            int bufferSize = header.ChunkSize;
+            if (totalContainerBytes is long knownTotal)
+            {
+                long maxCiphertext = knownTotal - header.HeaderBytes.Length - FrameOverhead;
+                bufferSize = (int)Math.Clamp(maxCiphertext, 0, header.ChunkSize);
+            }
+
+            byte[] ciphertext = new byte[bufferSize];
+            byte[] plaintext = new byte[bufferSize];
             byte[] tag = new byte[ContainerFormat.TagLength];
             byte[] nonce = new byte[ContainerFormat.NonceLength];
             byte[] frameHeader = new byte[5];
@@ -172,6 +187,12 @@ internal static class PqContainerEngine
                 if (length > (uint)header.ChunkSize)
                 {
                     throw new PqDecryptionException("The encrypted file is corrupted (inconsistent block size).");
+                }
+                if (length > (uint)bufferSize)
+                {
+                    // The frame claims more ciphertext than the container's known total length
+                    // could possibly hold, so the read below could never be satisfied anyway.
+                    throw new PqDecryptionException("The encrypted file is truncated (it ends partway through a block).");
                 }
 
                 if (await ReadExactAsync(source, ciphertext.AsMemory(0, (int)length), cancellationToken).ConfigureAwait(false) != length ||
@@ -230,7 +251,6 @@ internal static class PqContainerEngine
     /// </summary>
     private static long? DerivePlaintextTotal(long? totalContainerBytes, ContainerHeader header)
     {
-        const long FrameOverhead = 5 + ContainerFormat.TagLength;
         if (totalContainerBytes is not long total)
         {
             return null;
