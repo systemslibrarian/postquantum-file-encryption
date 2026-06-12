@@ -132,16 +132,18 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          for i in $(seq 1 30); do
+          # 90 × 10s = 15 minutes, matching the core wait above (the v1.2.0 release saw
+          # nuget.org indexing take longer than the previous 5-minute budget — twice).
+          for i in $(seq 1 90); do
             if curl -fsSL "https://api.nuget.org/v3-flatcontainer/postquantum.fileencryption.hybrid/index.json" \
                  | grep -Eq "\"${version}\""; then
               echo "Hybrid ${version} is indexed."
               exit 0
             fi
-            echo "Hybrid ${version} not yet indexed (attempt $i/30); sleeping 10s..."
+            echo "Hybrid ${version} not yet indexed (attempt $i/90); sleeping 10s..."
             sleep 10
           done
-          echo "Hybrid ${version} still not indexed after 5 minutes — refusing to push the DI extensions package." >&2
+          echo "Hybrid ${version} still not indexed after 15 minutes — refusing to push the DI extensions package." >&2
           exit 1
 
       - name: Publish the DI extensions package to NuGet
