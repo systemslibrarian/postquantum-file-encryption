@@ -91,17 +91,26 @@ public sealed class AwsKmsContentKeyProvider : IContentKeyProvider
             cancellationToken).ConfigureAwait(false);
 
         byte[] contentKey = ReadAndZero(response.Plaintext);
-        if (contentKey.Length != ContentKeyLength)
+        // Covers every exit between KMS handing us the plaintext key and a successful return —
+        // the caller owns (and zeroes) the key only once we actually return it.
+        try
+        {
+            if (contentKey.Length != ContentKeyLength)
+            {
+                throw new PqEncryptionException("AWS KMS returned a data key of unexpected length.");
+            }
+
+            byte[] blob = response.CiphertextBlob.ToArray();
+            byte[] wrapInfo = new byte[1 + blob.Length];
+            wrapInfo[0] = WrapInfoVersion;
+            blob.CopyTo(wrapInfo, 1);
+            return (contentKey, wrapInfo);
+        }
+        catch
         {
             CryptographicOperations.ZeroMemory(contentKey);
-            throw new PqEncryptionException("AWS KMS returned a data key of unexpected length.");
+            throw;
         }
-
-        byte[] blob = response.CiphertextBlob.ToArray();
-        byte[] wrapInfo = new byte[1 + blob.Length];
-        wrapInfo[0] = WrapInfoVersion;
-        blob.CopyTo(wrapInfo, 1);
-        return (contentKey, wrapInfo);
     }
 
     /// <inheritdoc/>
