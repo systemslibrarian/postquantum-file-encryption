@@ -1,10 +1,13 @@
 # Post-quantum public-key support (`PostQuantum.FileEncryption.Hybrid`)
 
-> **Status: the hybrid combiner (`KeySource = 3`) and multiple recipients (`KeySource = 4`) are
-> IMPLEMENTED and tested in the `PostQuantum.FileEncryption.Hybrid` package** (managed
-> BouncyCastle for *both* X25519 and ML-KEM-768 — no native ML-KEM requirement). This document
-> is now both the spec and the rationale. Remaining future work: KMS/HSM providers (see
-> [KEY-MANAGEMENT.md](KEY-MANAGEMENT.md)).
+> **Status: DELIVERED — the hybrid combiner (`KeySource = 3`) and multiple recipients
+> (`KeySource = 4`) are IMPLEMENTED and tested in the `PostQuantum.FileEncryption.Hybrid`
+> package** (managed BouncyCastle for *both* X25519 and ML-KEM-768 — no native ML-KEM
+> requirement). This document is retained as the spec and the rationale, and as the
+> explanation linked from the `PQFE002` deprecation. Remaining future work: KMS/HSM
+> providers (see [KEY-MANAGEMENT.md](KEY-MANAGEMENT.md)). For the plan covering the *next
+> container format revision* (package `2.0`, format v3 — embedded signatures, metadata
+> protection, SLH-DSA), see **[ROADMAP-2.0.md](ROADMAP-2.0.md)**.
 
 This specifies the public-key upgrade path beyond the symmetric core.
 

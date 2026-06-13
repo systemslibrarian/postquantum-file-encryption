@@ -438,6 +438,8 @@ For deeper references:
   vs. X-Wing / HPKE / RFC 9794
 - [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) — the contract another implementation must meet
 - [docs/TEST-VECTORS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) — pinned known-answer vectors
+- [docs/ROADMAP-2.0.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-2.0.md) — the candidate feature set for the next container
+  format revision (embedded signatures, metadata protection, SLH-DSA)
 
 > Cryptographic software earns trust slowly. This library has **not been independently
 > audited**; please review the code, the format, and [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) before

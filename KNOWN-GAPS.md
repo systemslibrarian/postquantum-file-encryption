@@ -103,7 +103,8 @@ Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **The container format is FROZEN at `.pqfe` v2 for the `1.x` line.** No `0.x → 1.x`
   migration tooling exists; if you have any preview-era ciphertext, decrypt it with the
   original `0.x` build and re-encrypt with a `1.x` build. A future major version (`2.0`)
-  would carry a new `FormatVersion` and a documented migration path.
+  would carry a new `FormatVersion` and a documented migration path — the candidate feature
+  set lives in [docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md).
 - **Metadata is not protected.** Plaintext length is revealed to within a chunk; file names,
   paths, and timestamps are not encrypted or carried. Length-hiding padding and encrypted
   file names are candidates for a future `2.0`.
@@ -119,7 +120,8 @@ Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   the sidecar and sign the same bytes with their own key. Authenticity is anchored in which
   public key the verifier trusts — distribute public keys over a trusted channel. Signatures
   *embedded in the container* (which would also authenticate the signer to the decryptor)
-  require a format change and are a candidate for a future `2.0`. See
+  require a format change and are the headline candidate for a future `2.0` — see
+  [docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md) and
   [docs/SIGNATURE-FORMAT.md](docs/SIGNATURE-FORMAT.md).
 - **Containers are not sender-authenticated by encryption alone.** AES-GCM proves a container
   was not altered after creation, and recipient encryption proves only that the sender knew
