@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PostQuantum.FileEncryption;
 using PostQuantum.FileEncryption.Hybrid;
+using PostQuantum.FileEncryption.Signing;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -64,6 +65,23 @@ public static class PqFileEncryptionServiceCollectionExtensions
         services.AddPqFileEncryption(options);
         services.TryAddSingleton(new PqHybridEncryptor(options ?? PqEncryptionOptions.Default));
         services.TryAddSingleton(new PqHybridDecryptor());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="PqSigner"/> and <see cref="PqVerifier"/> as singletons for
+    /// detached Ed25519 + ML-DSA-65 hybrid signing and verification. Key material is not
+    /// registered — pass a <c>PqSigningPrivateKey</c>/<c>PqSigningPublicKey</c> per call,
+    /// sourced from the application's own key storage.
+    /// </summary>
+    /// <param name="services">The service collection to add the registrations to.</param>
+    /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    public static IServiceCollection AddPqSigning(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAddSingleton(new PqSigner());
+        services.TryAddSingleton(new PqVerifier());
         return services;
     }
 }

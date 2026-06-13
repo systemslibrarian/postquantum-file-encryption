@@ -26,6 +26,13 @@ Passphrase **and** X25519 + ML-KEM-768 hybrid recipient encryption (additionally
 builder.Services.AddPqHybridFileEncryption();
 ```
 
+Detached Ed25519 + ML-DSA-65 signing and verification (registers `PqSigner` + `PqVerifier`;
+key material stays in your own key storage and is passed per call):
+
+```csharp
+builder.Services.AddPqSigning();
+```
+
 Then inject and use:
 
 ```csharp
@@ -55,8 +62,9 @@ files produced with any other.
   state; one instance serves the whole host.
 - **`TryAdd` semantics.** If your application already registered its own instance of any of
   these types, your registration wins.
-- **Lockstep versioning.** This package always pins `PostQuantum.FileEncryption` and
-  `PostQuantum.FileEncryption.Hybrid` at its own version.
+- **Lockstep versioning.** This package always pins `PostQuantum.FileEncryption`,
+  `PostQuantum.FileEncryption.Hybrid`, and `PostQuantum.FileEncryption.Signing` at its own
+  version.
 
 ## Links
 

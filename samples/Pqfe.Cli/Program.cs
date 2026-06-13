@@ -3,6 +3,9 @@
 // Usage:
 //   pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR]
 //   pqfe decrypt <input> <output>                [--passphrase-env VAR]
+//   pqfe keygen  <keyfile>
+//   pqfe sign    <input> <keyfile>     [--signature PATH]
+//   pqfe verify  <input> <keyfile.pub> [--signature PATH]
 //   pqfe --help | --version
 //
 // By default the passphrase is read from stdin (no echo on a TTY). For scripted use,
@@ -14,6 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using PostQuantum.FileEncryption;
+using PostQuantum.FileEncryption.Signing;
 
 namespace Pqfe.Cli;
 
@@ -46,6 +50,9 @@ internal static class Program
             {
                 "encrypt" => await EncryptAsync(rest).ConfigureAwait(false),
                 "decrypt" => await DecryptAsync(rest).ConfigureAwait(false),
+                "keygen" => KeyGen(rest),
+                "sign" => await SignAsync(rest).ConfigureAwait(false),
+                "verify" => await VerifyAsync(rest).ConfigureAwait(false),
                 _ => Fail($"unknown command: {args[0]}", ExitUsage),
             };
         }
@@ -53,9 +60,13 @@ internal static class Program
         {
             return Fail($"decryption failed: {ex.Message}", ExitDataErr);
         }
+        catch (PqSignatureException ex)
+        {
+            return Fail(ex.Message, ExitDataErr);
+        }
         catch (PqFormatException ex)
         {
-            return Fail($"not a .pqfe container: {ex.Message}", ExitDataErr);
+            return Fail($"unrecognized input: {ex.Message}", ExitDataErr);
         }
         catch (FileNotFoundException ex)
         {
@@ -112,6 +123,125 @@ internal static class Program
 
         Console.Error.WriteLine($"\nDecrypted {input} -> {output}");
         return ExitOk;
+    }
+
+    private static int KeyGen(string[] rest)
+    {
+        if (rest.Length != 1 || rest[0].StartsWith('-'))
+            return Fail("usage: pqfe keygen <keyfile>   (writes <keyfile> and <keyfile>.pub)", ExitUsage);
+
+        string privatePath = rest[0];
+        string publicPath = privatePath + ".pub";
+
+        using var keyPair = PqSigningKeyPair.Generate();
+        byte[] privateBytes = keyPair.PrivateKey.Export();
+        try
+        {
+            // CreateNew refuses to overwrite: a signing key silently replaced is a key lost.
+            WriteNewFile(privatePath, privateBytes);
+            WriteNewFile(publicPath, keyPair.PublicKey.Export());
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(privateBytes);
+        }
+
+        Console.Error.WriteLine($"Wrote {privatePath} (private key — keep secret) and {publicPath} (public key — share).");
+        return ExitOk;
+    }
+
+    private static async Task<int> SignAsync(string[] rest)
+    {
+        if (!TryParseSigning(rest, out string? input, out string? keyPath, out string? signaturePath))
+            return Fail("usage: pqfe sign <input> <keyfile> [--signature PATH]", ExitUsage);
+
+        byte[] keyBytes = await File.ReadAllBytesAsync(keyPath).ConfigureAwait(false);
+        try
+        {
+            PqSigningPrivateKey privateKey;
+            try
+            {
+                privateKey = PqSigningPrivateKey.Import(keyBytes);
+            }
+            catch (ArgumentException)
+            {
+                return Fail($"'{keyPath}' is not a valid signing private key (expected the file written by 'pqfe keygen').", ExitDataErr);
+            }
+
+            using (privateKey)
+            {
+                await new PqSigner().SignFileAsync(input, signaturePath, privateKey).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(keyBytes);
+        }
+
+        Console.Error.WriteLine($"Signed {input} -> {signaturePath}");
+        return ExitOk;
+    }
+
+    private static async Task<int> VerifyAsync(string[] rest)
+    {
+        if (!TryParseSigning(rest, out string? input, out string? keyPath, out string? signaturePath))
+            return Fail("usage: pqfe verify <input> <keyfile.pub> [--signature PATH]", ExitUsage);
+
+        byte[] keyBytes = await File.ReadAllBytesAsync(keyPath).ConfigureAwait(false);
+        PqSigningPublicKey publicKey;
+        try
+        {
+            publicKey = PqSigningPublicKey.Import(keyBytes);
+        }
+        catch (ArgumentException)
+        {
+            return Fail($"'{keyPath}' is not a valid signing public key (expected the .pub file written by 'pqfe keygen').", ExitDataErr);
+        }
+
+        await new PqVerifier().VerifyFileAsync(input, signaturePath, publicKey).ConfigureAwait(false);
+
+        Console.Error.WriteLine($"Signature OK: {input} verified against {signaturePath}");
+        return ExitOk;
+    }
+
+    private static void WriteNewFile(string path, byte[] bytes)
+    {
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        stream.Write(bytes, 0, bytes.Length);
+    }
+
+    private static bool TryParseSigning(
+        string[] args,
+        [NotNullWhen(true)] out string? input,
+        [NotNullWhen(true)] out string? keyPath,
+        [NotNullWhen(true)] out string? signaturePath)
+    {
+        input = null;
+        keyPath = null;
+        signaturePath = null;
+
+        var positionals = new List<string>(capacity: 2);
+        for (int i = 0; i < args.Length; i++)
+        {
+            string a = args[i];
+            switch (a)
+            {
+                case "--signature":
+                    if (i + 1 >= args.Length) return false;
+                    signaturePath = args[++i];
+                    break;
+                default:
+                    if (a.StartsWith('-')) return false;
+                    positionals.Add(a);
+                    break;
+            }
+        }
+
+        if (positionals.Count != 2) return false;
+        input = positionals[0];
+        keyPath = positionals[1];
+        signaturePath ??= input + ".sig";
+        return true;
     }
 
     private static bool TryParsePaths(
@@ -228,11 +358,14 @@ internal static class Program
     private static void PrintUsage()
     {
         Console.WriteLine("""
-            pqfe — encrypt and decrypt .pqfe containers from the command line.
+            pqfe — encrypt, decrypt, sign, and verify files from the command line.
 
             Usage:
               pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR]
               pqfe decrypt <input> <output>                [--passphrase-env VAR]
+              pqfe keygen  <keyfile>
+              pqfe sign    <input> <keyfile>     [--signature PATH]
+              pqfe verify  <input> <keyfile.pub> [--signature PATH]
               pqfe --version
               pqfe --help
 
@@ -244,9 +377,15 @@ internal static class Program
                                     Caveat: environment variables are visible to child
                                     processes and can surface in crash dumps and process
                                     inspection — scope VAR to the single invocation.
+              --signature PATH      Detached-signature path (default: <input> + ".sig").
+
+            keygen writes an Ed25519 + ML-DSA-65 hybrid signing key pair: <keyfile> holds the
+            private key (keep secret; keygen refuses to overwrite), <keyfile>.pub the public
+            key. sign/verify produce and check detached signatures over any file — typically
+            a .pqfe container, proving who created it in addition to it being untampered.
 
             Exit codes follow sysexits.h conventions: 0 ok, 64 usage,
-            65 data error (wrong key or tamper), 66 missing input, 74 i/o.
+            65 data error (wrong key, tamper, or bad signature), 66 missing input, 74 i/o.
             """);
     }
 

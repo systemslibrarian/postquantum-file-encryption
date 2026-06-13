@@ -141,27 +141,33 @@ jobs:
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
 
-      - name: Wait for Hybrid to be indexed on nuget.org
-        # Same reasoning as the core wait above: the DI extensions nupkg pins BOTH the core
-        # and Hybrid at the same version, so Hybrid must be queryable before the DI package
-        # is pushed or an immediate consumer restore can fail.
+      - name: Wait for Hybrid and Signing to be indexed on nuget.org
+        # Same reasoning as the core wait above: the DI extensions nupkg pins the core,
+        # Hybrid, AND Signing at the same version, so all three must be queryable before the
+        # DI package is pushed or an immediate consumer restore can fail.
         if: ${{ env.NUGET_API_KEY != '' }}
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          # 90 × 10s = 15 minutes, matching the core wait above (the v1.2.0 release saw
-          # nuget.org indexing take longer than the previous 5-minute budget — twice).
-          for i in $(seq 1 90); do
-            if curl -fsSL "https://api.nuget.org/v3-flatcontainer/postquantum.fileencryption.hybrid/index.json" \
-                 | grep -Eq "\"${version}\""; then
-              echo "Hybrid ${version} is indexed."
-              exit 0
+          # 90 × 10s = 15 minutes per package, matching the core wait above (the v1.2.0
+          # release saw nuget.org indexing take longer than the previous 5-minute budget — twice).
+          for pkg in postquantum.fileencryption.hybrid postquantum.fileencryption.signing; do
+            indexed=0
+            for i in $(seq 1 90); do
+              if curl -fsSL "https://api.nuget.org/v3-flatcontainer/${pkg}/index.json" \
+                   | grep -Eq "\"${version}\""; then
+                echo "${pkg} ${version} is indexed."
+                indexed=1
+                break
+              fi
+              echo "${pkg} ${version} not yet indexed (attempt $i/90); sleeping 10s..."
+              sleep 10
+            done
+            if [ "$indexed" -ne 1 ]; then
+              echo "${pkg} ${version} still not indexed after 15 minutes — refusing to push the DI extensions package." >&2
+              exit 1
             fi
-            echo "Hybrid ${version} not yet indexed (attempt $i/90); sleeping 10s..."
-            sleep 10
           done
-          echo "Hybrid ${version} still not indexed after 15 minutes — refusing to push the DI extensions package." >&2
-          exit 1
 
       - name: Publish the DI extensions package to NuGet
         if: ${{ env.NUGET_API_KEY != '' }}

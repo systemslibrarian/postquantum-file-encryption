@@ -127,6 +127,10 @@ dotnet tool install -g PostQuantum.FileEncryption.Tool
 
 pqfe encrypt report.pdf report.pdf.pqfe --argon2id     # prompts for a passphrase
 pqfe decrypt report.pdf.pqfe report.pdf
+
+pqfe keygen me.key                                     # Ed25519 + ML-DSA-65 signing key pair
+pqfe sign   report.pdf.pqfe me.key                     # writes report.pdf.pqfe.sig
+pqfe verify report.pdf.pqfe me.key.pub                 # exit 0 = authentic, 65 = reject
 ```
 
 The source lives at [`samples/Pqfe.Cli`](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/samples/Pqfe.Cli) and is built on the public

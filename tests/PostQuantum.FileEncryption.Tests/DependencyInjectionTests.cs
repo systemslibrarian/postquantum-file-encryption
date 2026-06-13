@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PostQuantum.FileEncryption.Hybrid;
+using PostQuantum.FileEncryption.Signing;
 using Xunit;
 
 namespace PostQuantum.FileEncryption.Tests;
@@ -102,11 +103,39 @@ public sealed class DependencyInjectionTests
     }
 
     [Fact]
+    public void AddPqSigning_registers_signer_and_verifier_as_singletons()
+    {
+        using var provider = new ServiceCollection()
+            .AddPqSigning()
+            .BuildServiceProvider();
+
+        var signer = provider.GetRequiredService<PqSigner>();
+        var verifier = provider.GetRequiredService<PqVerifier>();
+        Assert.Same(signer, provider.GetRequiredService<PqSigner>());
+        Assert.Same(verifier, provider.GetRequiredService<PqVerifier>());
+    }
+
+    [Fact]
+    public void Resolved_signing_services_round_trip()
+    {
+        using var provider = new ServiceCollection()
+            .AddPqSigning()
+            .BuildServiceProvider();
+        using var keyPair = PqSigningKeyPair.Generate();
+
+        var data = new byte[] { 42, 42, 42 };
+        byte[] signature = provider.GetRequiredService<PqSigner>().SignBytes(data, keyPair.PrivateKey);
+        provider.GetRequiredService<PqVerifier>().VerifyBytes(data, signature, keyPair.PublicKey);
+    }
+
+    [Fact]
     public void Add_methods_throw_on_null_services()
     {
         Assert.Throws<ArgumentNullException>(
             () => default(IServiceCollection)!.AddPqFileEncryption());
         Assert.Throws<ArgumentNullException>(
             () => default(IServiceCollection)!.AddPqHybridFileEncryption());
+        Assert.Throws<ArgumentNullException>(
+            () => default(IServiceCollection)!.AddPqSigning());
     }
 }

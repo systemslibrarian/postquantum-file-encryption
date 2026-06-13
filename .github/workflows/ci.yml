@@ -98,6 +98,24 @@ jobs:
           "$PQFE" decrypt "$RUNNER_TEMP/c.pqfe"    "$RUNNER_TEMP/out.txt" --passphrase-env PQFE_PASS
           diff "$RUNNER_TEMP/plain.txt" "$RUNNER_TEMP/out.txt"
 
+      - name: Sign and verify with the AOT-published binary
+        # Exercises the Ed25519 + ML-DSA-65 signing path (BouncyCastle) under native AOT,
+        # including the fail-closed branch: a tampered file must be rejected with exit 65.
+        run: |
+          set -euo pipefail
+          PQFE="$RUNNER_TEMP/pqfe-aot/pqfe"
+          "$PQFE" keygen "$RUNNER_TEMP/smoke.key"
+          "$PQFE" sign   "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/smoke.key"
+          "$PQFE" verify "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/smoke.key.pub"
+          echo tamper >> "$RUNNER_TEMP/c.pqfe"
+          if "$PQFE" verify "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/smoke.key.pub"; then
+            echo "tampered file verified — fail-closed contract broken" >&2
+            exit 1
+          else
+            rc=$?
+            test "$rc" -eq 65 || { echo "expected exit 65 for a bad signature, got $rc" >&2; exit 1; }
+          fi
+
   rust:
     name: Rust/WASM — test & build
     runs-on: ubuntu-latest

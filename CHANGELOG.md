@@ -28,7 +28,16 @@ byte-identical regardless of which target produced them.
   BouncyCastle (fully managed; runs on `net8.0` and `net10.0`). The sidecar format v1 is
   byte-exactly specified in [docs/SIGNATURE-FORMAT.md](docs/SIGNATURE-FORMAT.md); the
   detached-signature limits (no name/path/time binding, strip-and-resign) are recorded in
-  [KNOWN-GAPS.md](KNOWN-GAPS.md).
+  [KNOWN-GAPS.md](KNOWN-GAPS.md). A pinned verify-only known-answer vector
+  ([docs/TEST-VECTORS.md](docs/TEST-VECTORS.md), Vector 4) locks the sidecar layout, the
+  domain-separation context, and the SHA-512 pre-hash.
+- **`pqfe keygen` / `pqfe sign` / `pqfe verify`.** The CLI tool produces and checks detached
+  signatures: `keygen` writes a key pair (refusing to overwrite an existing private key),
+  `sign` writes `<input>.sig` (or `--signature PATH`), and `verify` exits `0` for an
+  authentic file and `65` for any rejection. The AOT smoke test in CI now also round-trips
+  keygen → sign → verify — including the fail-closed tampered-file branch — under native AOT.
+- **`AddPqSigning()`** in the DI extensions package registers `PqSigner`/`PqVerifier` as
+  singletons; key material stays in the application's own storage and is passed per call.
 
 - **.NET 8 (LTS) support.** `PostQuantum.FileEncryption`, `PostQuantum.FileEncryption.Hybrid`,
   and `PostQuantum.FileEncryption.Extensions.DependencyInjection` now multi-target `net8.0`
@@ -48,6 +57,8 @@ byte-identical regardless of which target produced them.
   best — constant-memory streaming for files of any size, the open MIT license, and the
   publicly specified frozen container format with a byte-compatible Rust/WASM reference —
   so package-page readers (human or otherwise) don't have to infer it.
+- **`PackageValidationBaselineVersion` bumped to `1.2.1`** (the latest published version),
+  per the release convention.
 
 ## [1.2.1] - 2026-06-12
 

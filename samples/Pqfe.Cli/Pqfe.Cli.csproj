@@ -28,9 +28,9 @@
     <InformationalVersion>1.3.0</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>pqfe — PostQuantum.FileEncryption CLI</Title>
-    <Description>Command-line file encryption built on PostQuantum.FileEncryption: `pqfe encrypt` / `pqfe decrypt` for the FROZEN .pqfe v2 container format. Authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id passphrase derivation, atomic output files, fail-closed decryption (wrong passphrase and tampered ciphertext are indistinguishable errors), and sysexits.h exit codes for scripting. Passphrases come from a no-echo prompt or an environment variable for CI use. Install: dotnet tool install -g PostQuantum.FileEncryption.Tool. Requires the .NET 10 runtime or later.</Description>
-    <PackageReleaseNotes>1.3.0 — tracks PostQuantum.FileEncryption 1.3.0 in lockstep (the library now multi-targets net8.0 and net10.0; the tool itself still runs on the .NET 10 runtime or later). No format change: the .pqfe v2 container format remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
-    <PackageTags>encryption;file-encryption;cli;dotnet-tool;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;cryptography;security;post-quantum;pqc;dotnet;net10</PackageTags>
+    <Description>Command-line file encryption and signing built on PostQuantum.FileEncryption: `pqfe encrypt` / `pqfe decrypt` for the FROZEN .pqfe v2 container format, plus `pqfe keygen` / `pqfe sign` / `pqfe verify` for detached Ed25519 + ML-DSA-65 hybrid signatures (.sig sidecars). Authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id passphrase derivation, atomic output files, fail-closed decryption and verification (wrong passphrase, tampered ciphertext, and bad signatures are indistinguishable within their class), and sysexits.h exit codes for scripting. Passphrases come from a no-echo prompt or an environment variable for CI use. Install: dotnet tool install -g PostQuantum.FileEncryption.Tool. Requires the .NET 10 runtime or later.</Description>
+    <PackageReleaseNotes>1.3.0 — tracks PostQuantum.FileEncryption 1.3.0 in lockstep (the library now multi-targets net8.0 and net10.0; the tool itself still runs on the .NET 10 runtime or later). New: pqfe keygen / sign / verify produce and check detached Ed25519 + ML-DSA-65 hybrid signatures via the new PostQuantum.FileEncryption.Signing package. No format change: the .pqfe v2 container format remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageTags>encryption;file-encryption;signing;signature;cli;dotnet-tool;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;ml-dsa;ed25519;cryptography;security;post-quantum;pqc;dotnet;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
@@ -54,6 +54,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />
   </ItemGroup>
 
 </Project>
