@@ -43,6 +43,8 @@ jobs:
           dotnet pack src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj --configuration Release -o artifacts
+          dotnet pack src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj --configuration Release -o artifacts
+          dotnet pack src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj --configuration Release -o artifacts
           dotnet pack samples/Pqfe.Cli/Pqfe.Cli.csproj --configuration Release -o artifacts
 
@@ -64,6 +66,8 @@ jobs:
           dotnet CycloneDX src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj -o artifacts --json --filename sbom.core.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj -o artifacts --json --filename sbom.hybrid.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj -o artifacts --json --filename sbom.signing.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj -o artifacts --json --filename sbom.aws.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj -o artifacts --json --filename sbom.azurekeyvault.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj -o artifacts --json --filename sbom.di.cdx.json
           dotnet CycloneDX samples/Pqfe.Cli/Pqfe.Cli.csproj -o artifacts --json --filename sbom.tool.cdx.json
 
@@ -84,13 +88,14 @@ jobs:
         # a same-version PackageReference on pack), and a consumer's restore of Hybrid will fail
         # if it cannot resolve the core. The shell glob would alphabetically order core before
         # Hybrid (".nupkg" sorts before ".Hybrid"), but the order is incidental — make it explicit.
-        # Excludes anything matching *Hybrid*, *Signing*, *Extensions*, or *Tool* from this step.
+        # Excludes anything matching *Hybrid*, *Signing*, *Aws*, *AzureKeyVault*, *Extensions*,
+        # or *Tool* from this step.
         if: ${{ env.NUGET_API_KEY != '' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           for f in artifacts/PostQuantum.FileEncryption.*.nupkg artifacts/PostQuantum.FileEncryption.*.snupkg; do
-            case "$f" in *Hybrid*|*Signing*|*Extensions*|*Tool*) continue ;; esac
+            case "$f" in *Hybrid*|*Signing*|*Aws*|*AzureKeyVault*|*Extensions*|*Tool*) continue ;; esac
             echo "Pushing $f"
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
@@ -129,14 +134,17 @@ jobs:
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
 
-      - name: Publish Signing to NuGet
-        # Signing pins only the core (same-version PackageReference on pack), so it needs the
-        # core indexed — already guaranteed above — but has no ordering constraint vs Hybrid.
+      - name: Publish Signing and the cloud key providers to NuGet
+        # Signing, Aws, and AzureKeyVault each pin only the core (same-version
+        # PackageReference on pack), so they need the core indexed — already guaranteed
+        # above — but have no ordering constraint vs Hybrid or each other.
         if: ${{ env.NUGET_API_KEY != '' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for f in artifacts/PostQuantum.FileEncryption.Signing.*.nupkg artifacts/PostQuantum.FileEncryption.Signing.*.snupkg; do
+          for f in artifacts/PostQuantum.FileEncryption.Signing.*.nupkg artifacts/PostQuantum.FileEncryption.Signing.*.snupkg \
+                   artifacts/PostQuantum.FileEncryption.Aws.*.nupkg artifacts/PostQuantum.FileEncryption.Aws.*.snupkg \
+                   artifacts/PostQuantum.FileEncryption.AzureKeyVault.*.nupkg artifacts/PostQuantum.FileEncryption.AzureKeyVault.*.snupkg; do
             echo "Pushing $f"
             dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done

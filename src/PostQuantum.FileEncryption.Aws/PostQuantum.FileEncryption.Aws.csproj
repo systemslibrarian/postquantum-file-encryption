@@ -2,22 +2,22 @@
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
-    <RootNamespace>PostQuantum.FileEncryption.Hybrid</RootNamespace>
-    <AssemblyName>PostQuantum.FileEncryption.Hybrid</AssemblyName>
+    <RootNamespace>PostQuantum.FileEncryption.Aws</RootNamespace>
+    <AssemblyName>PostQuantum.FileEncryption.Aws</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!-- NuGet package metadata -->
   <PropertyGroup>
-    <PackageId>PostQuantum.FileEncryption.Hybrid</PackageId>
+    <PackageId>PostQuantum.FileEncryption.Aws</PackageId>
     <Version>1.4.0</Version>
     <FileVersion>1.4.0.0</FileVersion>
     <InformationalVersion>1.4.0</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
-    <Title>PostQuantum.FileEncryption.Hybrid</Title>
-    <Description>Open-source (MIT) post-quantum hybrid public-key encryption for PostQuantum.FileEncryption, for .NET 8 and .NET 10. Adds X25519 + ML-KEM-768 (FIPS 203) hybrid recipient encryption and multi-recipient support on top of the FROZEN, publicly specified .pqfe v2 container format — a file's content key stays safe if either primitive is later broken. Fully managed via BouncyCastle for both primitives (no platform ML-KEM dependency); runs anywhere .NET 8 or later does, including Linux, Windows, macOS, and constrained environments. Constant-memory streaming AES-256-GCM data plane via the core package handles files of any size. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release. Recommended path for new code; supersedes the deprecated inline ML-KEM-only recipient mode (PQFE002) in the core package.</Description>
-    <PackageReleaseNotes>1.4.0 — tracks PostQuantum.FileEncryption 1.4.0 in lockstep; no changes to this package. The release adds cloud envelope-key providers to the family (PostQuantum.FileEncryption.Aws and PostQuantum.FileEncryption.AzureKeyVault). No format change: the .pqfe v2 container format remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
-    <PackageTags>post-quantum;pqc;ml-kem;ml-kem-768;kyber;x25519;hybrid;combiner;multi-recipient;encryption;file-encryption;recipient;authenticated-encryption;aead;cryptography;security;dotnet;net8;net10</PackageTags>
+    <Title>PostQuantum.FileEncryption.Aws</Title>
+    <Description>AWS KMS envelope-key provider for PostQuantum.FileEncryption, for .NET 8 and .NET 10. AwsKmsContentKeyProvider implements the IContentKeyProvider seam over AWS KMS GenerateDataKey/Decrypt: every file is encrypted under a fresh per-file content key that KMS wraps under your customer master key — the master key never leaves AWS. The wrap is bound to the configured key id and a library-specific encryption context, and unwrap fails closed (PqDecryptionException, no oracle) on any invalid or foreign ciphertext. Works with every PqFileEncryptor/PqFileDecryptor overload that accepts a key provider; rotation re-wraps the small content key instead of re-encrypting the file. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release.</Description>
+    <PackageReleaseNotes>First release of the AWS KMS envelope-key provider, versioned in lockstep with the PostQuantum.FileEncryption family. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line.</PackageReleaseNotes>
+    <PackageTags>aws;kms;aws-kms;envelope-encryption;key-management;data-key;encryption;file-encryption;aes-gcm;authenticated-encryption;aead;cryptography;security;post-quantum;pqc;dotnet;net8;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
@@ -29,6 +29,9 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- No published baseline exists on nuget.org for this package yet; enable after first publish. -->
+    <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,7 +42,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
-    <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+    <PackageReference Include="AWSSDK.KeyManagementService" Version="4.0.12.5" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1" PrivateAssets="All" />
     <ProjectReference Include="../PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
   </ItemGroup>

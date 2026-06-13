@@ -2,3 +2,4 @@
 Microsoft.Extensions.DependencyInjection.PqFileEncryptionServiceCollectionExtensions
 static Microsoft.Extensions.DependencyInjection.PqFileEncryptionServiceCollectionExtensions.AddPqFileEncryption(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, PostQuantum.FileEncryption.PqEncryptionOptions? options = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.PqFileEncryptionServiceCollectionExtensions.AddPqHybridFileEncryption(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, PostQuantum.FileEncryption.PqEncryptionOptions? options = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.PqFileEncryptionServiceCollectionExtensions.AddPqSigning(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

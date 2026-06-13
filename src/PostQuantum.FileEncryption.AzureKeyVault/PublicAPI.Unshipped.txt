@@ -1,0 +1,7 @@
+#nullable enable
+PostQuantum.FileEncryption.AzureKeyVault.AzureKeyVaultContentKeyProvider
+PostQuantum.FileEncryption.AzureKeyVault.AzureKeyVaultContentKeyProvider.AzureKeyVaultContentKeyProvider(Azure.Security.KeyVault.Keys.Cryptography.CryptographyClient! cryptographyClient) -> void
+PostQuantum.FileEncryption.AzureKeyVault.AzureKeyVaultContentKeyProvider.AzureKeyVaultContentKeyProvider(Azure.Security.KeyVault.Keys.Cryptography.CryptographyClient! cryptographyClient, Azure.Security.KeyVault.Keys.Cryptography.KeyWrapAlgorithm algorithm) -> void
+PostQuantum.FileEncryption.AzureKeyVault.AzureKeyVaultContentKeyProvider.ProviderId.get -> string!
+PostQuantum.FileEncryption.AzureKeyVault.AzureKeyVaultContentKeyProvider.UnwrapKeyAsync(System.ReadOnlyMemory<byte> wrapInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.AzureKeyVault.AzureKeyVaultContentKeyProvider.WrapNewKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(byte[]! contentKey, byte[]! wrapInfo)>!

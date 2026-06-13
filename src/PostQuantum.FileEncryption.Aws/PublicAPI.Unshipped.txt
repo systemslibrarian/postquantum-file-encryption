@@ -1,0 +1,6 @@
+#nullable enable
+PostQuantum.FileEncryption.Aws.AwsKmsContentKeyProvider
+PostQuantum.FileEncryption.Aws.AwsKmsContentKeyProvider.AwsKmsContentKeyProvider(Amazon.KeyManagementService.IAmazonKeyManagementService! kms, string! keyId, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? encryptionContext = null) -> void
+PostQuantum.FileEncryption.Aws.AwsKmsContentKeyProvider.ProviderId.get -> string!
+PostQuantum.FileEncryption.Aws.AwsKmsContentKeyProvider.UnwrapKeyAsync(System.ReadOnlyMemory<byte> wrapInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.Aws.AwsKmsContentKeyProvider.WrapNewKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(byte[]! contentKey, byte[]! wrapInfo)>!

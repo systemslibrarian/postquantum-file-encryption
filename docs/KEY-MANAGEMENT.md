@@ -1,8 +1,12 @@
 # Key Management: envelope providers (KMS/HSM), Multi-Recipient, Rotation
 
 The **envelope-key seam is implemented** (`KeySource = 5`): `IContentKeyProvider` plus the
-built-in, dependency-free `LocalKekContentKeyProvider`. Cloud-KMS/HSM providers (AWS, Azure,
-Vault, PKCS#11) are designed below and ship as separate provider packages.
+built-in, dependency-free `LocalKekContentKeyProvider`. **Cloud providers are SHIPPED** as
+separate packages: [`PostQuantum.FileEncryption.Aws`](https://www.nuget.org/packages/PostQuantum.FileEncryption.Aws)
+(AWS KMS `GenerateDataKey`/`Decrypt` with a bound encryption context) and
+[`PostQuantum.FileEncryption.AzureKeyVault`](https://www.nuget.org/packages/PostQuantum.FileEncryption.AzureKeyVault)
+(Key Vault / Managed HSM wrap/unwrap, pinned key id and algorithm). HashiCorp Vault and
+PKCS#11 remain future work.
 
 ## Envelope encryption with an external provider (IMPLEMENTED)
 
@@ -27,17 +31,25 @@ byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, provide
 byte[] plain     = await new PqFileDecryptor().DecryptBytesAsync(container, provider);
 ```
 
-A cloud provider implements the same interface, mapping to `GenerateDataKey` / `Decrypt`:
+The shipped cloud providers implement the same interface:
 
-```
-encrypt:  (CEK, wrapInfo) = KMS.GenerateDataKey(keyId)   # wrapInfo = encrypted CEK ‖ keyId
-decrypt:  CEK = KMS.Decrypt(wrapInfo)                    # master key stays in the KMS/HSM
+```csharp
+// AWS KMS — GenerateDataKey/Decrypt; wrap bound to the key id and an encryption context:
+var aws = new AwsKmsContentKeyProvider(new AmazonKeyManagementServiceClient(), "alias/my-app-key");
+
+// Azure Key Vault / Managed HSM — wrap/unwrap (RSA-OAEP-256 default, A256KW available);
+// unwrap pinned to the configured key id and algorithm:
+var akv = new AzureKeyVaultContentKeyProvider(
+    new CryptographyClient(new Uri("https://my-vault.vault.azure.net/keys/pqfe-kek/<version>"),
+                           new DefaultAzureCredential()));
 ```
 
 - The master key stays in the KMS/HSM; only the per-file CEK crosses the boundary, wrapped.
-- Cloud providers ship as separate packages (e.g. `PostQuantum.FileEncryption.Aws`) so the core
-  stays dependency-light — the same packaging principle as the Hybrid package. They need their
-  cloud SDK and live credentials to integration-test; that is the remaining work.
+- Cloud providers ship as separate packages so the core stays dependency-light — the same
+  packaging principle as the Hybrid package.
+- They are unit-tested against in-process fakes of the SDK clients that reproduce the
+  services' binding semantics; CI carries no cloud credentials, so **live-service integration
+  is not exercised by this repo's pipeline** ([KNOWN-GAPS.md](../KNOWN-GAPS.md)).
 
 ## Multiple recipients / access groups
 
@@ -66,8 +78,9 @@ rewrap:  CEK     = unwrap(old credential)      # decrypt just the small wrapped 
 
 ## Status
 
-All of the above is **design, not shipped**. Tracked in [KNOWN-GAPS.md](../KNOWN-GAPS.md). The
-core today provides passphrase envelope encryption; the provider abstraction, multi-recipient
-format, and rewrap tooling are future work in separate provider packages.
+The provider seam, the local-KEK provider, the **AWS KMS provider**, the **Azure Key Vault
+provider**, and hybrid multi-recipient encryption (`KeySource = 4`, in the Hybrid package)
+are **shipped**. Rewrap/rotation tooling and Vault/PKCS#11 providers remain design-only,
+tracked in [KNOWN-GAPS.md](../KNOWN-GAPS.md).
 
 *To God be the glory — 1 Corinthians 10:31.*

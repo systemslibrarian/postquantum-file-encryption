@@ -101,6 +101,10 @@ dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
 # Optional: detached Ed25519 + ML-DSA-65 signatures (sender authenticity)
 dotnet add package PostQuantum.FileEncryption.Signing --version 1.3.0
 
+# Optional: cloud envelope-key providers (the master key stays in your KMS/HSM)
+dotnet add package PostQuantum.FileEncryption.Aws            # AWS KMS
+dotnet add package PostQuantum.FileEncryption.AzureKeyVault  # Azure Key Vault / Managed HSM
+
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
 dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.3.0
@@ -378,14 +382,22 @@ container still opens.
 ### Envelope encryption (KMS / HSM)
 
 Encrypt under an external key provider so the master key never enters your process. A
-built-in, dependency-free local-KEK provider is included; cloud providers (AWS KMS, Azure
-Key Vault, …) implement the same `IContentKeyProvider` interface in separate packages — see
-the [`1.x` minor roadmap](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/ROADMAP.md#after-10--1x-minor-work).
+built-in, dependency-free local-KEK provider is included, and production cloud providers
+ship as companion packages:
+[**PostQuantum.FileEncryption.Aws**](https://www.nuget.org/packages/PostQuantum.FileEncryption.Aws)
+(AWS KMS) and
+[**PostQuantum.FileEncryption.AzureKeyVault**](https://www.nuget.org/packages/PostQuantum.FileEncryption.AzureKeyVault)
+(Azure Key Vault / Managed HSM).
 
 ```csharp
-using var provider = LocalKekContentKeyProvider.Generate();   // or new(kek), or a KMS-backed provider
+using var provider = LocalKekContentKeyProvider.Generate();   // or new(kek)...
 byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, provider);
 byte[] plaintext = await new PqFileDecryptor().DecryptBytesAsync(container, provider);
+
+// ...or keep the master key in AWS KMS / Azure Key Vault — rotation re-wraps the small
+// content key; the multi-gigabyte payload is never re-encrypted:
+var kmsProvider = new AwsKmsContentKeyProvider(new AmazonKeyManagementServiceClient(), "alias/my-app-key");
+await new PqFileEncryptor().EncryptFileAsync("backup.tar", "backup.tar.pqfe", kmsProvider);
 ```
 
 See [docs/KEY-MANAGEMENT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-MANAGEMENT.md).

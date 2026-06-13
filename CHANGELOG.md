@@ -8,6 +8,33 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Added
+
+- **Cloud envelope-key providers** — the `IContentKeyProvider` seam (`KeySource = 5`) gains
+  two production implementations, shipping as new lockstep packages (planned `1.4.0`):
+  - **`PostQuantum.FileEncryption.Aws`** — `AwsKmsContentKeyProvider` over AWS KMS
+    `GenerateDataKey`/`Decrypt`. Every wrap is bound to the configured key id and a
+    library-reserved encryption context (callers can add entries, e.g. a tenant id); a blob
+    wrapped under a different key or context fails closed with `PqDecryptionException`, while
+    operational errors (missing key, access denied, throttling) propagate as SDK exceptions
+    so they are never mistaken for tampering.
+  - **`PostQuantum.FileEncryption.AzureKeyVault`** — `AzureKeyVaultContentKeyProvider` over
+    Key Vault / Managed HSM wrap/unwrap (RSA-OAEP-256 default, `A256KW` selectable). The wrap
+    records the versioned key id; unwrap requires it to match the configured client and
+    always uses the *configured* algorithm — a key id or algorithm smuggled into a hostile
+    container header is never honored.
+  - In both, the master key never leaves the KMS/HSM, and rotation re-wraps the small content
+    key instead of re-encrypting the payload. Unit-tested against in-process fakes of the SDK
+    clients that reproduce the services' binding semantics; live-cloud integration is
+    deliberately out of CI scope ([KNOWN-GAPS.md](KNOWN-GAPS.md)).
+
+### Changed
+
+- **Package-validation baselines advanced to `1.3.0`**, and validation is now enabled for the
+  Signing and DI packages (their first published baselines exist as of `1.3.0`). The `1.3.0`
+  public APIs of Signing and the DI extensions moved from `PublicAPI.Unshipped.txt` to
+  `PublicAPI.Shipped.txt`.
+
 ## [1.3.0] - 2026-06-12
 
 The reach release: the library family now runs on .NET 8 LTS, and a fifth package adds

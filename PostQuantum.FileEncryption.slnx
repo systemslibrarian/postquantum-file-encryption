@@ -7,6 +7,8 @@
     <Project Path="samples/Pqfe.Cli/Pqfe.Cli.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj" />
+    <Project Path="src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj" />
     <Project Path="src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj" />
     <Project Path="src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
     <Project Path="src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />

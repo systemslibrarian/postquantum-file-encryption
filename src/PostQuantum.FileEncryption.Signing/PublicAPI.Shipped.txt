@@ -1,1 +1,26 @@
 #nullable enable
+PostQuantum.FileEncryption.Signing.PqSignatureException
+PostQuantum.FileEncryption.Signing.PqSignatureException.PqSignatureException(string! message) -> void
+PostQuantum.FileEncryption.Signing.PqSignatureException.PqSignatureException(string! message, System.Exception! innerException) -> void
+PostQuantum.FileEncryption.Signing.PqSigner
+PostQuantum.FileEncryption.Signing.PqSigner.PqSigner() -> void
+PostQuantum.FileEncryption.Signing.PqSigner.SignAsync(System.IO.Stream! input, PostQuantum.FileEncryption.Signing.PqSigningPrivateKey! privateKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.Signing.PqSigner.SignBytes(System.ReadOnlySpan<byte> data, PostQuantum.FileEncryption.Signing.PqSigningPrivateKey! privateKey) -> byte[]!
+PostQuantum.FileEncryption.Signing.PqSigner.SignFileAsync(string! inputPath, string! signaturePath, PostQuantum.FileEncryption.Signing.PqSigningPrivateKey! privateKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Signing.PqSigningKeyPair
+PostQuantum.FileEncryption.Signing.PqSigningKeyPair.Dispose() -> void
+PostQuantum.FileEncryption.Signing.PqSigningKeyPair.PrivateKey.get -> PostQuantum.FileEncryption.Signing.PqSigningPrivateKey!
+PostQuantum.FileEncryption.Signing.PqSigningKeyPair.PublicKey.get -> PostQuantum.FileEncryption.Signing.PqSigningPublicKey!
+PostQuantum.FileEncryption.Signing.PqSigningPrivateKey
+PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.Dispose() -> void
+PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.Export() -> byte[]!
+PostQuantum.FileEncryption.Signing.PqSigningPublicKey
+PostQuantum.FileEncryption.Signing.PqSigningPublicKey.Export() -> byte[]!
+PostQuantum.FileEncryption.Signing.PqVerifier
+PostQuantum.FileEncryption.Signing.PqVerifier.PqVerifier() -> void
+PostQuantum.FileEncryption.Signing.PqVerifier.VerifyAsync(System.IO.Stream! input, System.ReadOnlyMemory<byte> signature, PostQuantum.FileEncryption.Signing.PqSigningPublicKey! publicKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+PostQuantum.FileEncryption.Signing.PqVerifier.VerifyBytes(System.ReadOnlySpan<byte> data, System.ReadOnlySpan<byte> signature, PostQuantum.FileEncryption.Signing.PqSigningPublicKey! publicKey) -> void
+PostQuantum.FileEncryption.Signing.PqVerifier.VerifyFileAsync(string! inputPath, string! signaturePath, PostQuantum.FileEncryption.Signing.PqSigningPublicKey! publicKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static PostQuantum.FileEncryption.Signing.PqSigningKeyPair.Generate() -> PostQuantum.FileEncryption.Signing.PqSigningKeyPair!
+static PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Signing.PqSigningPrivateKey!
+static PostQuantum.FileEncryption.Signing.PqSigningPublicKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Signing.PqSigningPublicKey!

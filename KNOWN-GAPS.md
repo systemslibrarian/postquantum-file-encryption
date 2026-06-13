@@ -80,11 +80,16 @@ Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   X25519 + ML-KEM-768 combiner with multi-recipient support, managed BouncyCastle for
   both primitives, runs anywhere). Removal of the inline mode is targeted for a future
   major release; until then it continues to honour the existing fail-closed contract.
-- **Cloud KMS/HSM providers are not implemented yet.** The **envelope seam is implemented** —
-  `IContentKeyProvider` plus the built-in, tested `LocalKekContentKeyProvider` (`KeySource = 5`).
-  Cloud providers (AWS KMS, Azure Key Vault, Vault, PKCS#11) implement the same interface in
-  separate packages and need their SDKs + live credentials to integration-test. Rewrap/rotation
-  tooling is still designed-only. See [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md).
+- **Cloud KMS/HSM providers are not integration-tested against live clouds in CI.** The
+  envelope seam (`IContentKeyProvider`, `KeySource = 5`) now has three implementations: the
+  built-in `LocalKekContentKeyProvider`, **`PostQuantum.FileEncryption.Aws`** (AWS KMS
+  GenerateDataKey/Decrypt with a bound encryption context), and
+  **`PostQuantum.FileEncryption.AzureKeyVault`** (Key Vault / Managed HSM wrap/unwrap, pinned
+  key id and algorithm). The cloud providers are unit-tested against in-process fakes of the
+  SDK clients that reproduce the services' binding semantics — CI has no cloud credentials,
+  so live-service integration is exercised by consumers, not by this repo's pipeline.
+  HashiCorp Vault and PKCS#11 providers remain unimplemented; rewrap/rotation tooling is
+  still designed-only. See [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md).
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
   exist, but the `string` overloads remain for ergonomics and cannot zero the caller's `string`.
 

@@ -29,6 +29,8 @@
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj" />
   </ItemGroup>
 
 </Project>

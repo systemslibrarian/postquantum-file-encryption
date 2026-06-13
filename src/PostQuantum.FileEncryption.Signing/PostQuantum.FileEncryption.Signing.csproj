@@ -14,13 +14,13 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Signing</PackageId>
-    <Version>1.3.0</Version>
-    <FileVersion>1.3.0.0</FileVersion>
-    <InformationalVersion>1.3.0</InformationalVersion>
+    <Version>1.4.0</Version>
+    <FileVersion>1.4.0.0</FileVersion>
+    <InformationalVersion>1.4.0</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Signing</Title>
     <Description>Open-source (MIT) post-quantum hybrid detached signatures for PostQuantum.FileEncryption, for .NET 8 and .NET 10. Signs any file or stream — typically a .pqfe container — with Ed25519 + ML-DSA-65 (FIPS 204) together and writes a small detached .sig sidecar, so a signature stays unforgeable if either primitive is later broken. Verification is fail-closed: both signatures must verify or PqSignatureException is thrown, with no oracle distinguishing why. Constant-memory streaming via SHA-512 pre-hash handles files of any size. The sidecar format is versioned and publicly specified (docs/SIGNATURE-FORMAT.md). Fully managed via BouncyCastle (no platform ML-DSA dependency); runs anywhere .NET 8 or later does. Adds sender authenticity on top of the encryption packages: AES-GCM proves a container was not altered, a detached signature proves who produced it. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release.</Description>
-    <PackageReleaseNotes>First release of the detached-signature package, versioned in lockstep with the PostQuantum.FileEncryption family. Sign files, streams, or buffers with Ed25519 + ML-DSA-65 hybrid signatures; verify fail-closed. The .sig sidecar format v1 is documented in docs/SIGNATURE-FORMAT.md. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.4.0 — tracks PostQuantum.FileEncryption 1.4.0 in lockstep; no changes to signing behavior or the .sig sidecar format (v1, docs/SIGNATURE-FORMAT.md). Binary-compatibility validation against the published 1.3.0 baseline is now enabled for this package. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
     <PackageTags>post-quantum;pqc;ml-dsa;ml-dsa-65;dilithium;ed25519;hybrid;signature;digital-signature;detached-signature;signing;verify;file-signing;authenticity;fips-204;cryptography;security;dotnet;net8;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -33,9 +33,6 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-
-    <!-- No published baseline exists on nuget.org for this package yet; enable after first publish. -->
-    <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
   <ItemGroup>
