@@ -9,7 +9,7 @@ Fully managed (BouncyCastle) — **no native ML-KEM / OpenSSL 3.5 requirement**,
 .NET 8 or later runs (`net8.0` and `net10.0` targets). Produces standard `.pqfe` containers.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.4.1
 ```
 
 > **Versioning.** This package is intentionally kept in **lockstep** with

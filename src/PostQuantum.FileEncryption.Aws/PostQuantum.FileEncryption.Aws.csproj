@@ -10,13 +10,13 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Aws</PackageId>
-    <Version>1.4.0</Version>
-    <FileVersion>1.4.0.0</FileVersion>
-    <InformationalVersion>1.4.0</InformationalVersion>
+    <Version>1.4.1</Version>
+    <FileVersion>1.4.1.0</FileVersion>
+    <InformationalVersion>1.4.1</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Aws</Title>
     <Description>AWS KMS envelope-key provider for PostQuantum.FileEncryption, for .NET 8 and .NET 10. AwsKmsContentKeyProvider implements the IContentKeyProvider seam over AWS KMS GenerateDataKey/Decrypt: every file is encrypted under a fresh per-file content key that KMS wraps under your customer master key — the master key never leaves AWS. The wrap is bound to the configured key id and a library-specific encryption context, and unwrap fails closed (PqDecryptionException, no oracle) on any invalid or foreign ciphertext. Works with every PqFileEncryptor/PqFileDecryptor overload that accepts a key provider; rotation re-wraps the small content key instead of re-encrypting the file. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release.</Description>
-    <PackageReleaseNotes>First release of the AWS KMS envelope-key provider, versioned in lockstep with the PostQuantum.FileEncryption family. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.4.1 — documentation and packaging patch, versioned in lockstep with the PostQuantum.FileEncryption family: corrects the package README version references following the 1.4.0 first release. No change to the provider's behavior, API, or the .pqfe v2 container format, which remains FROZEN for the 1.x line.</PackageReleaseNotes>
     <PackageTags>aws;kms;aws-kms;envelope-encryption;key-management;data-key;encryption;file-encryption;aes-gcm;authenticated-encryption;aead;cryptography;security;post-quantum;pqc;dotnet;net8;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

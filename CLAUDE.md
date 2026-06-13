@@ -82,4 +82,24 @@ dotnet pack  src/PostQuantum.FileEncryption -c Release
   are as important as the round-trip tests.
 - Re-read [SECURITY.md](SECURITY.md) and keep its "does NOT defend against" list accurate.
 
+## When you bump the package version
+
+The five packages ship in **lockstep**, and the documented version must never lag the
+`<Version>` in the `.csproj` files. Bumping the NuGet version is not done until the docs are
+swept in the **same change**. After changing `<Version>` in the project files, grep the repo
+for the *old* version string and update every user-facing reference:
+
+- All `dotnet add package … --version X.Y.Z` install snippets (root `README.md`, plus each
+  package's own `src/**/README.md`).
+- The **Status** line near the top of the root `README.md`.
+- The supply-chain examples that name an artifact or tag (e.g.
+  `gh attestation verify PostQuantum.FileEncryption.X.Y.Z.nupkg`, `gh release download vX.Y.Z`).
+- The "NuGet package version → Today" cell in [docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md).
+- Add the new `CHANGELOG.md` section and its compare-link footer.
+
+Leave **historical** mentions alone — past changelog entries, compare links, and prose like
+"shipped `1.3.0`" are facts about earlier releases, not the current version. When in doubt,
+`grep -rn '<old-version>'` and decide per hit: install/status/artifact references move,
+history stays.
+
 *To God be the glory — 1 Corinthians 10:31.*

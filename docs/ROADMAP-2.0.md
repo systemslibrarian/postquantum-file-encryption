@@ -11,7 +11,7 @@ There are two version tracks, and conflating them causes confusion:
 
 | Track | Today | At the next major |
 | --- | --- | --- |
-| **NuGet package version** | `1.3.0` | `2.0.0` |
+| **NuGet package version** | `1.4.1` | `2.0.0` |
 | **`.pqfe` container `FormatVersion`** (byte 5 of every file) | `2` | `3` |
 
 Format **v2 is what every `1.x`-encrypted file on disk carries today** — it is very much "out

@@ -22,7 +22,7 @@ careful, paranoid, fail-closed thing every time. And because the code, the forma
 specification, the test vectors, the threat model, and the gaps ledger are all public,
 you never have to take that on faith.
 
-> **Status: `1.3.0` — stable release.**
+> **Status: `1.4.1` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -93,13 +93,13 @@ Being clear about scope is part of the security contract. Reach for something el
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.3.0
+dotnet add package PostQuantum.FileEncryption --version 1.4.1
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.4.1
 
 # Optional: detached Ed25519 + ML-DSA-65 signatures (sender authenticity)
-dotnet add package PostQuantum.FileEncryption.Signing --version 1.3.0
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.4.1
 
 # Optional: cloud envelope-key providers (the master key stays in your KMS/HSM)
 dotnet add package PostQuantum.FileEncryption.Aws            # AWS KMS
@@ -107,7 +107,7 @@ dotnet add package PostQuantum.FileEncryption.AzureKeyVault  # Azure Key Vault /
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.3.0
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.4.1
 ```
 
 Targets **.NET 8 and .NET 10** (`net8.0`; `net10.0`), with an identical public API on
@@ -480,7 +480,7 @@ Be clear-eyed about what *post-quantum* means here today:
   since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.3.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.4.1
 ```
 
 ```csharp
@@ -511,11 +511,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.3.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.4.1.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.3.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.4.1 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"

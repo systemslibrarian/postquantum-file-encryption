@@ -8,6 +8,28 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-06-13
+
+A documentation and packaging patch. No code, public API, or format change: `.pqfe` v2 stays
+frozen, and the released binaries are byte-identical in behavior to `1.4.0`.
+
+### Fixed
+
+- **Package READMEs cited the wrong install version.** The `1.4.0` packages shipped with
+  README install snippets and a status line that still read `--version 1.3.0`, so the
+  instructions rendered on the nuget.org package pages pointed at the previous release. All
+  user-facing version references — the root and per-package README install snippets, the
+  README status line, the supply-chain verification examples, and the "Today" cell in
+  [docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md) — now track the package version. Because a
+  published `.nupkg` (and its embedded README) is immutable, the fix ships as `1.4.1`.
+
+### Changed
+
+- **The release workflow now gates on documentation/version drift.** Before anything is
+  packed or pushed, it verifies that every packable project's `<Version>`, every README
+  `dotnet add package … --version` snippet, and the README status line match the tag being
+  released — so a future version bump cannot publish with stale install instructions again.
+
 ## [1.4.0] - 2026-06-12
 
 The key-management release: the envelope seam gains production cloud providers, and the
@@ -512,6 +534,7 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
 [Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...HEAD
+[1.4.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.0...v1.2.1

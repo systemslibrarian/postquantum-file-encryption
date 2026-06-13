@@ -10,13 +10,13 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.AzureKeyVault</PackageId>
-    <Version>1.4.0</Version>
-    <FileVersion>1.4.0.0</FileVersion>
-    <InformationalVersion>1.4.0</InformationalVersion>
+    <Version>1.4.1</Version>
+    <FileVersion>1.4.1.0</FileVersion>
+    <InformationalVersion>1.4.1</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.AzureKeyVault</Title>
     <Description>Azure Key Vault / Managed HSM envelope-key provider for PostQuantum.FileEncryption, for .NET 8 and .NET 10. AzureKeyVaultContentKeyProvider implements the IContentKeyProvider seam over Key Vault wrap/unwrap (RSA-OAEP-256 by default): every file is encrypted under a fresh per-file content key wrapped by your Key Vault key — the key-encryption key never leaves the vault or HSM. Unwrap is pinned to the configured key id and algorithm and fails closed (PqDecryptionException, no oracle) on any invalid or foreign wrapped key. Works with every PqFileEncryptor/PqFileDecryptor overload that accepts a key provider; rotation re-wraps the small content key instead of re-encrypting the file. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release.</Description>
-    <PackageReleaseNotes>First release of the Azure Key Vault envelope-key provider, versioned in lockstep with the PostQuantum.FileEncryption family. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.4.1 — documentation and packaging patch, versioned in lockstep with the PostQuantum.FileEncryption family: corrects the package README version references following the 1.4.0 first release. No change to the provider's behavior, API, or the .pqfe v2 container format, which remains FROZEN for the 1.x line.</PackageReleaseNotes>
     <PackageTags>azure;key-vault;azure-key-vault;managed-hsm;envelope-encryption;key-management;key-wrap;encryption;file-encryption;aes-gcm;authenticated-encryption;aead;cryptography;security;post-quantum;pqc;dotnet;net8;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
