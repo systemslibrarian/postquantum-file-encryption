@@ -8,10 +8,16 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-12
+
+The key-management release: the envelope seam gains production cloud providers, and the
+consolidated external-model audit findings were re-verified with a published disposition
+([docs/audits/](docs/audits/)). No format change: `.pqfe` v2 stays frozen.
+
 ### Added
 
 - **Cloud envelope-key providers** — the `IContentKeyProvider` seam (`KeySource = 5`) gains
-  two production implementations, shipping as new lockstep packages (planned `1.4.0`):
+  two production implementations, shipping as new lockstep packages:
   - **`PostQuantum.FileEncryption.Aws`** — `AwsKmsContentKeyProvider` over AWS KMS
     `GenerateDataKey`/`Decrypt`. Every wrap is bound to the configured key id and a
     library-reserved encryption context (callers can add entries, e.g. a tenant id); a blob
@@ -27,6 +33,12 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
     key instead of re-encrypting the payload. Unit-tested against in-process fakes of the SDK
     clients that reproduce the services' binding semantics; live-cloud integration is
     deliberately out of CI scope ([KNOWN-GAPS.md](KNOWN-GAPS.md)).
+- **Audit-disposition record** —
+  [docs/audits/2026-06-12-consolidated-findings-disposition.md](docs/audits/2026-06-12-consolidated-findings-disposition.md)
+  re-verifies the six consolidated external-model findings against the current tree (all were
+  remediated in `1.1.0`) and records one analogous window the re-review caught in new `1.4.0`
+  code before it shipped (the AWS provider now zeroes the KMS-returned data key if wrap-info
+  serialization throws).
 
 ### Changed
 
@@ -499,7 +511,8 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.1.0...v1.2.0
