@@ -39,7 +39,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1" PrivateAssets="All" />
     <ProjectReference Include="../PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
     <ProjectReference Include="../PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />
