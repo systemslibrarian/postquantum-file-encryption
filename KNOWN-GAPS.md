@@ -74,6 +74,14 @@ Last reviewed against: **`1.2.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
 
 ### Cryptographic scope
 
+- **Signature schemes never enter the hybrid encryption path — by construction, not by
+  schedule.** The hybrid path establishes a content key; its primitives are a KEM (ML-KEM-768)
+  and a DH (X25519), combined. ML-DSA and SLH-DSA are *signature* schemes answering "who
+  produced this," a separate guarantee owned by **`PostQuantum.FileEncryption.Signing`**.
+  Adding a signature algorithm to the hybrid path would conflate confidentiality with sender
+  authentication, not broaden the offering. The one place the two legitimately converge is
+  **signatures embedded in the container** — bound to the authenticated header — which is a
+  format-v3 obligation, not a hybrid-path change. See [docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md).
 - **The core's inline ML-KEM-only recipient mode is DEPRECATED as of `1.0.0-rc.2`.** It is
   marked `[Obsolete]` with diagnostic id `PQFE002` and retained for source-compatibility
   only — new code must use the **`PostQuantum.FileEncryption.Hybrid`** package (hybrid
