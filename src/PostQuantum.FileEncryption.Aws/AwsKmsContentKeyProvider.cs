@@ -29,6 +29,11 @@ public sealed class AwsKmsContentKeyProvider : IContentKeyProvider
     private const byte WrapInfoVersion = 1;
     private const int ContentKeyLength = 32;
     private const string ReservedContextPrefix = "pqfe:";
+    // KMS Decrypt caps CiphertextBlob at 6144 bytes. A hostile container can declare up to
+    // 65535 bytes of wrapInfo; rejecting oversized blobs here keeps the failure inside the
+    // library's exception contract (and skips a doomed network round-trip) instead of letting
+    // the service's validation error surface as a raw SDK exception.
+    private const int MaxKmsCiphertextLength = 6144;
 
     private readonly IAmazonKeyManagementService _kms;
     private readonly string _keyId;
@@ -116,7 +121,7 @@ public sealed class AwsKmsContentKeyProvider : IContentKeyProvider
     /// <inheritdoc/>
     public async Task<byte[]> UnwrapKeyAsync(ReadOnlyMemory<byte> wrapInfo, CancellationToken cancellationToken = default)
     {
-        if (wrapInfo.Length < 2 || wrapInfo.Span[0] != WrapInfoVersion)
+        if (wrapInfo.Length < 2 || wrapInfo.Length > 1 + MaxKmsCiphertextLength || wrapInfo.Span[0] != WrapInfoVersion)
         {
             throw new PqDecryptionException("The wrapped key is malformed or was not produced by the aws-kms provider.");
         }

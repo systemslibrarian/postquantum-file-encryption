@@ -36,6 +36,11 @@ public sealed class AzureKeyVaultContentKeyProvider : IContentKeyProvider
     private const int ContentKeyLength = 32;
     private const int MaxKeyIdLength = 2048;
 
+    // One literal on purpose: every unwrap-authenticity failure — remote or local — must
+    // surface with byte-identical text, or the difference becomes an oracle.
+    private const string UnwrapFailedMessage =
+        "Decryption failed: the wrapped key is invalid, was altered, or was not produced under this key and algorithm.";
+
     private readonly CryptographyClient _client;
     private readonly KeyWrapAlgorithm _algorithm;
 
@@ -68,7 +73,10 @@ public sealed class AzureKeyVaultContentKeyProvider : IContentKeyProvider
         {
             WrapResult result = await _client.WrapKeyAsync(_algorithm, contentKey, cancellationToken).ConfigureAwait(false);
 
-            byte[] keyId = Encoding.UTF8.GetBytes(result.KeyId ?? _client.KeyId);
+            // Both ids can be null for a locally-operating client built from a JsonWebKey with
+            // no key id; fail with the library's exception, not an ArgumentNullException.
+            string? keyIdText = result.KeyId ?? _client.KeyId;
+            byte[] keyId = keyIdText is null ? [] : Encoding.UTF8.GetBytes(keyIdText);
             if (keyId.Length is 0 or > MaxKeyIdLength)
             {
                 throw new PqEncryptionException("Azure Key Vault returned an unusable key id for the wrap.");
@@ -119,10 +127,13 @@ public sealed class AzureKeyVaultContentKeyProvider : IContentKeyProvider
         {
             result = await _client.UnwrapKeyAsync(_algorithm, wrappedKey, cancellationToken).ConfigureAwait(false);
         }
-        catch (RequestFailedException ex) when (ex.Status == 400)
+        catch (Exception ex) when (ex is RequestFailedException { Status: 400 } or CryptographicException)
         {
-            throw new PqDecryptionException(
-                "Decryption failed: the wrapped key is invalid, was altered, or was not produced under this key and algorithm.", ex);
+            // Remote unwrap rejects a tampered blob with a service 400; a CryptographyClient
+            // constructed over a local JsonWebKey performs the unwrap on this machine and
+            // throws CryptographicException instead. One catch, one message — the two paths
+            // must be indistinguishable to the caller.
+            throw new PqDecryptionException(UnwrapFailedMessage, ex);
         }
 
         byte[] contentKey = result.Key;

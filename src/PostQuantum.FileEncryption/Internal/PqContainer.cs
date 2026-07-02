@@ -42,6 +42,16 @@ internal static class PqContainer
         long? totalBytes, IProgress<PqProgress>? progress, CancellationToken cancellationToken,
         byte[]? saltOverride = null, byte[]? noncePrefixOverride = null)
     {
+        if (passphrase.IsEmpty)
+        {
+            // One choke point for every passphrase encrypt path (file, stream, bytes, key
+            // files — and any future codec caller): an empty passphrase must never silently
+            // produce a trivially decryptable container. Decrypt deliberately has no such
+            // gate — earlier releases could encrypt under an empty passphrase via the byte
+            // overloads, and that data must stay openable.
+            throw new ArgumentException("Passphrase must not be empty.", nameof(passphrase));
+        }
+
         // The override parameters are used only by deterministic conformance tests; production
         // callers leave them null so salt and nonce prefix are freshly random per file.
         await InstrumentedAsync("encrypt", "passphrase", totalBytes, async () =>
@@ -119,6 +129,13 @@ internal static class PqContainer
             (byte[] contentKey, byte[] wrapInfo) = await provider.WrapNewKeyAsync(cancellationToken).ConfigureAwait(false);
             try
             {
+                // A provider returning a short key would silently produce an AES-128/192 file
+                // while the format promises AES-256; a wrong-length key must never reach the AEAD.
+                if (contentKey.Length != ContainerFormat.KeyLength)
+                {
+                    throw new PqEncryptionException(
+                        $"Key provider '{provider.ProviderId}' returned a {contentKey.Length}-byte content key; the format requires {ContainerFormat.KeyLength} bytes.");
+                }
                 byte[] keyParams = SerializeKeyProviderParams(provider.ProviderId, wrapInfo);
                 var header = ContainerHeader.Create(ContainerFormat.KeySourceKeyProvider, options.ChunkSizeBytes, keyParams);
                 await Codec.WriteAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
@@ -143,9 +160,15 @@ internal static class PqContainer
             if (!string.Equals(providerId, provider.ProviderId, StringComparison.Ordinal))
             {
                 throw new PqDecryptionException(
-                    $"This container was encrypted by a different key provider ('{providerId}'), not '{provider.ProviderId}'.");
+                    $"This container was encrypted by a different key provider ('{SanitizeForMessage(providerId)}'), not '{provider.ProviderId}'.");
             }
             byte[] contentKey = await provider.UnwrapKeyAsync(wrapInfo, cancellationToken).ConfigureAwait(false);
+            if (contentKey.Length != ContainerFormat.KeyLength)
+            {
+                CryptographicOperations.ZeroMemory(contentKey);
+                throw new PqDecryptionException(
+                    $"Key provider '{provider.ProviderId}' returned a {contentKey.Length}-byte content key; the format requires {ContainerFormat.KeyLength} bytes.");
+            }
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
     }
@@ -154,8 +177,9 @@ internal static class PqContainer
     /// Rejects a header whose declared chunk size exceeds the decryptor's configured ceiling.
     /// Runs before key establishment and before the engine allocates chunk buffers, so a
     /// hostile header above the limit costs nothing. Key-independent, so no oracle.
+    /// Internal (not private) so the Hybrid package's decryptor enforces the same gate.
     /// </summary>
-    private static void EnforceChunkLimit(ContainerHeader header, PqDecryptionLimits limits)
+    internal static void EnforceChunkLimit(ContainerHeader header, PqDecryptionLimits limits)
     {
         if (header.ChunkSize > limits.MaxChunkSizeBytes)
         {
@@ -183,6 +207,24 @@ internal static class PqContainer
         BinaryPrimitives.WriteUInt16BigEndian(buffer.AsSpan(1 + id.Length), (ushort)wrapInfo.Length);
         wrapInfo.CopyTo(buffer, 1 + id.Length + 2);
         return buffer;
+    }
+
+    /// <summary>
+    /// Escapes control characters in a header-derived string before it is embedded in an
+    /// exception message. The provider id comes from the unauthenticated header, so a crafted
+    /// container could otherwise inject terminal escape sequences or forged lines into whatever
+    /// log or console the caller writes the message to.
+    /// </summary>
+    private static string SanitizeForMessage(string value)
+    {
+        // Single pass, single copy of the predicate: a pre-scan fast path would duplicate the
+        // sanitization rule, and this runs only while building an exception message anyway.
+        var builder = new StringBuilder(value.Length);
+        foreach (char c in value)
+        {
+            builder.Append(char.IsControl(c) ? '?' : c);
+        }
+        return builder.ToString();
     }
 
     private static (string providerId, byte[] wrapInfo) ParseKeyProviderParams(byte[] keyParams)

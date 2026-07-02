@@ -25,3 +25,7 @@ PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey.Export() -> byte[]!
 static PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair.Generate() -> PostQuantum.FileEncryption.Hybrid.PqHybridKeyPair!
 static PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey!
 static PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey!
+PostQuantum.FileEncryption.Hybrid.PqHybridDecryptor.PqHybridDecryptor(PostQuantum.FileEncryption.PqDecryptionLimits! limits) -> void
+PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.ExportEncrypted(System.ReadOnlySpan<char> passphrase, PostQuantum.FileEncryption.PqEncryptionOptions? options = null) -> byte[]!
+static PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.ImportEncrypted(System.ReadOnlySpan<byte> keyFile, System.ReadOnlySpan<char> passphrase, PostQuantum.FileEncryption.PqDecryptionLimits? limits = null) -> PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey!
+static PostQuantum.FileEncryption.Hybrid.PqHybridPrivateKey.IsEncryptedKeyFile(System.ReadOnlySpan<byte> data) -> bool

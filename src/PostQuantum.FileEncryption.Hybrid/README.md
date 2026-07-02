@@ -9,7 +9,7 @@ Fully managed (BouncyCastle) — **no native ML-KEM / OpenSSL 3.5 requirement**,
 .NET 8 or later runs (`net8.0` and `net10.0` targets). Produces standard `.pqfe` containers.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.4.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.5.0
 ```
 
 > **Versioning.** This package is intentionally kept in **lockstep** with
@@ -57,6 +57,21 @@ byte[] container = await new PqHybridEncryptor().EncryptBytesAsync(secretBytes, 
 // Recipient: decrypt with the private key.
 byte[] plaintext = await new PqHybridDecryptor().DecryptBytesAsync(container, keyPair.PrivateKey);
 ```
+
+### Storing the private key
+
+`PrivateKey.Export()` returns raw secret bytes; for storage, prefer the passphrase-encrypted
+form — an authenticated, Argon2id-hardened key file that fails closed on a wrong passphrase
+or any tampering:
+
+```csharp
+byte[] keyFile = keyPair.PrivateKey.ExportEncrypted(passphrase);   // store this
+using var privateKey = PqHybridPrivateKey.ImportEncrypted(keyFile, passphrase);
+```
+
+See [docs/KEY-FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-FILE-FORMAT.md)
+for the byte-exact format (a standard `.pqfe` container behind a five-byte framing — no new
+cryptography).
 
 ### Multiple recipients
 

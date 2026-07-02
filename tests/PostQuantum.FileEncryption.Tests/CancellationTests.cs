@@ -45,4 +45,30 @@ public sealed class CancellationTests : IDisposable
 
         Assert.False(File.Exists(cipher), "no output file should remain after a cancelled encryption");
     }
+
+    [Fact]
+    public async Task Cancellation_mid_operation_leaves_no_output_or_temp_file()
+    {
+        // The tests above pre-cancel the token, which only proves the entry check. Cancelling
+        // from a progress callback lands mid-stream, after real chunks have been written to the
+        // temp file — the per-chunk token check and the temp-file cleanup both have to work.
+        string plain = P("plain.bin"), cipher = P("cipher.pqfe");
+        await File.WriteAllBytesAsync(plain, RandomBytes(50_000));
+
+        using var cts = new CancellationTokenSource();
+        var cancelMidway = new CancelAfterFirstReport(cts);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new PqFileEncryptor(Fast()).EncryptFileAsync(plain, cipher, Passphrase, cancelMidway, cts.Token));
+
+        Assert.True(cancelMidway.Reports > 0, "the operation should have made progress before cancelling");
+        Assert.False(File.Exists(cipher), "no output file should remain after a mid-stream cancellation");
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp-*"));
+    }
+
+    /// <summary>Reports synchronously (unlike <see cref="Progress{T}"/>) and cancels on the first chunk.</summary>
+    private sealed class CancelAfterFirstReport(CancellationTokenSource cts) : IProgress<PqProgress>
+    {
+        public int Reports { get; private set; }
+        public void Report(PqProgress value) { Reports++; cts.Cancel(); }
+    }
 }

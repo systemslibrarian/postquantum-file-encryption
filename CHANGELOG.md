@@ -6,7 +6,169 @@ All notable changes to this project are documented here. The format is based on
 locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines and `<EnablePackageValidation>`,
 and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
-## [Unreleased]
+## [1.5.0] - 2026-07-02
+
+The key-file, hardening, and developer-experience release. Private keys gain a safe at-rest
+form (the `PQKF` passphrase-encrypted key file); a full-codebase security review — including
+an adversarial multi-angle self-review and a mutation-testing pass — tightened behavior at
+the edges; and a new Roslyn analyzers package, cookbook, anti-patterns guide, and compliance
+mapping put the library's fail-closed discipline in front of developers. No change to the
+existing formats — `.pqfe` v2 and the `.sig` v1 sidecar are byte-identical.
+
+### Added
+
+- **`PostQuantum.FileEncryption.Analyzers`** — a new lockstep package of Roslyn analyzers
+  that catch dangerous misuse at compile time, in the IDE: `PQFE101` (a compile-time-constant
+  passphrase), `PQFE102` (raw private-key bytes written to disk instead of a
+  passphrase-protected key file), `PQFE103` (a discarded encrypt/decrypt/sign/verify task —
+  fires in synchronous methods, where the compiler's CS4014 does not), and `PQFE104` (a
+  silently swallowed fail-closed exception; probing with `PqFormatException` stays
+  legitimate and unflagged). Development-only dependency; each rule links to its
+  [docs/ANTI-PATTERNS.md](docs/ANTI-PATTERNS.md) entry, and each ships with flagged-shape
+  *and* clean-shape tests so a rule can neither go silent nor turn noisy unnoticed.
+- **Developer documentation set** — [docs/COOKBOOK.md](docs/COOKBOOK.md) (complete,
+  copy-paste-runnable recipes with the failure handling done right),
+  [docs/ANTI-PATTERNS.md](docs/ANTI-PATTERNS.md) (wrong code → why → right code, covering
+  both the analyzer-enforced shapes and the ones only a human can catch), and
+  [docs/COMPLIANCE.md](docs/COMPLIANCE.md) (an honest mapping to OMB M-23-02, CNSA 2.0,
+  FIPS 203/204, FIPS 140-3, and 800-171 — including, stated plainly, what is *not* claimed).
+- **Quickstart samples** (`samples/quickstarts/`) — the smallest complete programs for the
+  two most common jobs: folder backup encryption (console) and encrypted uploads (ASP.NET
+  Core, where the web server holds only the public key and can read nothing it stores).
+  Both build in CI.
+- **Passphrase-encrypted key files** — `PqHybridPrivateKey` and `PqSigningPrivateKey` gain
+  `ExportEncrypted(passphrase, options?)` / `ImportEncrypted(keyFile, passphrase)`, so private
+  keys have a safe at-rest form out of the box instead of every application inventing its own
+  storage for raw `Export()` bytes. The new `PQKF` v1 file
+  ([docs/KEY-FILE-FORMAT.md](docs/KEY-FILE-FORMAT.md)) is a five-byte framing around a
+  standard `.pqfe` v2 passphrase container — **no new cryptography**; confidentiality,
+  authenticity, and fail-closed behavior are inherited from the container engine, with
+  Argon2id as the default KDF (key files are tiny and long-lived, so the KDF is the entire
+  cost of opening one). The key *type* travels inside the authenticated plaintext, so a
+  signing key file cannot be passed off as a hybrid recipient key file or vice versa. The CLI
+  gains `pqfe keygen --encrypt` (with `--passphrase-env` for scripting), and `pqfe sign`
+  detects an encrypted key file by its magic and prompts for the passphrase.
+  `ImportEncrypted` takes an optional `PqDecryptionLimits` — the same pre-authentication
+  gate the container decryptors have — so a hostile key file cannot demand gibibytes of
+  Argon2id memory before anything authenticates, and a new `IsEncryptedKeyFile` predicate
+  lets consumers route between the raw and encrypted forms without duplicating format
+  knowledge. The import/export plumbing drives the container engine directly over buffers it
+  owns, so every intermediate copy of the key-bearing plaintext is zeroed. A pinned
+  known-answer vector ([docs/TEST-VECTORS.md](docs/TEST-VECTORS.md), Vector 5) locks the
+  framing and the type binding.
+- **Three new pinned known-answer vectors** ([docs/TEST-VECTORS.md](docs/TEST-VECTORS.md)):
+  Vector 6 pins hybrid recipient decryption byte-exactly — the KeySource-3 wrap block, the
+  X25519 + ML-KEM-768 agreement, the HKDF combiner, and the AES-256-GCM key unwrap — closing
+  the one format path no fixed vector previously covered. Vector 7 is the first *multi-chunk*
+  vector, pinning the per-chunk nonce counter and AAD chaining cross-implementation (with a
+  chunk-reorder fail-closed test alongside it). Vector 5 pins the `PQKF` key-file framing
+  (see above); Vectors 5 and 7 are additionally decrypted by the Rust/WASM core. The .NET
+  coverage-guided fuzz harness gains a second target: the `PQKF` key-file parser, run under
+  `PqDecryptionLimits.Untrusted` ([docs/FUZZING.md](docs/FUZZING.md)). The CI native-AOT
+  smoke test now also exercises the encrypted key-file path (`keygen --encrypt` → `sign` →
+  `verify`).
+- **Mutation testing drove a batch of exact-boundary tests.** A Stryker.NET run over the
+  security-critical core files surfaced surviving mutants in the untrusted-header range
+  checks; every KDF-parameter, salt, chunk-size, and header-structure bound is now tested at
+  its exact edges (first illegal value rejected, exact legal bound accepted —
+  `ParserBoundaryTests`), the no-oracle contract is pinned as message *equality* between
+  wrong-passphrase and tampered-container failures, and `LocalKekContentKeyProvider` gained
+  use-after-dispose, fresh-nonce, and cancellation pins.
+- **Decrypt-time limits through dependency injection** — `AddPqFileEncryption` and
+  `AddPqHybridFileEncryption` gain overloads taking a `PqDecryptionLimits`, so hosts that
+  decrypt untrusted containers (the DI package's core audience: web services, workers) can
+  register capped decryptors in one line instead of hand-constructing them around the
+  container. Behavior is pinned by a test that proves a DI-registered ceiling actually
+  rejects an over-limit container before any KDF work.
+- **`PqHybridDecryptor(PqDecryptionLimits)`** — the hybrid decryptor now enforces the same
+  pre-key-establishment chunk-size ceiling as the core `PqFileDecryptor`, closing the last
+  documented denial-of-service exposure for containers from untrusted sources (a hostile
+  header could demand the format-maximum 16 MiB chunk, ~32 MiB of buffers, on the
+  unknown-length stream overload). Only `MaxChunkSizeBytes` applies on this path — key
+  unwrap is a fixed-cost KEM operation, so there is no KDF cost to inflate. The default
+  constructor is unchanged and every legal container still opens.
+
+### Fixed
+
+- **A misbehaving `IContentKeyProvider` can no longer downgrade encryption.** The engine now
+  rejects any provider-returned content key that is not exactly 32 bytes — on encrypt with
+  `PqEncryptionException` before any ciphertext exists (previously a 16-byte key would have
+  silently produced an AES-128-GCM file while the format promises AES-256), and on decrypt
+  with the fail-closed `PqDecryptionException` (previously a raw `CryptographicException`).
+- **Empty passphrases are now rejected on encrypt by every overload.** The
+  `ReadOnlyMemory<byte>` and sync `ReadOnlySpan<char>` passphrase overloads accepted an empty
+  passphrase and produced a trivially decryptable container; they now throw
+  `ArgumentException`, matching the `string` overloads. The gate is enforced once at the
+  engine choke point (plus an early argument check on the file overload, before any
+  filesystem side effect), so every current and future encrypt path inherits it. **Decrypt
+  deliberately keeps accepting empty passphrases**: earlier releases could legitimately
+  encrypt under one via the byte overloads, and that data must stay openable — a pinned
+  backward-compat vector locks this in. Against a container encrypted with a real passphrase,
+  an empty passphrase fails closed with the generic `PqDecryptionException`, like any other
+  wrong passphrase.
+- **In-place file encryption/decryption (`inputPath == outputPath`) now works on Windows**,
+  in both the core and the Hybrid package. The input handle stayed open across the final
+  atomic rename, which Windows rejects with a sharing-violation `IOException` after all the
+  crypto work was done (it happened to work on Linux). All four file APIs now share one
+  `FileIo` helper that owns the ordering invariants: the input is opened *before* the
+  temporary output file exists (a missing input fails with `FileNotFoundException` and no
+  destination side effect) and closed *before* the atomic move (in-place works). A failed
+  in-place decrypt still leaves the source untouched.
+- **Raw third-party exceptions no longer escape the library's exception contract** on four
+  paths: encrypting to a corrupt ML-KEM recipient key (platform `CryptographicException` →
+  `PqEncryptionException`); encrypting to a hybrid recipient key whose X25519 half is a
+  small-order point, and decrypting a container carrying one (BouncyCastle
+  `InvalidOperationException` → `PqEncryptionException` / the generic `PqDecryptionException`);
+  signature verification (any unexpected BouncyCastle throw → the generic
+  `PqSignatureException`, so no oracle for which half rejected the input — while process-level
+  faults such as `OutOfMemoryException`, cancellation, and thread interrupts pass through
+  untouched, so infrastructure failure is never reported as a forged signature); and Azure Key Vault
+  unwrap with a locally-operating `CryptographyClient` (`CryptographicException` →
+  `PqDecryptionException`, matching the remote path).
+- **`LocalKekContentKeyProvider` is safe against a `Dispose` racing an in-flight wrap.** The
+  race could zero the KEK mid-operation and silently wrap the content key under an all-zero
+  key; all KEK uses are now serialized and the race surfaces as `ObjectDisposedException`
+  (also checked at method entry, so a use-after-dispose is reported as the lifetime bug it is
+  even when the input happens to be malformed too). The KEK's AES key schedule is built once
+  per provider instead of per operation, keeping the critical section to the 32-byte GCM pass.
+- **A freshly generated recipient content key is zeroed if key establishment throws**
+  mid-wrap (previously abandoned un-zeroed on the heap).
+- **Hostile header bytes are no longer embedded verbatim in exception messages.** The
+  key-provider mismatch message escapes control characters from the (unauthenticated)
+  provider id, closing a log/terminal-injection vector.
+- **AWS KMS unwrap rejects oversized wrapped blobs client-side** (the KMS `Decrypt` limit is
+  6,144 bytes), so a hostile container yields the documented `PqDecryptionException` instead
+  of a raw SDK exception after a doomed network round-trip.
+- **`docs/SIGNATURE-FORMAT.md` stated the wrong domain-separation context length** (64 bytes;
+  the context is 63). Doc-only — the signed bytes are unchanged — but the spec is the interop
+  contract for independent implementations.
+- **CLI (`pqfe`) hardening:** Ctrl+C is cooperative cancellation (exit `130`, and it cancels
+  the passphrase prompt itself rather than leaving the user stuck at it); `keygen` writes the
+  private key `0600` on Unix and removes the orphaned private half if writing the public half
+  fails; empty and end-of-input passphrases are rejected with distinct messages (a
+  single-line piped stdin on encrypt reports "could not read the confirmation" instead of the
+  misleading "passphrases do not match"); passphrase-prompt failures unwind as exceptions
+  rather than calling `Environment.Exit`, so key-byte zeroing, orphaned-key cleanup, and
+  event unhooks in enclosing `finally` blocks always run; `--passphrase-env` is rejected as a
+  usage error where it would be silently ignored (`sign` with an unprotected key file,
+  `verify`); `UnauthorizedAccessException` and `ArgumentException` map to exit codes instead
+  of crashing.
+- **The Blazor demo no longer echoes raw exception text to the browser** — unexpected errors
+  are logged server-side and reported generically.
+
+### Changed
+
+- **Atomic file writes now flush to stable storage before the rename** (`fsync` semantics),
+  so a power failure immediately after an encrypt/decrypt cannot leave a truncated file at
+  the destination on filesystems that persist the rename ahead of the data. The device sync
+  runs off-thread, so the async file APIs never pin a thread-pool thread on slow media.
+- **`DecryptAtomicAsync` documents the exact scope of its all-or-nothing guarantee** (it
+  covers authentication; a sink failure during the final copy can still leave a prefix of
+  authenticated plaintext).
+- **KNOWN-GAPS.md** records four newly catalogued limitations: the hybrid KEK combiner's
+  missing transcript binding (protected today by header-as-AAD; a format-v3 item), two
+  lenient-but-frozen v2 reader corners (unchecked reserved `Flags` byte, trailing bytes
+  tolerated in passphrase KeyParams), and cloud-SDK-held plaintext key copies.
 
 ## [1.4.1] - 2026-06-13
 
@@ -533,7 +695,7 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...HEAD
+[1.5.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.2.1...v1.3.0

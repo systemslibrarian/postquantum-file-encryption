@@ -62,7 +62,19 @@ internal static class HybridKeyEstablishment
             var agreement = new X25519Agreement();
             agreement.Init(ephemeral.Private);
             byte[] sharedSecretClassical = new byte[agreement.AgreementSize];
-            agreement.CalculateAgreement(new X25519PublicKeyParameters(recipient.X25519PublicKey.ToArray()), sharedSecretClassical);
+            try
+            {
+                agreement.CalculateAgreement(new X25519PublicKeyParameters(recipient.X25519PublicKey.ToArray()), sharedSecretClassical);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // BouncyCastle rejects a small-order recipient point (all-zero shared secret) by
+                // throwing. Recipient keys arrive over untrusted channels, so surface this as a
+                // library exception instead of a raw BouncyCastle one. Encrypt-side, so a
+                // descriptive message leaks nothing.
+                throw new PqEncryptionException(
+                    "The recipient public key is invalid: its X25519 half is a degenerate (small-order) point.", ex);
+            }
 
             try
             {
@@ -205,6 +217,14 @@ internal static class HybridKeyEstablishment
                 agreement.Init(new X25519PrivateKeyParameters(x25519KeyCopy));
                 sharedSecretClassical = new byte[agreement.AgreementSize];
                 agreement.CalculateAgreement(new X25519PublicKeyParameters(ephemeralPublic), sharedSecretClassical);
+            }
+            catch (InvalidOperationException)
+            {
+                // BouncyCastle rejects a small-order ephemeral point (all-zero shared secret)
+                // by throwing. Only a crafted container carries one; treat it exactly like a
+                // wrap-tag mismatch so the fail-closed contract (PqDecryptionException, one
+                // generic message) holds and no distinct oracle is created.
+                return null;
             }
             finally { CryptographicOperations.ZeroMemory(x25519KeyCopy); }
 

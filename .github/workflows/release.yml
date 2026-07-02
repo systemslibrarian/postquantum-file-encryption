@@ -92,6 +92,7 @@ jobs:
           dotnet pack src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj --configuration Release -o artifacts
           dotnet pack src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj --configuration Release -o artifacts
+          dotnet pack src/PostQuantum.FileEncryption.Analyzers/PostQuantum.FileEncryption.Analyzers.csproj --configuration Release -o artifacts
           dotnet pack samples/Pqfe.Cli/Pqfe.Cli.csproj --configuration Release -o artifacts
 
       - name: Validate NuGet packages

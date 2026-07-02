@@ -56,6 +56,22 @@ Options never affect decryption — the decryptor reads every parameter from the
 authenticated container header, so a service registered with one set of options decrypts
 files produced with any other.
 
+### Decrypting untrusted input
+
+If the host decrypts containers it did not produce (uploads, shared storage), register with
+decrypt-time resource ceilings — a hostile header can otherwise legally demand gibibytes of
+KDF memory *before anything authenticates*:
+
+```csharp
+builder.Services.AddPqFileEncryption(null, PqDecryptionLimits.Untrusted);
+// or with both tuned:
+builder.Services.AddPqHybridFileEncryption(PqEncryptionOptions.Argon2id, PqDecryptionLimits.Untrusted);
+```
+
+A header above a limit is rejected with `PqFormatException` before any allocation or
+key-derivation work. Files you encrypted yourself with default options always open under
+`PqDecryptionLimits.Untrusted`.
+
 ## Behavior
 
 - **Singletons.** The encryptor/decryptor types are thread-safe and hold no per-operation

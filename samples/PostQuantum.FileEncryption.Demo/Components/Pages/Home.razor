@@ -1,6 +1,7 @@
 @page "/"
 @rendermode InteractiveServer
 @inject IJSRuntime JS
+@inject ILogger<Home> Logger
 
 <PageTitle>PostQuantum.FileEncryption — Demo</PageTitle>
 
@@ -178,10 +179,21 @@
             _statusIsError = true;
             _statusMessage = "That file is not a PostQuantum.FileEncryption (.pqfe) container.";
         }
+        catch (IOException ex)
+        {
+            // Logged like the generic handler below: an over-limit upload is the common cause,
+            // but IOException also covers disk and stream faults the operator must see.
+            Logger.LogError(ex, "Demo file I/O failed.");
+            _statusIsError = true;
+            _statusMessage = $"Could not read the file. If it is larger than {FormatBytes(MaxFileSize)}, it exceeds this demo's limit.";
+        }
         catch (Exception ex)
         {
+            // Never echo raw exception text to the browser: this page is anonymous, and
+            // server-side messages can carry paths or internals. Log it, say something generic.
+            Logger.LogError(ex, "Demo operation failed unexpectedly.");
             _statusIsError = true;
-            _statusMessage = $"Unexpected error: {ex.Message}";
+            _statusMessage = "An unexpected error occurred. Please try again.";
         }
         finally
         {

@@ -5,8 +5,11 @@
   <Folder Name="/samples/">
     <Project Path="samples/PostQuantum.FileEncryption.Demo/PostQuantum.FileEncryption.Demo.csproj" />
     <Project Path="samples/Pqfe.Cli/Pqfe.Cli.csproj" />
+    <Project Path="samples/quickstarts/Pqfe.QuickStart.Backup/Pqfe.QuickStart.Backup.csproj" />
+    <Project Path="samples/quickstarts/Pqfe.QuickStart.WebUpload/Pqfe.QuickStart.WebUpload.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/PostQuantum.FileEncryption.Analyzers/PostQuantum.FileEncryption.Analyzers.csproj" />
     <Project Path="src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj" />
     <Project Path="src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj" />
     <Project Path="src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj" />
@@ -15,6 +18,7 @@
     <Project Path="src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PostQuantum.FileEncryption.Analyzers.Tests/PostQuantum.FileEncryption.Analyzers.Tests.csproj" />
     <Project Path="tests/PostQuantum.FileEncryption.Tests/PostQuantum.FileEncryption.Tests.csproj" />
   </Folder>
 </Solution>

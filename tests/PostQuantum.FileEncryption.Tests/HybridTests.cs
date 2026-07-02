@@ -60,6 +60,152 @@ public sealed class HybridTests
     }
 
     [Fact]
+    public async Task Small_order_ephemeral_x25519_point_fails_closed()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesAsync(RandomBytes(2000), keyPair.PublicKey);
+
+        // Overwrite the ephemeral X25519 public key with the all-zero small-order point, which
+        // makes the raw X25519 agreement produce an all-zero shared secret. BouncyCastle refuses
+        // that with InvalidOperationException; the decryptor must surface it as the same
+        // PqDecryptionException as any other tamper — not as an untyped crash.
+        // KeySource-3 layout: FixedHeader(18) | KemId(1) | C(2) | KemCt(1088) | EphX25519(32) | ...
+        Array.Clear(container, 18 + 3 + 1088, 32);
+
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(container, keyPair.PrivateKey));
+    }
+
+    [Fact]
+    public async Task Encrypting_to_a_small_order_recipient_key_is_rejected_as_a_library_exception()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] publicBytes = keyPair.PublicKey.Export();
+        // Key encoding is X25519(32) ‖ ML-KEM-ek(1184); the all-zero X25519 half is a
+        // small-order point. Import checks only the length, so the failure surfaces at
+        // encryption time — and must do so as PqEncryptionException, not raw BouncyCastle.
+        Array.Clear(publicBytes, 0, 32);
+        var hostile = PqHybridPublicKey.Import(publicBytes);
+
+        await Assert.ThrowsAsync<PqEncryptionException>(() =>
+            new PqHybridEncryptor(Fast()).EncryptBytesAsync(RandomBytes(100), hostile));
+    }
+
+    [Fact]
+    public async Task Every_unwrap_failure_mode_yields_the_same_message()
+    {
+        // Wrong key, tampered KEM ciphertext, small-order ephemeral point, and tampered wrap
+        // tag reach the unwrap failure through different code paths (the small-order case via
+        // a BouncyCastle throw); an attacker probing a decryption service must not be able to
+        // tell which stage rejected them.
+        using var alice = PqHybridKeyPair.Generate();
+        using var mallory = PqHybridKeyPair.Generate();
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesAsync(RandomBytes(2000), alice.PublicKey);
+
+        // KeySource-3 layout after the 18-byte fixed header: KemId(1) | C(2) | KemCt(1088) |
+        // EphX25519(32) | WrapNonce(12) | WrapTag(16) | WrappedKey(32).
+        byte[] tamperedKemCt = (byte[])container.Clone();
+        tamperedKemCt[18 + 3] ^= 0x01;
+        byte[] smallOrderPoint = (byte[])container.Clone();
+        Array.Clear(smallOrderPoint, 18 + 3 + 1088, 32);
+        byte[] tamperedWrapTag = (byte[])container.Clone();
+        tamperedWrapTag[18 + 3 + 1088 + 32 + 12] ^= 0x01;
+
+        var messages = new HashSet<string>(StringComparer.Ordinal)
+        {
+            (await Assert.ThrowsAsync<PqDecryptionException>(() =>
+                new PqHybridDecryptor().DecryptBytesAsync(container, mallory.PrivateKey))).Message,
+            (await Assert.ThrowsAsync<PqDecryptionException>(() =>
+                new PqHybridDecryptor().DecryptBytesAsync(tamperedKemCt, alice.PrivateKey))).Message,
+            (await Assert.ThrowsAsync<PqDecryptionException>(() =>
+                new PqHybridDecryptor().DecryptBytesAsync(smallOrderPoint, alice.PrivateKey))).Message,
+            (await Assert.ThrowsAsync<PqDecryptionException>(() =>
+                new PqHybridDecryptor().DecryptBytesAsync(tamperedWrapTag, alice.PrivateKey))).Message,
+        };
+
+        Assert.Single(messages);
+    }
+
+    [Fact]
+    public async Task Every_header_bit_flip_fails_closed_with_a_typed_exception()
+    {
+        // One flipped bit at every byte position across the fixed header and the whole
+        // KeySource-3 recipient block: whatever the parser or BouncyCastle makes of the
+        // mutation, the outcome must be a library exception (or, in principle, the exact
+        // original plaintext) — never an untyped crash and never wrong plaintext.
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] original = RandomBytes(3000);
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesAsync(original, keyPair.PublicKey);
+
+        int headerAndBlock = 18 + 3 + 1088 + 32 + 12 + 16 + 32;
+        for (int i = 0; i < headerAndBlock; i++)
+        {
+            byte[] mutated = (byte[])container.Clone();
+            mutated[i] ^= (byte)(1 << (i % 8));
+            try
+            {
+                byte[] restored = await new PqHybridDecryptor().DecryptBytesAsync(mutated, keyPair.PrivateKey);
+                Assert.Equal(original, restored);
+            }
+            catch (PqEncryptionException)
+            {
+                // PqFormatException or PqDecryptionException — both are the fail-closed
+                // contract. Any other exception type fails this test.
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Decryption_limits_reject_an_oversized_chunk_header_before_unwrap()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] original = RandomBytes(100);
+        byte[] container = await new PqHybridEncryptor(Fast(chunkSize: 4096)).EncryptBytesAsync(original, keyPair.PublicKey);
+
+        // A header demanding more than the configured ceiling is rejected as PqFormatException
+        // (key-independent, before any KEM work or buffer allocation)...
+        var strict = new PqDecryptionLimits { MaxChunkSizeBytes = 1024 };
+        await Assert.ThrowsAsync<PqFormatException>(() =>
+            new PqHybridDecryptor(strict).DecryptBytesAsync(container, keyPair.PrivateKey));
+
+        // ...while the Untrusted preset and the defaults both open this legal container.
+        Assert.Equal(original, await new PqHybridDecryptor(PqDecryptionLimits.Untrusted)
+            .DecryptBytesAsync(container, keyPair.PrivateKey));
+        Assert.Equal(original, await new PqHybridDecryptor()
+            .DecryptBytesAsync(container, keyPair.PrivateKey));
+    }
+
+    [Fact]
+    public void Decryption_limits_are_validated_at_construction()
+    {
+        Assert.Throws<ArgumentNullException>(() => new PqHybridDecryptor(null!));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new PqHybridDecryptor(new PqDecryptionLimits { MaxChunkSizeBytes = 1 }));
+    }
+
+    [Fact]
+    public async Task Hybrid_file_apis_round_trip_in_place()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] original = RandomBytes(10_000);
+
+        string dir = Path.Combine(Path.GetTempPath(), "pqfe-hybrid-inplace-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "inplace.bin");
+            await File.WriteAllBytesAsync(path, original);
+
+            await new PqHybridEncryptor(Fast()).EncryptFileAsync(path, path, keyPair.PublicKey);
+            await new PqHybridDecryptor().DecryptFileAsync(path, path, keyPair.PrivateKey);
+
+            Assert.Equal(original, await File.ReadAllBytesAsync(path));
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp-*"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public async Task Multi_recipient_any_one_can_open()
     {
         using var alice = PqHybridKeyPair.Generate();

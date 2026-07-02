@@ -22,7 +22,7 @@ careful, paranoid, fail-closed thing every time. And because the code, the forma
 specification, the test vectors, the threat model, and the gaps ledger are all public,
 you never have to take that on faith.
 
-> **Status: `1.4.1` — stable release.**
+> **Status: `1.5.0` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -93,13 +93,13 @@ Being clear about scope is part of the security contract. Reach for something el
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.4.1
+dotnet add package PostQuantum.FileEncryption --version 1.5.0
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.4.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.5.0
 
 # Optional: detached Ed25519 + ML-DSA-65 signatures (sender authenticity)
-dotnet add package PostQuantum.FileEncryption.Signing --version 1.4.1
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.5.0
 
 # Optional: cloud envelope-key providers (the master key stays in your KMS/HSM)
 dotnet add package PostQuantum.FileEncryption.Aws            # AWS KMS
@@ -107,7 +107,11 @@ dotnet add package PostQuantum.FileEncryption.AzureKeyVault  # Azure Key Vault /
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.4.1
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.5.0
+
+# Recommended: compile-time misuse checks (hard-coded passphrases, raw keys on disk,
+# discarded tasks, swallowed fail-closed exceptions). Development-only dependency.
+dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.5.0
 ```
 
 Targets **.NET 8 and .NET 10** (`net8.0`; `net10.0`), with an identical public API on
@@ -376,8 +380,10 @@ var decryptor = new PqFileDecryptor(PqDecryptionLimits.Untrusted); // or your ow
 await decryptor.DecryptFileAsync("untrusted.pqfe", "out.bin", passphrase);
 ```
 
-The default `new PqFileDecryptor()` keeps the permissive format maxima, so every legal
-container still opens.
+`PqHybridDecryptor` takes the same limits (`new PqHybridDecryptor(PqDecryptionLimits.Untrusted)`);
+on that path only the chunk-size ceiling applies, since key unwrap is a fixed-cost KEM
+operation. The defaults (`new PqFileDecryptor()` / `new PqHybridDecryptor()`) keep the
+permissive format maxima, so every legal container still opens.
 
 ### Envelope encryption (KMS / HSM)
 
@@ -437,15 +443,23 @@ PostQuantum.FileEncryption is built to be **boring and predictable** where it ma
 
 For deeper references:
 
+- [docs/COOKBOOK.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COOKBOOK.md) — complete, copy-paste-runnable recipes for the common
+  jobs, with the failure handling done right
+- [docs/ANTI-PATTERNS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ANTI-PATTERNS.md) — how to hold it wrong: the misuse shapes the
+  analyzers flag, and the ones only a human can catch
+- [docs/COMPLIANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COMPLIANCE.md) — honest mapping to the PQC-migration mandates
+  (OMB M-23-02, CNSA 2.0, FIPS 203/204, 800-171) — including what is *not* claimed
 - [SECURITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/SECURITY.md) — supported versions, disclosure process, and the explicit
   *"does NOT defend against"* list
 - [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) — the honest open-issues ledger
-- [docs/AUDIT-GUIDE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/AUDIT-GUIDE.md) — the reviewer's entry point: the ~1,700-line
+- [docs/AUDIT-GUIDE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/AUDIT-GUIDE.md) — the reviewer's entry point: the ~2,200-line
   attack surface, the invariants to attack, and how to run the evidence
 - [docs/THREAT-MODEL.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
 - [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) — the on-disk container specification
 - [docs/SIGNATURE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SIGNATURE-FORMAT.md) — the detached `.sig` sidecar specification
   (Ed25519 + ML-DSA-65)
+- [docs/KEY-FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-FILE-FORMAT.md) — the `PQKF` passphrase-encrypted key-file
+  specification (`ExportEncrypted` / `ImportEncrypted`)
 - [docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md) — the X25519 + ML-KEM-768 combiner,
   vs. X-Wing / HPKE / RFC 9794
 - [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) — the contract another implementation must meet
@@ -480,7 +494,7 @@ Be clear-eyed about what *post-quantum* means here today:
   since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.4.1
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.5.0
 ```
 
 ```csharp
@@ -511,11 +525,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.4.1.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.5.0.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.4.1 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.5.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"
@@ -533,6 +547,9 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](https://gith
 | Roadmap (`1.0` / `1.x` / beyond) | [ROADMAP.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/ROADMAP.md) |
 | Changelog | [CHANGELOG.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/CHANGELOG.md) |
 | Migrating from other libraries (age / libsodium / OpenSSL / .NET) | [docs/MIGRATION.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/MIGRATION.md) |
+| Cookbook (task-oriented recipes) | [docs/COOKBOOK.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COOKBOOK.md) |
+| Anti-patterns (how to hold it wrong) | [docs/ANTI-PATTERNS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ANTI-PATTERNS.md) |
+| Compliance & PQC-migration mapping | [docs/COMPLIANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COMPLIANCE.md) |
 | Comparison vs. age / libsodium / OpenSSL | [docs/COMPARISON.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COMPARISON.md) |
 | Benchmarks (methodology + reproduce-it-yourself) | [docs/BENCHMARKS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/BENCHMARKS.md) |
 | Security policy & disclosure | [SECURITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/SECURITY.md) |
@@ -542,6 +559,7 @@ Rust/WASM reference implementation — is in [docs/SUPPLY-CHAIN.md](https://gith
 | Security architecture & crypto inventory (+ FIPS) | [docs/SECURITY-ARCHITECTURE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SECURITY-ARCHITECTURE.md) |
 | On-disk container format | [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) |
 | Detached-signature sidecar format | [docs/SIGNATURE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SIGNATURE-FORMAT.md) |
+| Encrypted key-file format (`PQKF`) | [docs/KEY-FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-FILE-FORMAT.md) |
 | Hybrid combiner rationale (vs. X-Wing, HPKE, RFC 9794) | [docs/HYBRID-COMBINER.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/HYBRID-COMBINER.md) |
 | Conformance spec (re-implementer's contract) | [docs/CONFORMANCE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CONFORMANCE.md) |
 | Known-answer test vectors | [docs/TEST-VECTORS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/TEST-VECTORS.md) |
@@ -606,13 +624,16 @@ other tools: [docs/BENCHMARKS.md](https://github.com/systemslibrarian/postquantu
 src/        PostQuantum.FileEncryption        — the library (symmetric core)
 src/        PostQuantum.FileEncryption.Hybrid — X25519 + ML-KEM-768 hybrid public-key package
 src/        PostQuantum.FileEncryption.Extensions.DependencyInjection — IServiceCollection integration
+src/        PostQuantum.FileEncryption.Analyzers — Roslyn misuse checks (PQFE101–PQFE104)
 tests/      PostQuantum.FileEncryption.Tests  — round-trip, KDF, recipient, hybrid, known-answer, cross-impl, property, fuzz tests
+tests/      PostQuantum.FileEncryption.Analyzers.Tests — analyzer rule tests
 benchmarks/ PostQuantum.FileEncryption.Benchmarks — BenchmarkDotNet throughput suite
 samples/    Pqfe.Cli                           — minimal CLI (encrypt/decrypt; AOT-publishable)
 samples/    PostQuantum.FileEncryption.Demo   — .NET demo (Blazor Server, runs the library)
 samples/    pqfe-wasm                          — Rust → WASM re-implementation of the .pqfe format
 samples/    pqfe-web                           — fully client-side browser demo (GitHub Pages)
-docs/       *.md                               — format spec, threat model, test vectors, roadmap, supply chain, migration
+samples/    quickstarts/                       — smallest complete programs: backup encryption, ASP.NET Core encrypted uploads
+docs/       *.md                               — format spec, threat model, test vectors, cookbook, anti-patterns, compliance, roadmap
 ```
 
 ### Why Blazor Server?

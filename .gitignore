@@ -56,3 +56,6 @@ nugetkey.key.txt
 *.apikey
 *.key.txt
 secrets.json
+
+# Stryker.NET mutation-testing output
+StrykerOutput/

@@ -33,6 +33,8 @@ public static class PqFileEncryptionServiceCollectionExtensions
     /// reads all parameters from the authenticated container header.
     /// </param>
     /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0027:API with optional parameter(s) should have the most parameters amongst its public overloads",
+        Justification = "This signature shipped in 1.4.0 and must stay byte-identical (PublicAPI baseline). The longer limits overload takes both parameters as required precisely so overload resolution never has two optional-bearing candidates.")]
     public static IServiceCollection AddPqFileEncryption(
         this IServiceCollection services,
         PqEncryptionOptions? options = null)
@@ -41,6 +43,40 @@ public static class PqFileEncryptionServiceCollectionExtensions
 
         services.TryAddSingleton(new PqFileEncryptor(options ?? PqEncryptionOptions.Default));
         services.TryAddSingleton(new PqFileDecryptor());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <see cref="PqFileEncryptor"/> and <see cref="PqFileDecryptor"/> as singletons,
+    /// with the decryptor enforcing <paramref name="limits"/> on every container it opens.
+    /// Use this overload when the host decrypts containers from untrusted sources (uploads,
+    /// shared storage) — a hostile header can otherwise legally demand gibibytes of KDF memory
+    /// before anything authenticates. <see cref="PqDecryptionLimits.Untrusted"/> is the
+    /// ready-made ceiling.
+    /// </summary>
+    /// <param name="services">The service collection to add the registrations to.</param>
+    /// <param name="options">
+    /// Encryption options applied by the registered <see cref="PqFileEncryptor"/>; pass
+    /// <see langword="null"/> for <see cref="PqEncryptionOptions.Default"/>. Options never
+    /// affect decryption.
+    /// </param>
+    /// <param name="limits">
+    /// Decrypt-time resource ceilings applied by the registered <see cref="PqFileDecryptor"/>.
+    /// A container header above a limit is rejected with <c>PqFormatException</c> before any
+    /// allocation or key-derivation work.
+    /// </param>
+    /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">A limit is outside the format's supported range.</exception>
+    public static IServiceCollection AddPqFileEncryption(
+        this IServiceCollection services,
+        PqEncryptionOptions? options,
+        PqDecryptionLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(limits);
+
+        services.TryAddSingleton(new PqFileEncryptor(options ?? PqEncryptionOptions.Default));
+        services.TryAddSingleton(new PqFileDecryptor(limits));
         return services;
     }
 
@@ -56,6 +92,8 @@ public static class PqFileEncryptionServiceCollectionExtensions
     /// <see cref="PqEncryptionOptions.Default"/> is used. Options never affect decryption.
     /// </param>
     /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("ApiDesign", "RS0027:API with optional parameter(s) should have the most parameters amongst its public overloads",
+        Justification = "This signature shipped in 1.4.0 and must stay byte-identical (PublicAPI baseline). The longer limits overload takes both parameters as required precisely so overload resolution never has two optional-bearing candidates.")]
     public static IServiceCollection AddPqHybridFileEncryption(
         this IServiceCollection services,
         PqEncryptionOptions? options = null)
@@ -65,6 +103,39 @@ public static class PqFileEncryptionServiceCollectionExtensions
         services.AddPqFileEncryption(options);
         services.TryAddSingleton(new PqHybridEncryptor(options ?? PqEncryptionOptions.Default));
         services.TryAddSingleton(new PqHybridDecryptor());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the hybrid and passphrase services with both decryptors enforcing
+    /// <paramref name="limits"/> — the overload for hosts that decrypt containers from
+    /// untrusted sources. On the hybrid path only the chunk-size ceiling applies (key unwrap
+    /// is a fixed-cost KEM operation); the passphrase decryptor is additionally capped on KDF
+    /// cost. <see cref="PqDecryptionLimits.Untrusted"/> is the ready-made ceiling.
+    /// </summary>
+    /// <param name="services">The service collection to add the registrations to.</param>
+    /// <param name="options">
+    /// Encryption options applied by the registered encryptors; pass <see langword="null"/>
+    /// for <see cref="PqEncryptionOptions.Default"/>. Options never affect decryption.
+    /// </param>
+    /// <param name="limits">
+    /// Decrypt-time resource ceilings applied by both registered decryptors. A container
+    /// header above a limit is rejected with <c>PqFormatException</c> before any allocation
+    /// or key-derivation work.
+    /// </param>
+    /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">A limit is outside the format's supported range.</exception>
+    public static IServiceCollection AddPqHybridFileEncryption(
+        this IServiceCollection services,
+        PqEncryptionOptions? options,
+        PqDecryptionLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(limits);
+
+        services.AddPqFileEncryption(options, limits);
+        services.TryAddSingleton(new PqHybridEncryptor(options ?? PqEncryptionOptions.Default));
+        services.TryAddSingleton(new PqHybridDecryptor(limits));
         return services;
     }
 

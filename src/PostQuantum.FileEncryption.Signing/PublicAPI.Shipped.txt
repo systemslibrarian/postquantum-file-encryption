@@ -24,3 +24,6 @@ PostQuantum.FileEncryption.Signing.PqVerifier.VerifyFileAsync(string! inputPath,
 static PostQuantum.FileEncryption.Signing.PqSigningKeyPair.Generate() -> PostQuantum.FileEncryption.Signing.PqSigningKeyPair!
 static PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Signing.PqSigningPrivateKey!
 static PostQuantum.FileEncryption.Signing.PqSigningPublicKey.Import(byte[]! bytes) -> PostQuantum.FileEncryption.Signing.PqSigningPublicKey!
+PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.ExportEncrypted(System.ReadOnlySpan<char> passphrase, PostQuantum.FileEncryption.PqEncryptionOptions? options = null) -> byte[]!
+static PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.ImportEncrypted(System.ReadOnlySpan<byte> keyFile, System.ReadOnlySpan<char> passphrase, PostQuantum.FileEncryption.PqDecryptionLimits? limits = null) -> PostQuantum.FileEncryption.Signing.PqSigningPrivateKey!
+static PostQuantum.FileEncryption.Signing.PqSigningPrivateKey.IsEncryptedKeyFile(System.ReadOnlySpan<byte> data) -> bool

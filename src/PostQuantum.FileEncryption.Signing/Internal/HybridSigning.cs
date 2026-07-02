@@ -107,15 +107,31 @@ internal static class HybridSigning
         byte[] edSig = signature.Slice(HeaderLength, SigningSizes.Ed25519Signature).ToArray();
         byte[] mlSig = signature.Slice(HeaderLength + SigningSizes.Ed25519Signature, SigningSizes.MlDsa65Signature).ToArray();
 
-        var ed = new Ed25519Signer();
-        ed.Init(forSigning: false, new Ed25519PublicKeyParameters(publicKey.Ed25519PublicKey));
-        ed.BlockUpdate(message, 0, message.Length);
-        bool edOk = ed.VerifySignature(edSig);
+        bool edOk;
+        bool mlOk;
+        try
+        {
+            var ed = new Ed25519Signer();
+            ed.Init(forSigning: false, new Ed25519PublicKeyParameters(publicKey.Ed25519PublicKey));
+            ed.BlockUpdate(message, 0, message.Length);
+            edOk = ed.VerifySignature(edSig);
 
-        var mlDsa = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: false);
-        mlDsa.Init(forSigning: false, MLDsaPublicKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, publicKey.MlDsaPublicKey));
-        mlDsa.BlockUpdate(message, 0, message.Length);
-        bool mlOk = mlDsa.VerifySignature(mlSig);
+            var mlDsa = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: false);
+            mlDsa.Init(forSigning: false, MLDsaPublicKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, publicKey.MlDsaPublicKey));
+            mlDsa.BlockUpdate(message, 0, message.Length);
+            mlOk = mlDsa.VerifySignature(mlSig);
+        }
+        catch (Exception ex) when (ex is not (OutOfMemoryException or OperationCanceledException or ThreadInterruptedException))
+        {
+            // BouncyCastle returns false (rather than throwing) for every hostile-content case
+            // we know of, but the fail-closed, single-message contract must not rest on a
+            // dependency's internals: any unexpected throw becomes the same generic failure,
+            // never a raw exception that reveals which half rejected the input or why.
+            // Process-level faults (OOM, cancellation, thread interrupt) pass through — they
+            // signal infrastructure, not a hostile signature, and a caller that quarantines on
+            // PqSignatureException must never be told an authentic file is forged.
+            throw new PqSignatureException(VerifyFailedMessage, ex);
+        }
 
         // Non-short-circuit: both components are always evaluated, and either failing yields
         // the same generic error — no oracle for which half failed.

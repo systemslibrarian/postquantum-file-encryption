@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
+using PostQuantum.FileEncryption.Internal;
 
 namespace PostQuantum.FileEncryption.Signing;
 
@@ -105,6 +106,76 @@ public sealed class PqSigningPrivateKey : IDisposable
         _ed25519PrivateKey.CopyTo(bytes, 0);
         _mlDsaPrivateKey.CopyTo(bytes, SigningSizes.Ed25519PrivateKey);
         return bytes;
+    }
+
+    /// <summary>
+    /// Exports this private key as a passphrase-encrypted <c>PQKF</c> key file — the safe way
+    /// to store a signing key at rest. The key bytes are protected by the same authenticated
+    /// container the library uses for data (Argon2id key derivation by default), so a wrong
+    /// passphrase or any tampering fails closed on import.
+    /// See <c>docs/KEY-FILE-FORMAT.md</c> for the byte-exact format.
+    /// </summary>
+    /// <param name="passphrase">The passphrase protecting the key file. Must not be empty.</param>
+    /// <param name="options">
+    /// Optional KDF tuning for the key file. Defaults to the Argon2id preset — key files are
+    /// tiny and long-lived, so a memory-hard KDF is the right default.
+    /// </param>
+    /// <exception cref="ArgumentException">The passphrase is empty.</exception>
+    public byte[] ExportEncrypted(ReadOnlySpan<char> passphrase, PqEncryptionOptions? options = null)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        byte[] raw = Export();
+        try
+        {
+            return PqKeyFileFormat.Encrypt(PqKeyFileFormat.KeyTypeSigningPrivate, raw, passphrase, options);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(raw);
+        }
+    }
+
+    /// <summary>
+    /// Returns whether <paramref name="data"/> is a passphrase-encrypted key file (the
+    /// <c>PQKF</c> framing written by <see cref="ExportEncrypted"/>) as opposed to raw
+    /// <see cref="Export"/> bytes — use it to route a key file to the right import method.
+    /// </summary>
+    /// <remarks>
+    /// The check reads the file's magic and version bytes. Raw <see cref="Export"/> bytes begin
+    /// with random key material, so an accidental match is possible but astronomically unlikely
+    /// (~2⁻⁴⁰ per key); store the two forms under distinct names if you must rule it out.
+    /// </remarks>
+    public static bool IsEncryptedKeyFile(ReadOnlySpan<byte> data) => PqKeyFileFormat.IsEncryptedKeyFile(data);
+
+    /// <summary>Imports a private key from a passphrase-encrypted key file produced by <see cref="ExportEncrypted"/>.</summary>
+    /// <param name="keyFile">The encrypted key file bytes.</param>
+    /// <param name="passphrase">The passphrase the key file was exported under.</param>
+    /// <param name="limits">
+    /// Optional decrypt-time resource ceilings applied to the key file's KDF cost parameters —
+    /// pass <see cref="PqDecryptionLimits.Untrusted"/> (or your own) when the key file comes
+    /// from an untrusted source, so a hostile header cannot demand gibibytes of Argon2id memory
+    /// before anything authenticates. The default honors the permissive format maxima, so every
+    /// legal key file opens.
+    /// </param>
+    /// <exception cref="PqFormatException">
+    /// The bytes are not a recognizable encrypted key file, the file holds a different kind
+    /// of key (e.g. a hybrid recipient key), or the KDF parameters exceed <paramref name="limits"/>.
+    /// </exception>
+    /// <exception cref="PqDecryptionException">The passphrase is wrong, or the key file was altered.</exception>
+    public static PqSigningPrivateKey ImportEncrypted(
+        ReadOnlySpan<byte> keyFile, ReadOnlySpan<char> passphrase, PqDecryptionLimits? limits = null)
+    {
+        byte[] raw = PqKeyFileFormat.Decrypt(
+            PqKeyFileFormat.KeyTypeSigningPrivate, "hybrid signing private key", SigningSizes.PrivateKey,
+            keyFile, passphrase, limits);
+        try
+        {
+            return Import(raw);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(raw);
+        }
     }
 
     /// <summary>Imports a private key previously produced by <see cref="Export"/>.</summary>

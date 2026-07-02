@@ -1,0 +1,57 @@
+using PostQuantum.FileEncryption.Hybrid;
+using PostQuantum.FileEncryption.Signing;
+using Xunit;
+
+namespace PostQuantum.FileEncryption.Tests;
+
+/// <summary>
+/// Pinned known-answer vector for the PQKF v1 encrypted key-file format
+/// (docs/TEST-VECTORS.md, Vector 5). The fixed key file below was produced by an earlier
+/// build and must keep decrypting to the same private-key bytes. If a change breaks it,
+/// that is a deliberate, breaking change — bump the PQKF FormatVersion and regenerate.
+/// The key pair was generated solely for this vector and protects nothing.
+/// </summary>
+public sealed class KeyFileKnownAnswerVectorTests
+{
+    private const string Passphrase = "key-file-vector-passphrase";
+
+    // PQKF v1; body = .pqfe v2 passphrase container, Argon2id (8 MiB, 1 pass, 1 lane);
+    // plaintext = 0x01 (hybrid private) ‖ X25519(32) ‖ ML-KEM-dk(2400).
+    private const string KeyFileVector =
+        "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";
+
+    // The expected recovered key: PqHybridPrivateKey.Export() bytes (2,432).
+    private const string ExpectedPrivateKey =
+        "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";
+
+    [Fact]
+    public void Pinned_key_file_decrypts_to_the_known_private_key()
+    {
+        byte[] keyFile = Convert.FromBase64String(KeyFileVector);
+
+        using var restored = PqHybridPrivateKey.ImportEncrypted(keyFile, Passphrase);
+
+        Assert.Equal(Convert.FromBase64String(ExpectedPrivateKey), restored.Export());
+    }
+
+    [Fact]
+    public void Pinned_key_file_rejects_a_wrong_passphrase()
+    {
+        byte[] keyFile = Convert.FromBase64String(KeyFileVector);
+
+        Assert.Throws<PqDecryptionException>(() =>
+            PqHybridPrivateKey.ImportEncrypted(keyFile, "wrong"));
+    }
+
+    [Fact]
+    public void Pinned_key_file_is_rejected_by_the_signing_importer()
+    {
+        // The KeyType byte lives inside the authenticated plaintext (KEY-FILE-FORMAT.md,
+        // reader rule 4): even with the right passphrase, a hybrid key file must never
+        // import as a signing key.
+        byte[] keyFile = Convert.FromBase64String(KeyFileVector);
+
+        Assert.Throws<PqFormatException>(() =>
+            PqSigningPrivateKey.ImportEncrypted(keyFile, Passphrase));
+    }
+}

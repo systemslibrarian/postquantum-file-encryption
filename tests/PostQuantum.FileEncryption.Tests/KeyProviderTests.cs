@@ -110,11 +110,52 @@ public sealed class KeyProviderTests : IDisposable
         Assert.Throws<ArgumentException>(() => new LocalKekContentKeyProvider(new byte[16]));
     }
 
+    [Fact]
+    public async Task A_provider_returning_a_short_key_cannot_downgrade_encryption()
+    {
+        // A 16-byte content key would silently produce an AES-128-GCM container while the
+        // format promises AES-256 — the engine must reject it before any ciphertext exists.
+        using var local = LocalKekContentKeyProvider.Generate();
+        var misbehaving = new TruncatingProvider(local, 16);
+
+        var ex = await Assert.ThrowsAsync<PqEncryptionException>(() =>
+            new PqFileEncryptor(Fast()).EncryptBytesAsync(RandomBytes(500), misbehaving));
+        Assert.Contains("16-byte", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_provider_returning_a_short_key_on_unwrap_fails_closed()
+    {
+        using var local = LocalKekContentKeyProvider.Generate();
+        byte[] container = await new PqFileEncryptor(Fast()).EncryptBytesAsync(RandomBytes(500), local);
+
+        // The container is fine; the (custom) provider misbehaves on unwrap. That must be the
+        // library's typed fail-closed signal, not a raw CryptographicException from AesGcm.
+        var misbehaving = new TruncatingProvider(local, 15);
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqFileDecryptor().DecryptBytesAsync(container, misbehaving));
+    }
+
     /// <summary>A custom provider that delegates to another but reports a different id — proves the abstraction.</summary>
     private sealed class RenamedProvider(IContentKeyProvider inner, string id) : IContentKeyProvider
     {
         public string ProviderId => id;
         public Task<(byte[] contentKey, byte[] wrapInfo)> WrapNewKeyAsync(CancellationToken ct = default) => inner.WrapNewKeyAsync(ct);
         public Task<byte[]> UnwrapKeyAsync(ReadOnlyMemory<byte> wrapInfo, CancellationToken ct = default) => inner.UnwrapKeyAsync(wrapInfo, ct);
+    }
+
+    /// <summary>A misbehaving provider that truncates every content key it hands back.</summary>
+    private sealed class TruncatingProvider(IContentKeyProvider inner, int keyLength) : IContentKeyProvider
+    {
+        public string ProviderId => inner.ProviderId;
+
+        public async Task<(byte[] contentKey, byte[] wrapInfo)> WrapNewKeyAsync(CancellationToken ct = default)
+        {
+            (byte[] contentKey, byte[] wrapInfo) = await inner.WrapNewKeyAsync(ct);
+            return (contentKey[..keyLength], wrapInfo);
+        }
+
+        public async Task<byte[]> UnwrapKeyAsync(ReadOnlyMemory<byte> wrapInfo, CancellationToken ct = default) =>
+            (await inner.UnwrapKeyAsync(wrapInfo, ct))[..keyLength];
     }
 }

@@ -185,32 +185,58 @@ internal static class KeyEstablishment
         EnsureMlKemSupported();
 
         byte[] contentKey = RandomNumberGenerator.GetBytes(ContainerFormat.KeyLength);
-        using MLKem encapsulationKey = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, recipient.KeyBytes);
-        encapsulationKey.Encapsulate(out byte[] kemCiphertext, out byte[] sharedSecret);
+        // On any failure below the fresh key is zeroed here: the caller's finally only covers
+        // keys that were actually returned to it.
         try
         {
-            byte[] kek = HKDF.DeriveKey(HashAlgorithmName.SHA256, sharedSecret, ContainerFormat.KeyLength, salt: null, info: KekInfo);
+            MLKem encapsulationKey;
             try
             {
-                byte[] wrapNonce = RandomNumberGenerator.GetBytes(ContainerFormat.NonceLength);
-                byte[] wrappedKey = new byte[ContainerFormat.KeyLength];
-                byte[] wrapTag = new byte[ContainerFormat.TagLength];
-                using (var gcm = new AesGcm(kek, ContainerFormat.TagLength))
-                {
-                    gcm.Encrypt(wrapNonce, contentKey, wrappedKey, wrapTag, WrapAad);
-                }
-
-                byte[] keyParams = SerializeRecipientParams(kemCiphertext, wrapNonce, wrapTag, wrappedKey);
-                return (keyParams, contentKey);
+                encapsulationKey = MLKem.ImportEncapsulationKey(MLKemAlgorithm.MLKem768, recipient.KeyBytes);
             }
-            finally
+            catch (CryptographicException ex)
             {
-                CryptographicOperations.ZeroMemory(kek);
+                // PqRecipientPublicKey.Import validates only the length, so a corrupt key from
+                // an untrusted party fails FIPS 203 decode here; keep it inside the library's
+                // exception contract instead of leaking a platform CryptographicException.
+                throw new PqEncryptionException(
+                    "The recipient public key is not a valid ML-KEM-768 encapsulation key.", ex);
+            }
+
+            using (encapsulationKey)
+            {
+                encapsulationKey.Encapsulate(out byte[] kemCiphertext, out byte[] sharedSecret);
+                try
+                {
+                    byte[] kek = HKDF.DeriveKey(HashAlgorithmName.SHA256, sharedSecret, ContainerFormat.KeyLength, salt: null, info: KekInfo);
+                    try
+                    {
+                        byte[] wrapNonce = RandomNumberGenerator.GetBytes(ContainerFormat.NonceLength);
+                        byte[] wrappedKey = new byte[ContainerFormat.KeyLength];
+                        byte[] wrapTag = new byte[ContainerFormat.TagLength];
+                        using (var gcm = new AesGcm(kek, ContainerFormat.TagLength))
+                        {
+                            gcm.Encrypt(wrapNonce, contentKey, wrappedKey, wrapTag, WrapAad);
+                        }
+
+                        byte[] keyParams = SerializeRecipientParams(kemCiphertext, wrapNonce, wrapTag, wrappedKey);
+                        return (keyParams, contentKey);
+                    }
+                    finally
+                    {
+                        CryptographicOperations.ZeroMemory(kek);
+                    }
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(sharedSecret);
+                }
             }
         }
-        finally
+        catch
         {
-            CryptographicOperations.ZeroMemory(sharedSecret);
+            CryptographicOperations.ZeroMemory(contentKey);
+            throw;
         }
 #endif
     }

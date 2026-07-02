@@ -87,9 +87,10 @@ public sealed class PqHybridEncryptor
         ArgumentException.ThrowIfNullOrEmpty(outputPath);
         ValidateRecipients(recipients);
 
-        await using var input = FileIo.OpenRead(inputPath);
-        long? total = input.CanSeek ? input.Length : null;
-        await FileIo.WriteViaTempAsync(outputPath, output =>
+        // FileIo owns the ordering invariants: input opened before the temp file exists
+        // (missing input has no destination side effect) and closed before the atomic move
+        // (in-place encryption works on Windows).
+        await FileIo.TransformViaTempAsync(inputPath, outputPath, (input, output, total) =>
             EncryptToAsync(input, output, recipients, total, progress, cancellationToken)).ConfigureAwait(false);
     }
 

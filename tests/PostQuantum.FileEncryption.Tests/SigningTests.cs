@@ -148,6 +148,30 @@ public sealed class SigningTests
         Assert.Equal(edFailure.Message, mlFailure.Message);
     }
 
+    [Fact]
+    public void Fully_hostile_signature_components_fail_closed_with_the_generic_message()
+    {
+        // Single bit-flips (above) barely perturb the encodings; all-0xFF components exercise
+        // BouncyCastle's decode-failure paths (Ed25519 point/scalar range, ML-DSA hint
+        // unpacking). Whatever BouncyCastle does with them, the caller must see the same
+        // generic PqSignatureException — never a raw dependency exception.
+        using var keyPair = PqSigningKeyPair.Generate();
+        byte[] data = RandomBytes(1000);
+        byte[] signature = new PqSigner().SignBytes(data, keyPair.PrivateKey);
+
+        byte[] hostile = (byte[])signature.Clone();
+        hostile.AsSpan(HybridSigning.HeaderLength).Fill(0xFF);
+
+        var failure = Assert.Throws<PqSignatureException>(() =>
+            new PqVerifier().VerifyBytes(data, hostile, keyPair.PublicKey));
+
+        byte[] brokenEd = (byte[])signature.Clone();
+        brokenEd[HybridSigning.HeaderLength + 10] ^= 0x01;
+        var bitFlipFailure = Assert.Throws<PqSignatureException>(() =>
+            new PqVerifier().VerifyBytes(data, brokenEd, keyPair.PublicKey));
+        Assert.Equal(bitFlipFailure.Message, failure.Message);
+    }
+
     [Theory]
     [InlineData(0)] // magic
     [InlineData(4)] // format version

@@ -10,33 +10,44 @@ of this library, that work is valued and credited; see
 
 ## The attack surface is small on purpose
 
-Everything cryptographic lives in **~1,700 lines** across eleven files. Nothing outside
-these files touches keys, nonces, tags, or container parsing.
+Everything cryptographic lives in **~2,400 lines** across sixteen files. Nothing outside
+these files touches keys, nonces, tags, or container/signature parsing.
 
 ### Core package (`src/PostQuantum.FileEncryption/Internal/`)
 
 | File | Lines | What it does — and what to check |
 | --- | ---: | --- |
-| `PqContainerEngine.cs` | 287 | The chunked AES-256-GCM data plane: nonce construction, AAD binding, frame parsing, the fail-closed decrypt loop |
-| `KeyEstablishment.cs` | 276 | PBKDF2 / Argon2id derivation; ML-KEM-768 KEM-DEM (deprecated inline mode); range checks on **untrusted** header parameters |
-| `PqContainer.cs` | 192 | Orchestration: establish key → build header → invoke codec; key zeroing on every path including pre-codec failures |
-| `ContainerFormat.cs` | 147 | v2 header constants, serialization, and parse-side validation |
-| `FileIo.cs` | 56 | Temp-file-plus-atomic-move so a destination file is never partial |
-| `IPqContainerCodec.cs` | 50 | The delegation seam (interface only) |
-| `PqfeEventSource.cs` | 48 | Telemetry — verify it can never leak key material or plaintext |
+| `KeyEstablishment.cs` | 302 | PBKDF2 / Argon2id derivation; ML-KEM-768 KEM-DEM (deprecated inline mode); range checks on **untrusted** header parameters |
+| `PqContainerEngine.cs` | 269 | The chunked AES-256-GCM data plane: nonce construction, AAD binding, frame parsing, the fail-closed decrypt loop |
+| `PqContainer.cs` | 235 | Orchestration: establish key → build header → invoke codec; the empty-passphrase encrypt gate; key zeroing on every path including pre-codec failures |
+| `ContainerFormat.cs` | 124 | v2 header constants, serialization, and parse-side validation |
+| `PqKeyFileFormat.cs` | 117 | The `PQKF` encrypted key-file framing: magic/version checks and the authenticated key-type binding; drives the container engine directly so every key-bearing buffer is zeroed |
+| `FileIo.cs` | 99 | Temp-file-plus-atomic-move (with flush-to-stable-storage) and the input-open/close ordering that makes in-place transforms safe |
+| `IPqContainerCodec.cs` | 42 | The delegation seam (interface only) |
+| `PqfeEventSource.cs` | 42 | Telemetry — verify it can never leak key material or plaintext |
 
 ### Hybrid package (`src/PostQuantum.FileEncryption.Hybrid/`)
 
 | File | Lines | What it does — and what to check |
 | --- | ---: | --- |
-| `Internal/HybridKeyEstablishment.cs` | 258 | The X25519 + ML-KEM-768 combiner: encapsulate/agree → HKDF-SHA256 → AES-256-GCM key wrap; the multi-recipient scan loop |
-| `PqHybridKeyPair.cs` | 171 | Key generation, import/export, zeroing on dispose |
-| `PqHybridEncryptor.cs` | 127 | CEK generation and wrap orchestration; CEK zeroing on failure paths |
-| `PqHybridDecryptor.cs` | 68 | Unwrap orchestration |
+| `Internal/HybridKeyEstablishment.cs` | 250 | The X25519 + ML-KEM-768 combiner: encapsulate/agree → HKDF-SHA256 → AES-256-GCM key wrap; the multi-recipient scan loop |
+| `PqHybridKeyPair.cs` | 218 | Key generation, import/export (raw and `PQKF`-encrypted), zeroing on dispose |
+| `PqHybridEncryptor.cs` | 112 | CEK generation and wrap orchestration; CEK zeroing on failure paths |
+| `PqHybridDecryptor.cs` | 77 | Unwrap orchestration; pre-authentication resource limits |
+
+### Signing package (`src/PostQuantum.FileEncryption.Signing/`)
+
+| File | Lines | What it does — and what to check |
+| --- | ---: | --- |
+| `PqSigningKeyPair.cs` | 233 | Key generation, import/export (raw and `PQKF`-encrypted), zeroing on dispose |
+| `Internal/HybridSigning.cs` | 135 | Ed25519 + ML-DSA-65 dual sign/verify over the domain-separated SHA-512 pre-hash; **both** signatures must verify, with no oracle for which one failed |
+| `PqVerifier.cs` | 62 | `.sig` sidecar parsing (structural checks before any cryptography) and verify orchestration |
+| `PqSigner.cs` | 56 | Streaming pre-hash and sign orchestration; atomic sidecar write |
 
 What you should **not** need to review: the primitives themselves. AES-GCM, PBKDF2, HKDF,
-and ML-KEM (core) come from .NET's `System.Security.Cryptography`; ML-KEM and X25519
-(Hybrid) from BouncyCastle; Argon2id from Konscious. The full inventory, with versions and
+SHA-512, and ML-KEM (core) come from .NET's `System.Security.Cryptography`; ML-KEM and
+X25519 (Hybrid) and Ed25519 and ML-DSA-65 (Signing) from BouncyCastle; Argon2id from
+Konscious. The full inventory, with versions and
 FIPS notes, is in [SECURITY-ARCHITECTURE.md](SECURITY-ARCHITECTURE.md). This library only
 *composes* them — the composition is what needs eyes.
 

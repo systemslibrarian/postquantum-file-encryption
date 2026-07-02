@@ -32,16 +32,23 @@ pqfe decrypt backup.tar.pqfe backup.tar --passphrase-env PQFE_PASS
 Sign a finished container (or any file) so recipients can prove who produced it:
 
 ```bash
-pqfe keygen me.key                                 # writes me.key (secret) + me.key.pub (share)
-pqfe sign   backup.tar.pqfe me.key                 # writes backup.tar.pqfe.sig
+pqfe keygen me.key --encrypt                       # writes me.key (passphrase-protected) + me.key.pub (share)
+pqfe sign   backup.tar.pqfe me.key                 # detects the encrypted key, prompts, writes backup.tar.pqfe.sig
 pqfe verify backup.tar.pqfe me.key.pub             # exit 0 = authentic, 65 = reject
 ```
+
+Without `--encrypt`, `keygen` writes the raw private key bytes (`0600` on Unix). With it, the
+private key is a passphrase-protected, tamper-evident
+[`PQKF` key file](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-FILE-FORMAT.md)
+(an Argon2id-hardened `.pqfe` container) — useless at rest without the passphrase. `sign`
+accepts either form.
 
 ### Options
 
 | Option | Effect |
 | --- | --- |
 | `--argon2id` | Derive the key with Argon2id (memory-hard) instead of PBKDF2-HMAC-SHA256. Decryption reads the KDF from the container header — no flag needed. |
+| `--encrypt` | (`keygen`) Protect the private key file with a passphrase (`PQKF` format — an Argon2id-hardened `.pqfe` container). |
 | `--passphrase-env VAR` | Read the passphrase from environment variable `VAR` instead of prompting. |
 | `--signature PATH` | Detached-signature path for `sign`/`verify` (default: `<input>.sig`). |
 
@@ -50,7 +57,7 @@ pqfe verify backup.tar.pqfe me.key.pub             # exit 0 = authentic, 65 = re
 Follow `sysexits.h` conventions so failures are scriptable: `0` ok, `64` usage,
 `65` data error (wrong passphrase, tampered/truncated ciphertext, **or** a signature that
 does not verify — each deliberately indistinguishable within its class), `66` missing
-input, `74` I/O error.
+input, `74` I/O error, `130` interrupted (Ctrl+C — the shell convention for SIGINT).
 
 ## What it writes
 

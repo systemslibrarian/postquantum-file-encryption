@@ -101,12 +101,19 @@ jobs:
       - name: Sign and verify with the AOT-published binary
         # Exercises the Ed25519 + ML-DSA-65 signing path (BouncyCastle) under native AOT,
         # including the fail-closed branch: a tampered file must be rejected with exit 65.
+        env:
+          PQFE_PASS: 'aot-smoke-test-passphrase'
         run: |
           set -euo pipefail
           PQFE="$RUNNER_TEMP/pqfe-aot/pqfe"
           "$PQFE" keygen "$RUNNER_TEMP/smoke.key"
           "$PQFE" sign   "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/smoke.key"
           "$PQFE" verify "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/smoke.key.pub"
+          # Same flow with a passphrase-protected (PQKF) key file, so the encrypted
+          # key-file import path (ExportEncrypted/ImportEncrypted + Argon2id) runs under AOT.
+          "$PQFE" keygen "$RUNNER_TEMP/enc.key" --encrypt --passphrase-env PQFE_PASS
+          "$PQFE" sign   "$RUNNER_TEMP/plain.txt" "$RUNNER_TEMP/enc.key" --passphrase-env PQFE_PASS
+          "$PQFE" verify "$RUNNER_TEMP/plain.txt" "$RUNNER_TEMP/enc.key.pub"
           echo tamper >> "$RUNNER_TEMP/c.pqfe"
           if "$PQFE" verify "$RUNNER_TEMP/c.pqfe" "$RUNNER_TEMP/smoke.key.pub"; then
             echo "tampered file verified — fail-closed contract broken" >&2

@@ -10,7 +10,7 @@ targets). The content is pre-hashed with streaming SHA-512, so signing a 10 GB b
 constant memory.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Signing --version 1.4.1
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.5.0
 ```
 
 ## Sign and verify a file
@@ -33,6 +33,12 @@ await new PqVerifier().VerifyFileAsync("report.pdf.pqfe", "report.pdf.pqfe.sig",
 
 Streams and in-memory buffers work the same way via `SignAsync`/`SignBytes` and
 `VerifyAsync`/`VerifyBytes`.
+
+For storing the private key, prefer the passphrase-encrypted form over raw `Export()` bytes:
+`PrivateKey.ExportEncrypted(passphrase)` / `PqSigningPrivateKey.ImportEncrypted(keyFile, passphrase)`
+wrap the key in an authenticated, Argon2id-hardened key file
+([docs/KEY-FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/KEY-FILE-FORMAT.md))
+that fails closed on a wrong passphrase or any tampering.
 
 ## Fail-closed verification
 

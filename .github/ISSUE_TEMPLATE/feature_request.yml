@@ -1,0 +1,34 @@
+name: Feature request
+description: Propose an addition or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape the library. Two ground rules keep proposals productive:
+        the `.pqfe` v2 container format is **FROZEN** for the 1.x line (format changes go to
+        the [2.0 roadmap](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/ROADMAP-2.0.md)),
+        and the fail-closed contract is non-negotiable — no partial-success paths, no
+        unauthenticated modes.
+  - type: textarea
+    id: job
+    attributes:
+      label: What job are you trying to do?
+      description: The task, not the feature — often there's an existing recipe (see docs/COOKBOOK.md).
+      placeholder: "I need to encrypt files so that…"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed addition
+      description: What would the API or behavior look like?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+      description: Workarounds, other libraries, or "nothing — blocked".
+    validations:
+      required: false

@@ -10,7 +10,11 @@ what is out of scope. It complements [SECURITY.md](../SECURITY.md) (policy) and
 1. **Plaintext confidentiality** — the contents of an encrypted file.
 2. **Plaintext integrity/authenticity** — assurance that decrypted output is exactly what was
    encrypted, by someone holding the key.
-3. **Key material** — passphrases, derived content keys, ML-KEM private keys.
+3. **Key material** — passphrases, derived content keys, recipient and signing private keys.
+   In memory these are zeroed after use; at rest, private keys exported with
+   `ExportEncrypted` live inside a passphrase-encrypted, authenticated
+   [`PQKF` key file](KEY-FILE-FORMAT.md) (raw `Export()` bytes remain the caller's
+   responsibility to protect).
 
 ## Actors
 

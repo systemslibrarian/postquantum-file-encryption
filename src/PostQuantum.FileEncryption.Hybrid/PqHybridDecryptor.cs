@@ -8,13 +8,29 @@ namespace PostQuantum.FileEncryption.Hybrid;
 /// Fail-closed: if the file is not encrypted to this key, or has been altered or truncated, a
 /// <see cref="PqDecryptionException"/> is thrown and no plaintext is left at the destination.
 /// </summary>
-[System.Diagnostics.CodeAnalysis.SuppressMessage(
-    "Performance", "CA1822:Mark members as static",
-    Justification = "Kept as instance methods for symmetry with PqHybridEncryptor and the core decryptor.")]
 public sealed class PqHybridDecryptor
 {
+    private readonly PqDecryptionLimits _limits;
+
     /// <summary>Creates a decryptor. Parameters are read from each container's header.</summary>
-    public PqHybridDecryptor() { }
+    public PqHybridDecryptor() : this(PqDecryptionLimits.Default) { }
+
+    /// <summary>
+    /// Creates a decryptor that enforces <paramref name="limits"/> on every container it opens.
+    /// Use <see cref="PqDecryptionLimits.Untrusted"/> (or your own ceilings) when decrypting
+    /// containers from untrusted sources. On the hybrid path only
+    /// <see cref="PqDecryptionLimits.MaxChunkSizeBytes"/> applies — key unwrap is a fixed-cost
+    /// KEM operation, so there is no KDF cost for a hostile header to inflate — and a header
+    /// above the limit is rejected with <see cref="PqFormatException"/> before key
+    /// establishment or buffer allocation.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">A limit is outside the format's supported range.</exception>
+    public PqHybridDecryptor(PqDecryptionLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(limits);
+        limits.Validate();
+        _limits = limits;
+    }
 
     /// <summary>Decrypts the container read from <paramref name="input"/> to <paramref name="output"/>.</summary>
     /// <exception cref="PqFormatException">The input is not a recognizable container.</exception>
@@ -31,6 +47,7 @@ public sealed class PqHybridDecryptor
         // container's length and derives the plaintext total for progress reporting from it.
         long? total = input.CanSeek ? input.Length - input.Position : null;
         ContainerHeader header = await PqContainerEngine.ReadHeaderAsync(input, cancellationToken).ConfigureAwait(false);
+        PqContainer.EnforceChunkLimit(header, _limits);
         byte[] contentKey = header.KeySource switch
         {
             ContainerFormat.KeySourceHybridRecipient => HybridKeyEstablishment.UnwrapFromRecipient(header.KeyParams, privateKey),
@@ -50,8 +67,10 @@ public sealed class PqHybridDecryptor
         ArgumentException.ThrowIfNullOrEmpty(outputPath);
         ArgumentNullException.ThrowIfNull(privateKey);
 
-        await using var input = FileIo.OpenRead(inputPath);
-        await FileIo.WriteViaTempAsync(outputPath, output =>
+        // FileIo owns the ordering invariants: input opened before the temp file exists
+        // (missing input has no destination side effect) and closed before the atomic move
+        // (in-place decryption works on Windows).
+        await FileIo.TransformViaTempAsync(inputPath, outputPath, (input, output, _) =>
             DecryptAsync(input, output, privateKey, progress, cancellationToken)).ConfigureAwait(false);
     }
 

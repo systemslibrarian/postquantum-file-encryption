@@ -25,7 +25,7 @@ Both algorithms sign the **same** short, domain-separated message:
 ```
 SignedMessage = Context ‖ SHA-512(content)
 
-Context = "PostQuantum.FileEncryption.Signing/v1 ed25519+ml-dsa-65 sha-512"  (UTF-8, 64 bytes)
+Context = "PostQuantum.FileEncryption.Signing/v1 ed25519+ml-dsa-65 sha-512"  (UTF-8, 63 bytes)
 ```
 
 - `content` is the raw byte sequence of the signed file or stream, hashed with streaming

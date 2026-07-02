@@ -179,10 +179,18 @@ public sealed class PqFileDecryptor
     /// emits earlier authentic chunks before a later truncation is detected.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The recovered plaintext is buffered in memory before being written, so peak memory is
     /// proportional to the plaintext size. For very large inputs prefer the file API
     /// (<see cref="DecryptFileAsync(string, string, string, IProgress{PqProgress}?, CancellationToken)"/>),
     /// which is already atomic via a temp file and rename without buffering.
+    /// </para>
+    /// <para>
+    /// The all-or-nothing guarantee covers authentication: on any authentication failure,
+    /// <paramref name="output"/> is untouched. If <paramref name="output"/> itself fails
+    /// mid-write (disk full, broken pipe) or the operation is cancelled during the final copy,
+    /// a prefix of the — fully authenticated — plaintext may have been written to it.
+    /// </para>
     /// </remarks>
     public Task DecryptAtomicAsync(
         Stream input, Stream output, string passphrase, CancellationToken cancellationToken = default)
@@ -230,6 +238,9 @@ public sealed class PqFileDecryptor
     public async Task<byte[]> DecryptBytesAsync(
         ReadOnlyMemory<byte> container, ReadOnlyMemory<byte> passphrase, CancellationToken cancellationToken = default)
     {
+        // Deliberately no empty-passphrase gate on decrypt: earlier releases' byte overloads
+        // could legitimately encrypt under an empty passphrase, and that data must stay
+        // openable. (Encrypting new data with one is rejected at the engine choke point.)
         using var input = new MemoryStream(container.ToArray(), writable: false);
         using var output = new MemoryStream(container.Length);
         await PqContainer.DecryptPassphraseAsync(
@@ -269,13 +280,12 @@ public sealed class PqFileDecryptor
 
     // ------------------------------------------------------------------ helpers
 
-    private static async Task DecryptFileCoreAsync(
-        string inputPath, string outputPath, Func<FileStream, FileStream, long?, Task> decrypt)
-    {
-        await using var input = FileIo.OpenRead(inputPath);
-        long? total = input.CanSeek ? input.Length : null;
-        await FileIo.WriteViaTempAsync(outputPath, output => decrypt(input, output, total)).ConfigureAwait(false);
-    }
+    private static Task DecryptFileCoreAsync(
+        string inputPath, string outputPath, Func<FileStream, FileStream, long?, Task> decrypt) =>
+        // FileIo owns the ordering invariants: input opened before the temp file exists
+        // (missing input has no destination side effect) and closed before the atomic move
+        // (in-place decryption works on Windows).
+        FileIo.TransformViaTempAsync(inputPath, outputPath, decrypt);
 
     private static async Task WithPassphraseBytesAsync(string passphrase, Func<ReadOnlyMemory<byte>, Task> body)
     {

@@ -129,6 +129,49 @@ public sealed class DependencyInjectionTests
     }
 
     [Fact]
+    public async Task Limits_registered_through_DI_actually_gate_decryption()
+    {
+        // Not just "it resolves": a container demanding more Argon2id memory than the
+        // registered ceiling must be rejected by the DI-provided decryptor before any KDF
+        // work, and a modest container must still open.
+        using var provider = new ServiceCollection()
+            .AddPqFileEncryption(null, new PqDecryptionLimits { MaxArgon2MemoryKiB = 8 * 1024 })
+            .BuildServiceProvider();
+
+        byte[] demanding = await new PqFileEncryptor(PqEncryptionOptions.Argon2id) // 19 MiB preset
+            .EncryptBytesAsync(new byte[] { 1, 2, 3 }, "pass");
+        await Assert.ThrowsAsync<PqFormatException>(() =>
+            provider.GetRequiredService<PqFileDecryptor>().DecryptBytesAsync(demanding, "pass"));
+
+        byte[] modest = await provider.GetRequiredService<PqFileEncryptor>()
+            .EncryptBytesAsync(new byte[] { 1, 2, 3 }, "pass");
+        Assert.Equal(new byte[] { 1, 2, 3 },
+            await provider.GetRequiredService<PqFileDecryptor>().DecryptBytesAsync(modest, "pass"));
+    }
+
+    [Fact]
+    public void Hybrid_limits_overload_registers_all_four_services_with_limits()
+    {
+        using var provider = new ServiceCollection()
+            .AddPqHybridFileEncryption(null, PqDecryptionLimits.Untrusted)
+            .BuildServiceProvider();
+
+        Assert.NotNull(provider.GetRequiredService<PqFileEncryptor>());
+        Assert.NotNull(provider.GetRequiredService<PqFileDecryptor>());
+        Assert.NotNull(provider.GetRequiredService<PqHybridEncryptor>());
+        Assert.NotNull(provider.GetRequiredService<PqHybridDecryptor>());
+    }
+
+    [Fact]
+    public void Limits_overloads_throw_on_null_limits()
+    {
+        var services = new ServiceCollection();
+
+        Assert.Throws<ArgumentNullException>(() => services.AddPqFileEncryption(null, null!));
+        Assert.Throws<ArgumentNullException>(() => services.AddPqHybridFileEncryption(null, null!));
+    }
+
+    [Fact]
     public void Add_methods_throw_on_null_services()
     {
         Assert.Throws<ArgumentNullException>(

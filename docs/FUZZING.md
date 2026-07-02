@@ -11,7 +11,7 @@ so it is fuzzed from several angles. The contract under test is **fail-closed ro
 | --- | --- | --- | --- |
 | In-repo randomized tests | both parsers | property/mutation | `FuzzTests.cs`, `PropertyTests.cs`, Rust `tests/vectors.rs` (run every CI build) |
 | Coverage-guided (Rust) | `pqfe_wasm::decrypt_bytes` | libFuzzer via **cargo-fuzz** | `samples/pqfe-wasm/fuzz` |
-| Coverage-guided (.NET) | `PqFileDecryptor.DecryptBytesAsync` | libFuzzer via **SharpFuzz** | `fuzz/PostQuantum.FileEncryption.Fuzz` |
+| Coverage-guided (.NET) | `PqFileDecryptor.DecryptBytesAsync` + the `PQKF` key-file parser | libFuzzer via **SharpFuzz** | `fuzz/PostQuantum.FileEncryption.Fuzz` |
 | Scheduled / cumulative | both | nightly workflow, cached corpus | `.github/workflows/fuzz.yml` |
 | Continuous (upstream) | Rust target | OSS-Fuzz | `oss-fuzz/` (ready to submit) |
 
@@ -51,6 +51,10 @@ sharpfuzz fuzzpub/PostQuantum.FileEncryption.dll
 > Harness note: the SharpFuzz harness creates the decryptor **inside** the `Fuzzer.LibFuzzer.Run`
 > callback. SharpFuzz only sets up its coverage shared memory once `Run` starts, so calling any
 > instrumented method (even a constructor) earlier would crash the harness, not the parser.
+> Each iteration feeds the same input to **both** .NET targets — the container parser and the
+> `PQKF` encrypted key-file parser (the framing check fails fast on non-`PQKF` input, so the
+> second target is nearly free). The key-file target runs under `PqDecryptionLimits.Untrusted`
+> so a fuzzer-crafted Argon2id header cannot turn one iteration into a gigabyte-scale KDF.
 
 ## Scheduled CI
 

@@ -5,7 +5,7 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`1.4.1`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
@@ -19,6 +19,22 @@ Last reviewed against: **`1.4.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **The inline ML-KEM-768-only recipient mode in the core is deprecated** as of
   `1.0.0-rc.2` (`PQFE002`) and retained only for source-compatibility. New code must use
   the Hybrid package; the inline mode is targeted for removal in a future major release.
+
+## Resolved in `1.5.0`
+
+- **Private keys have a safe at-rest form.** "No key files" was a scope gap: `Export()`
+  returned raw secret bytes and every application had to invent its own storage.
+  `ExportEncrypted`/`ImportEncrypted` on both private-key types (and `pqfe keygen --encrypt`)
+  now wrap the key in a passphrase-encrypted, authenticated `.pqfe` container behind a
+  five-byte `PQKF` framing ([docs/KEY-FILE-FORMAT.md](docs/KEY-FILE-FORMAT.md)) — no new
+  cryptography, Argon2id by default.
+- **`PqHybridDecryptor` now accepts `PqDecryptionLimits`.** Previously the hybrid decryptor
+  took no limits, so on the unknown-length stream overload a hostile header could demand the
+  format-maximum 16 MiB chunk (~32 MiB of buffers) before the first authentication check. A
+  limits-accepting constructor now enforces the same pre-key-establishment chunk-size gate as
+  the core `PqFileDecryptor` (only `MaxChunkSizeBytes` applies — KEM unwrap is fixed-cost, so
+  there is no KDF exposure on this path). See the CHANGELOG's `1.5.0` section for the
+  accompanying hardening batch.
 
 ## Resolved in `1.2.0`
 
@@ -50,7 +66,9 @@ Last reviewed against: **`1.4.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **Coverage published.** `ci.yml` uploads coverage to Codecov on the Ubuntu matrix leg and
   the README carries the badge.
 - **Bytes-API progress parity.** The envelope-key `EncryptBytesAsync` / `DecryptBytesAsync`
-  overloads now accept the same optional `IProgress<PqProgress>?` the passphrase overloads do.
+  overloads now accept an optional `IProgress<PqProgress>?`, matching the passphrase
+  `EncryptBytesAsync`. (The passphrase `DecryptBytesAsync` overloads remain progress-free —
+  in-memory decryption completes too quickly for progress to be useful there.)
 
 ## Resolved in `0.2.0`
 
@@ -110,6 +128,12 @@ Last reviewed against: **`1.4.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
   `X25519PrivateKeyParameters`) keep their own internal copies of key material with no public
   zeroization API; those copies live until garbage collection. This is a limitation of the
   dependency, shared by everything built on managed BouncyCastle.
+- **Cloud SDKs hold un-zeroable copies of the plaintext content key.** The AWS and Azure
+  providers zero every plaintext-key buffer they can reach (including the AWS SDK's response
+  `MemoryStream` buffer), but the key also transits SDK-internal HTTP buffers and, in the AWS
+  case, exists transiently as a base64 `string` inside the JSON reader — a `string` cannot be
+  zeroed. Those copies live until garbage collection. Same class of limitation as the
+  BouncyCastle entry above.
 
 ### Format and feature gaps
 
@@ -125,7 +149,33 @@ Last reviewed against: **`1.4.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
   each chunk before writing it, but a stream cannot be un-written, so a truncation detected at
   the final frame leaves earlier (authentic) chunks already emitted. The **file** APIs avoid
   this with temp-file-plus-atomic-move; stream callers who need strict atomicity should buffer.
-- **No compression, no deduplication, no key files.** Out of scope.
+- **Bytes appended after the final frame are not detected.** The v2 decryption rules stop at
+  the authenticated final frame (`FILE-FORMAT.md`, rule 5), so trailing garbage appended to a
+  container decrypts successfully and silently. Every byte that *is* decrypted remains fully
+  authenticated; only the file's tail past the final frame is outside the envelope. Rejecting
+  trailing data would change frozen v2 behavior (and the Rust/WASM implementation in step), so
+  it is a format-v3 candidate, not a `1.x` change.
+- **Two lenient v2 reader corners are frozen with the format.** (1) The header's reserved
+  `Flags` byte is defined "must be 0" but readers do not reject a nonzero value (it is still
+  bound into the AAD, so it cannot be *modified* after encryption); (2) the passphrase
+  KeyParams parsers tolerate trailing bytes where the recipient parser enforces exact length
+  (also harmless today — the whole header is AAD, so appended bytes break every frame's
+  authentication). Neither is exploitable, but both mean a nonconforming writer's container
+  can decrypt. Tightening either would change frozen v2 reader behavior (and the Rust/WASM
+  implementation in step), so both are format-v3 candidates, alongside the trailing-data
+  entry below.
+- **The hybrid KEK combiner does not bind the DH/KEM transcript.** `HKDF(ss_pq ‖ ss_x25519)`
+  omits the KEM ciphertext and the ephemeral/recipient public keys from the derivation, unlike
+  X-Wing or HPKE. Today this is fully covered by the container design — the serialized header,
+  recipient blocks included, is bound as AAD into every chunk, so any mutation of a wrap block
+  fails closed at the first frame. But the wrap block is protected by that envelope, not by its
+  own construction: any future feature that re-emits KeySource-3/4 blocks outside the chunk-AAD
+  envelope (rewrap/rotation tooling, detached key blocks) would inherit real block malleability.
+  The combiner is spec-frozen with v2 (`FILE-FORMAT.md`), so transcript binding is a format-v3
+  item, recorded here so no rewrap feature ships without it.
+- **No compression, no deduplication.** Out of scope. (Encrypted private-key *files* left
+  this list with the `PQKF` format in `1.5.0` — see "Resolved in `1.5.0`" above — but key
+  management beyond that framing remains out of scope.)
 - **Signatures are detached, with the standard detached-signature limits.** The Signing
   package (`PostQuantum.FileEncryption.Signing`, Ed25519 + ML-DSA-65 over a SHA-512 pre-hash)
   proves *who signed the bytes*, but a `.sig` sidecar is not bound to a file name, path, or

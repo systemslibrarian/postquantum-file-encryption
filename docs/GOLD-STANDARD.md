@@ -16,7 +16,7 @@ done. Last reviewed against: **`1.2.0`**.
 | Authenticated encryption only; no unauthenticated path exists | ✅ | AES-256-GCM everywhere; [FILE-FORMAT.md](FILE-FORMAT.md) |
 | Fail-closed: every authenticity failure is indistinguishable, no plaintext on doubt | ✅ | Tamper/truncate/wrong-key tests; no error oracles ([THREAT-MODEL.md](THREAT-MODEL.md)) |
 | PQ/T hybrid (not PQ-only) public-key mode, with rationale published | ✅ | X25519 + ML-KEM-768; [HYBRID-COMBINER.md](HYBRID-COMBINER.md) |
-| Byte-exact public format specification | ✅ | [FILE-FORMAT.md](FILE-FORMAT.md) (FROZEN v2) + [CONFORMANCE.md](CONFORMANCE.md) |
+| Byte-exact public format specification | ✅ | [FILE-FORMAT.md](FILE-FORMAT.md) (FROZEN v2) + [SIGNATURE-FORMAT.md](SIGNATURE-FORMAT.md) + [KEY-FILE-FORMAT.md](KEY-FILE-FORMAT.md) + [CONFORMANCE.md](CONFORMANCE.md) |
 | Format stability commitment | ✅ | v2 frozen for the 1.x line; [VERSIONING.md](VERSIONING.md) |
 | Known-answer test vectors published | ✅ | [TEST-VECTORS.md](TEST-VECTORS.md) |
 | Metadata protection (lengths, names) | ❌ | Out of scope for v2; candidate for a future 2.0 ([KNOWN-GAPS.md](../KNOWN-GAPS.md)) |

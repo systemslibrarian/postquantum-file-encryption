@@ -23,7 +23,16 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
     private static readonly byte[] WrapAad = "PostQuantum.FileEncryption/local-kek cek-wrap"u8.ToArray();
 
     private readonly byte[] _kek;
-    private bool _disposed;
+    // Created once: the AES key schedule / platform key import is the expensive part of a
+    // wrap, and re-deriving it per operation would put that cost inside the lock below.
+    private readonly AesGcm _kekGcm;
+    // Every KEK use is serialized with Dispose. Without this, a Dispose racing an in-flight
+    // wrap could tear down the key mid-operation and the content key would be silently
+    // wrapped under a destroyed KEK — a confidentiality loss, not a crash. The lock turns
+    // that race into ObjectDisposedException. A GCM pass over 32 bytes is microseconds, so
+    // contention is negligible.
+    private readonly object _kekLock = new();
+    private volatile bool _disposed;
 
     /// <inheritdoc/>
     public string ProviderId => "local-kek";
@@ -37,6 +46,7 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
             throw new ArgumentException($"The key-encryption key must be {KekLength} bytes (256 bits).", nameof(kek));
         }
         _kek = kek.ToArray();
+        _kekGcm = new AesGcm(_kek, TagLength);
     }
 
     /// <summary>Creates a provider over a fresh random 256-bit KEK (e.g. for tests).</summary>
@@ -58,36 +68,52 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
     /// <summary>Returns a copy of the KEK. Handle it as a secret and zero it when done.</summary>
     public byte[] ExportKek()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        return (byte[])_kek.Clone();
+        lock (_kekLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return (byte[])_kek.Clone();
+        }
     }
 
     /// <inheritdoc/>
     public Task<(byte[] contentKey, byte[] wrapInfo)> WrapNewKeyAsync(CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         byte[] contentKey = RandomNumberGenerator.GetBytes(ContentKeyLength);
-        byte[] wrapInfo = new byte[WrapInfoLength];
-        Span<byte> nonce = wrapInfo.AsSpan(0, NonceLength);
-        Span<byte> tag = wrapInfo.AsSpan(NonceLength, TagLength);
-        Span<byte> wrapped = wrapInfo.AsSpan(NonceLength + TagLength, ContentKeyLength);
-
-        RandomNumberGenerator.Fill(nonce);
-        using (var gcm = new AesGcm(_kek, TagLength))
+        try
         {
-            gcm.Encrypt(nonce, contentKey, wrapped, tag, WrapAad);
-        }
+            byte[] wrapInfo = new byte[WrapInfoLength];
+            Span<byte> nonce = wrapInfo.AsSpan(0, NonceLength);
+            Span<byte> tag = wrapInfo.AsSpan(NonceLength, TagLength);
+            Span<byte> wrapped = wrapInfo.AsSpan(NonceLength + TagLength, ContentKeyLength);
 
-        return Task.FromResult((contentKey, wrapInfo));
+            RandomNumberGenerator.Fill(nonce);
+            lock (_kekLock)
+            {
+                // The authoritative dispose check: the entry check above is a fast fail for
+                // lifetime bugs; only this one is race-free against Dispose.
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                _kekGcm.Encrypt(nonce, contentKey, wrapped, tag, WrapAad);
+            }
+
+            return Task.FromResult((contentKey, wrapInfo));
+        }
+        catch
+        {
+            CryptographicOperations.ZeroMemory(contentKey);
+            throw;
+        }
     }
 
     /// <inheritdoc/>
     public Task<byte[]> UnwrapKeyAsync(ReadOnlyMemory<byte> wrapInfo, CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
+        // Before input validation, so a use-after-dispose surfaces as the lifetime bug it is
+        // even when the wrapped blob is also malformed.
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (wrapInfo.Length != WrapInfoLength)
         {
@@ -102,8 +128,13 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
         byte[] contentKey = new byte[ContentKeyLength];
         try
         {
-            using var gcm = new AesGcm(_kek, TagLength);
-            gcm.Decrypt(nonce, wrapped, tag, contentKey, WrapAad);
+            lock (_kekLock)
+            {
+                // The authoritative dispose check: the entry check above is a fast fail for
+                // lifetime bugs; only this one is race-free against Dispose.
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                _kekGcm.Decrypt(nonce, wrapped, tag, contentKey, WrapAad);
+            }
             return Task.FromResult(contentKey);
         }
         catch (AuthenticationTagMismatchException ex)
@@ -114,13 +145,17 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
         }
     }
 
-    /// <summary>Zeroes the KEK from memory.</summary>
+    /// <summary>Zeroes the KEK from memory and releases the platform key object.</summary>
     public void Dispose()
     {
-        if (!_disposed)
+        lock (_kekLock)
         {
-            CryptographicOperations.ZeroMemory(_kek);
-            _disposed = true;
+            if (!_disposed)
+            {
+                _kekGcm.Dispose();
+                CryptographicOperations.ZeroMemory(_kek);
+                _disposed = true;
+            }
         }
     }
 }

@@ -60,6 +60,13 @@ public sealed class PqFileEncryptor
     {
         ArgumentException.ThrowIfNullOrEmpty(inputPath);
         ArgumentException.ThrowIfNullOrEmpty(outputPath);
+        if (passphrase.IsEmpty)
+        {
+            // Argument validation must precede any filesystem side effect (temp-file creation,
+            // input open). The engine enforces the same gate for every path; this early copy
+            // exists only so bad arguments fail before I/O starts.
+            throw new ArgumentException("Passphrase must not be empty.", nameof(passphrase));
+        }
 
         return EncryptFileCoreAsync(inputPath, outputPath, (input, output, total) =>
             PqContainer.EncryptPassphraseAsync(input, output, passphrase, _options, total, progress, cancellationToken));
@@ -202,6 +209,8 @@ public sealed class PqFileEncryptor
         ReadOnlyMemory<byte> plaintext, ReadOnlyMemory<byte> passphrase,
         IProgress<PqProgress>? progress = null, CancellationToken cancellationToken = default)
     {
+        // Empty passphrases are rejected once at the engine choke point (PqContainer), so
+        // every overload — and any future codec caller — inherits the same gate.
         using var input = new MemoryStream(plaintext.ToArray(), writable: false);
         using var output = new MemoryStream(plaintext.Length + 256);
         await PqContainer.EncryptPassphraseAsync(
@@ -241,13 +250,12 @@ public sealed class PqFileEncryptor
 
     // ------------------------------------------------------------------ helpers
 
-    private static async Task EncryptFileCoreAsync(
-        string inputPath, string outputPath, Func<FileStream, FileStream, long?, Task> encrypt)
-    {
-        await using var input = FileIo.OpenRead(inputPath);
-        long? total = input.CanSeek ? input.Length : null;
-        await FileIo.WriteViaTempAsync(outputPath, output => encrypt(input, output, total)).ConfigureAwait(false);
-    }
+    private static Task EncryptFileCoreAsync(
+        string inputPath, string outputPath, Func<FileStream, FileStream, long?, Task> encrypt) =>
+        // FileIo owns the ordering invariants: input opened before the temp file exists
+        // (missing input has no destination side effect) and closed before the atomic move
+        // (in-place encryption works on Windows).
+        FileIo.TransformViaTempAsync(inputPath, outputPath, encrypt);
 
     private static long? ResolveTotal(Stream input, long? totalBytes) =>
         totalBytes ?? (input.CanSeek ? input.Length - input.Position : null);
