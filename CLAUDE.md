@@ -58,9 +58,13 @@ src/PostQuantum.FileEncryption/       — the library
   Internal/PqContainerEngine.cs               — the chunked AEAD core
   Internal/IPqContainerCodec.cs               — delegation seam (self-contained impl today)
   Internal/PqContainer.cs                     — orchestration (establish key → header → codec)
-  Internal/FileIo.cs                          — atomic temp-file write helper
-tests/PostQuantum.FileEncryption.Tests/  — round-trip, KDF, recipient, known-answer, fuzz tests
-docs/FILE-FORMAT.md                       — the container specification (v2)
+  Internal/PqKeyFileFormat.cs                 — the PQKF v1 encrypted key-file framing
+  Internal/FileIo.cs                          — atomic temp-file write + in-place ordering helper
+src/PostQuantum.FileEncryption.{Hybrid,Signing,Aws,AzureKeyVault,
+    Extensions.DependencyInjection,Analyzers}/ — the lockstep sibling packages
+tests/PostQuantum.FileEncryption.Tests/  — round-trip, KDF, recipient, known-answer, boundary, fuzz tests
+tests/PostQuantum.FileEncryption.Analyzers.Tests/ — analyzer rule tests
+docs/FILE-FORMAT.md                       — the container specification (v2, FROZEN)
 ```
 
 When you change key establishment, keep the three KDF/KEM paths consistent: encrypt-side
@@ -74,17 +78,48 @@ dotnet test  -c Release
 dotnet pack  src/PostQuantum.FileEncryption -c Release
 ```
 
-## When you touch crypto or the format
+## The format freeze — hard rules, read before touching anything byte-shaped
 
-- Update [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) and bump `FormatVersion` if the layout
-  changes.
+The on-disk formats are **FROZEN for the entire 1.x line**: the `.pqfe` **v2** container
+([docs/FILE-FORMAT.md](docs/FILE-FORMAT.md)), the `.sig` **v1** sidecar
+([docs/SIGNATURE-FORMAT.md](docs/SIGNATURE-FORMAT.md)), and the `PQKF` **v1** key file
+([docs/KEY-FILE-FORMAT.md](docs/KEY-FILE-FORMAT.md)). Frozen cuts both ways:
+
+1. **Never change what bytes mean.** No layout, constant, AAD, nonce, or derivation change,
+   however small or "obviously safe". There is no bump-`FormatVersion` move inside 1.x — a
+   new format version is a deliberate 2.0 event ([docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md)),
+   never an incidental fix.
+2. **Never change what a reader accepts.** Tightening is breaking too: rejecting trailing
+   bytes, enforcing the reserved `Flags` byte, or hardening a corner v2 tolerates would make
+   working files stop opening and desync the Rust core. Write the urge down in
+   [KNOWN-GAPS.md](KNOWN-GAPS.md) as a **format-v3 candidate** instead — that ledger is the
+   bank where breaking improvements wait for 2.0.
+3. **Never regenerate a pinned known-answer vector to make a failing test pass.** The
+   vectors ([docs/TEST-VECTORS.md](docs/TEST-VECTORS.md), `KnownAnswerVectorTests`, the Rust
+   `tests/vectors.rs`) are the canary, not test data: a KAT failure means your change broke
+   the frozen format — revert the change. Adding new vectors is encouraged; existing ones are
+   regenerated only as part of a deliberate major-version format revision.
+4. **Ship around the formats, not through them.** The test for every feature: *does it
+   change what existing bytes mean, or which byte sequences are accepted?* No → it can ship
+   in 1.x (new APIs, decrypt-time limits, tooling, or a new **sibling** format with its own
+   magic and version byte, like `PQKF`). Yes → KNOWN-GAPS bank, format v3.
+5. **Keep the Rust core in step.** Behavior pinned cross-implementation
+   (`samples/pqfe-wasm`) must stay byte-compatible; a change that needs the Rust side
+   "fixed to match" is a format change in disguise.
+
+## When you touch crypto (within the freeze)
+
 - Add or extend a fail-closed test (tamper, truncate, wrong passphrase, bad format) — these
   are as important as the round-trip tests.
+- Keep the KDF/KEM paths consistent end to end: encrypt-side serialization, decrypt-side
+  parsing (with exact-boundary range checks on untrusted header values), and a known-answer
+  vector.
 - Re-read [SECURITY.md](SECURITY.md) and keep its "does NOT defend against" list accurate.
 
 ## When you bump the package version
 
-The five packages ship in **lockstep**, and the documented version must never lag the
+The eight packages (core, Hybrid, Signing, Aws, AzureKeyVault, DI Extensions, Analyzers,
+and the `pqfe` Tool) ship in **lockstep**, and the documented version must never lag the
 `<Version>` in the `.csproj` files. Bumping the NuGet version is not done until the docs are
 swept in the **same change**. After changing `<Version>` in the project files, grep the repo
 for the *old* version string and update every user-facing reference:
