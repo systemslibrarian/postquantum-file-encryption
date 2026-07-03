@@ -454,6 +454,8 @@ For deeper references:
 - [KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) — the honest open-issues ledger
 - [docs/AUDIT-GUIDE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/AUDIT-GUIDE.md) — the reviewer's entry point: the ~2,400-line
   attack surface, the invariants to attack, and how to run the evidence
+- [docs/AUDIT-SCOPE.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/AUDIT-SCOPE.md) — the commit-pinned
+  engagement brief: target revision, build environment, in/out-of-scope boundaries, and evidence
 - [docs/THREAT-MODEL.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/THREAT-MODEL.md) — assets, adversaries, trust boundaries
 - [docs/FILE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/FILE-FORMAT.md) — the on-disk container specification
 - [docs/SIGNATURE-FORMAT.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SIGNATURE-FORMAT.md) — the detached `.sig` sidecar specification

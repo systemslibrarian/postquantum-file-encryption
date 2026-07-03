@@ -151,8 +151,10 @@ of them. That is exactly the kind of review this guide is written to invite.
 If you are an auditor, a student, a researcher, or a security team evaluating this library
 for adoption: the scoped audit brief is effectively the three documents
 [HYBRID-COMBINER.md](HYBRID-COMBINER.md) + [THREAT-MODEL.md](THREAT-MODEL.md) + this page,
-and the composed surface they point at is the ~2,400 lines mapped above. Funded engagements are welcome — see
-[SECURITY.md](../SECURITY.md).
+and the composed surface they point at is the ~2,400 lines mapped above. The formal,
+commit-pinned scope statement — target revision, build environment, in/out-of-scope
+boundaries, coverage, and evidence — is [AUDIT-SCOPE.md](AUDIT-SCOPE.md). Funded engagements
+are welcome — see [SECURITY.md](../SECURITY.md).
 
 ---
 

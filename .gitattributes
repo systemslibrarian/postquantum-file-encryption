@@ -17,4 +17,5 @@
 
 # Container test vectors / binary fixtures: byte-exact, never normalize.
 *.pqfe          binary
+*.pqkf          binary
 *.bin           binary
