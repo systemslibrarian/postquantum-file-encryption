@@ -42,7 +42,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="All" />
-    <PackageReference Include="AWSSDK.KeyManagementService" Version="4.0.12.8" />
+    <PackageReference Include="AWSSDK.KeyManagementService" Version="4.0.12.9" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1" PrivateAssets="All" />
     <ProjectReference Include="../PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
   </ItemGroup>
