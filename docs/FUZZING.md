@@ -24,27 +24,26 @@ Both coverage-guided harnesses have been run and found **no crashes**:
 
 ## Seed corpus
 
-The repository does **not** commit a corpus: CI accumulates one in the `actions/cache` keyed by
-run id (see [Scheduled CI](#scheduled-ci)), which keeps the tree small but means a fresh clone —
-or an external audit environment — starts cold. To reproduce meaningful coverage quickly, seed the
-corpus from the pinned known-answer vectors in [TEST-VECTORS.md](TEST-VECTORS.md): each is a
-Base64-encoded, byte-exact valid container, so the fuzzer starts from real structure (magic,
-header, KDF/KEM blocks, authenticated frames) instead of rediscovering it. For example, seeding the
-Rust target with Vector 1:
+The **working** corpus (fuzzer-discovered inputs) is not committed — CI accumulates it in the
+`actions/cache` keyed by run id (see [Scheduled CI](#scheduled-ci)) and it is `.gitignore`d — so a
+fresh clone or an external audit environment starts cold. To make coverage reproducible from zero,
+each target ships a small **committed seed corpus** of curated starting inputs:
 
-```bash
-mkdir -p samples/pqfe-wasm/fuzz/corpus/decrypt
-# Vector 1 (passphrase, PBKDF2) from docs/TEST-VECTORS.md — decode Base64 into the corpus dir:
-base64 -d > samples/pqfe-wasm/fuzz/corpus/decrypt/vector1.pqfe <<'EOF'
-UFFGRQIBAQAAAAQAJo6h8gAWARBX1MFqqxklHk56hMpD/FOOAAGGoAEAAAAyj/fP3REMAehh9VkK47SfhqQqgW68lRjDYDqIhW+b+6ytzaFAGCYaqA5JyaVkf24z17nYMoDST2h5xVdPtgEB23Fj
-EOF
-```
+| Target | Seed dir | Contents |
+| --- | --- | --- |
+| Rust (`decrypt`) | `samples/pqfe-wasm/fuzz/seed-corpus/` | the three passphrase KAT containers (PBKDF2, Argon2id, Rust-core) |
+| .NET (SharpFuzz) | `fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/` | the above plus the hybrid-recipient container and the `PQKF` key file |
 
-Repeat for the other vectors (the Argon2id, cross-impl, `PQKF` key-file, and hybrid-recipient
-vectors each exercise a different parse path) and point the `.NET` target's `corpus` directory at
-the same files. This is optional — both harnesses discover the format unaided (the execution counts
-below were reached from an empty corpus) — but seeding turns hours of cold-start discovery into
-minutes.
+These are the byte-exact known-answer vectors from [TEST-VECTORS.md](TEST-VECTORS.md),
+Base64-decoded — every seed is a valid, authenticated container, so the fuzzer starts from real
+structure (magic, header, KDF/KEM blocks, authenticated frames) instead of rediscovering it. CI
+copies them into the working corpus before each run; to reproduce that locally, copy the seeds into
+the working corpus dir before fuzzing (shown below). Seeding is an accelerant, not a requirement —
+both harnesses discover the format unaided (the execution counts above were reached from an empty
+corpus) — but it turns hours of cold-start discovery into minutes.
+
+To regenerate the seeds after a (major-version) vector change, `base64 -d` each block in
+`TEST-VECTORS.md` whose payload begins with `UFFGRQ` (`.pqfe`) or `UFFLRg` (`PQKF`).
 
 ## Run it locally
 
@@ -54,6 +53,7 @@ minutes.
 rustup toolchain install nightly
 cargo install cargo-fuzz
 cd samples/pqfe-wasm
+mkdir -p fuzz/corpus/decrypt && cp fuzz/seed-corpus/*.pqfe fuzz/corpus/decrypt/   # seed from the KAT vectors
 cargo +nightly fuzz run decrypt -- -max_total_time=60
 ```
 
@@ -68,6 +68,9 @@ clang -g -O2 -fsanitize=fuzzer libfuzzer-dotnet.cc -o libfuzzer-dotnet
 
 dotnet publish fuzz/PostQuantum.FileEncryption.Fuzz -c Release -o fuzzpub
 sharpfuzz fuzzpub/PostQuantum.FileEncryption.dll
+
+mkdir -p corpus && cp fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/*.pqfe \
+  fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/*.pqkf corpus/   # seed from the KAT vectors
 ./libfuzzer-dotnet --target_path=dotnet --target_arg="$PWD/fuzzpub/PostQuantum.FileEncryption.Fuzz.dll" \
   corpus -max_total_time=60
 ```

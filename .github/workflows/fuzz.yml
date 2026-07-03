@@ -38,6 +38,15 @@ jobs:
           key: cargo-fuzz-corpus-${{ github.run_id }}
           restore-keys: cargo-fuzz-corpus-
 
+      - name: Seed the corpus with the known-answer vectors
+        working-directory: samples/pqfe-wasm
+        # Committed seeds (fuzz/seed-corpus) are valid containers; the working
+        # corpus (fuzz/corpus, cached above) is gitignored. -n keeps any
+        # coverage-accumulated inputs restored from cache.
+        run: |
+          mkdir -p fuzz/corpus/decrypt
+          cp -n fuzz/seed-corpus/*.pqfe fuzz/corpus/decrypt/ 2>/dev/null || true
+
       - name: Fuzz the decrypt parser
         working-directory: samples/pqfe-wasm
         run: |
@@ -88,6 +97,9 @@ jobs:
         run: |
           DURATION="${{ github.event.inputs.duration_seconds || '300' }}"
           mkdir -p dotnet-corpus
+          # Seed with the committed known-answer vectors (valid containers +
+          # a PQKF key file); -n preserves cache-restored, coverage-accumulated inputs.
+          cp -n fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/*.pqfe fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/*.pqkf dotnet-corpus/ 2>/dev/null || true
           ./libfuzzer-dotnet --target_path=dotnet --target_arg="$PWD/fuzzpub/PostQuantum.FileEncryption.Fuzz.dll" \
             dotnet-corpus -max_total_time="$DURATION" -rss_limit_mb=4096
 

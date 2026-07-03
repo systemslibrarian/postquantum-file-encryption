@@ -1,0 +1,47 @@
+# Codecov configuration. Turns the coverage badge into an enforced signal:
+# a project-wide regression gate plus a hard floor on the security-critical
+# crypto core (the files enumerated in docs/AUDIT-GUIDE.md). See the
+# "Test coverage" section of docs/AUDIT-SCOPE.md for the current numbers and
+# the deliberately-lower areas (cloud providers unit-tested against SDK fakes,
+# FileIo's best-effort cleanup branches).
+
+coverage:
+  precision: 2
+  round: down
+  status:
+    project:
+      # Whole-repo regression gate: coverage may not drop more than a point
+      # below the base commit.
+      default:
+        target: auto
+        threshold: 1%
+      # Hard floor on the crypto core. Current aggregate sits well above this;
+      # the floor exists to fail the build if a change strips test coverage
+      # from key establishment, the AEAD engine, framing, or the combiners.
+      crypto-core:
+        target: 90%
+        threshold: 1%
+        paths:
+          - "src/PostQuantum.FileEncryption/Internal/**"
+          - "src/PostQuantum.FileEncryption.Hybrid/**"
+          - "src/PostQuantum.FileEncryption.Signing/**"
+    patch:
+      # New/changed lines must be exercised — the fail-closed tests are
+      # first-class, so a crypto change without coverage should not merge.
+      default:
+        target: 85%
+        threshold: 5%
+
+# Report-only grouping so the crypto core is visible as a unit in the UI.
+component_management:
+  individual_components:
+    - component_id: crypto-core
+      name: crypto-core
+      paths:
+        - "src/PostQuantum.FileEncryption/Internal/**"
+        - "src/PostQuantum.FileEncryption.Hybrid/**"
+        - "src/PostQuantum.FileEncryption.Signing/**"
+
+comment:
+  layout: "reach, diff, flags, components"
+  require_changes: true
