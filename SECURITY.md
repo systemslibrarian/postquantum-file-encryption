@@ -12,7 +12,7 @@ any incompatible change requires a `2.0` major version.
 
 | Version            | Supported | Notes                                                    |
 | ------------------ | --------- | -------------------------------------------------------- |
-| `1.0.x` (incl. rc) | ✅        | Current line. Security fixes land here.                  |
+| `1.x` (current: `1.5.0`) | ✅  | Current line. Security fixes land here.                  |
 | `0.x`              | ❌        | Pre-`1.0`. Format was not yet frozen; please upgrade.    |
 
 A file produced by any `1.x` build is readable by every other `1.x` build. There is no

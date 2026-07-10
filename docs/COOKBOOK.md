@@ -202,13 +202,14 @@ The public-key design matters operationally: a compromised web server can *add* 
 cannot read any of them. For decryption endpoints serving user-supplied containers, use
 `new PqHybridDecryptor(PqDecryptionLimits.Untrusted)` (recipe 2).
 
-## 7. Envelope encryption with a KMS (AWS / Azure)
+## 7. Envelope encryption with a KMS (AWS / Azure / Google Cloud)
 
 The master key lives in the KMS/HSM and never enters your process; each file gets a fresh
 content key that the KMS wraps. Rotation re-wraps 32 bytes instead of re-encrypting terabytes.
 
 ```csharp
 // dotnet add package PostQuantum.FileEncryption.Aws
+//   (or .AzureKeyVault / .Gcp — same seam, swap the provider line)
 using var provider = new AwsKmsContentKeyProvider(kmsClient, keyId);
 
 await new PqFileEncryptor().EncryptFileAsync("data.bin", "data.pqfe", provider);

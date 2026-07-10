@@ -3,10 +3,12 @@
 The **envelope-key seam is implemented** (`KeySource = 5`): `IContentKeyProvider` plus the
 built-in, dependency-free `LocalKekContentKeyProvider`. **Cloud providers are SHIPPED** as
 separate packages: [`PostQuantum.FileEncryption.Aws`](https://www.nuget.org/packages/PostQuantum.FileEncryption.Aws)
-(AWS KMS `GenerateDataKey`/`Decrypt` with a bound encryption context) and
+(AWS KMS `GenerateDataKey`/`Decrypt` with a bound encryption context),
 [`PostQuantum.FileEncryption.AzureKeyVault`](https://www.nuget.org/packages/PostQuantum.FileEncryption.AzureKeyVault)
-(Key Vault / Managed HSM wrap/unwrap, pinned key id and algorithm). HashiCorp Vault and
-PKCS#11 remain future work.
+(Key Vault / Managed HSM wrap/unwrap, pinned key id and algorithm), and
+[`PostQuantum.FileEncryption.Gcp`](https://www.nuget.org/packages/PostQuantum.FileEncryption.Gcp)
+(Cloud KMS `Encrypt`/`Decrypt` with bound AAD and end-to-end CRC32C checks). HashiCorp Vault
+and PKCS#11 remain future work.
 
 ## Envelope encryption with an external provider (IMPLEMENTED)
 
@@ -42,6 +44,11 @@ var aws = new AwsKmsContentKeyProvider(new AmazonKeyManagementServiceClient(), "
 var akv = new AzureKeyVaultContentKeyProvider(
     new CryptographyClient(new Uri("https://my-vault.vault.azure.net/keys/pqfe-kek/<version>"),
                            new DefaultAzureCredential()));
+
+// Google Cloud KMS — Encrypt/Decrypt; CEK generated locally (Cloud KMS has no server-side
+// data-key generation), wrap bound to the CryptoKey and library AAD, CRC32C verified both ways:
+var gcp = new GcpKmsContentKeyProvider(await KeyManagementServiceClient.CreateAsync(),
+    "projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/pqfe-kek");
 ```
 
 - The master key stays in the KMS/HSM; only the per-file CEK crosses the boundary, wrapped.

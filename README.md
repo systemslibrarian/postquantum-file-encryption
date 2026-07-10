@@ -14,6 +14,11 @@
 constant-memory streaming for files of any size, a frozen and publicly specified container
 format, and a production post-quantum upgrade path.**
 
+MIT · **no license keys, no activation, no sign-up** · fail-closed with **no decryption
+oracle** · frozen, publicly specified format with **cross-implementation test vectors** ·
+**X25519 + ML-KEM-768** (FIPS 203) hybrid recipients · **SBOM + build-provenance
+attestation** on every release — and [you can verify all of it yourself](#verify-it-yourself).
+
 Two friendly classes — `PqFileEncryptor` and `PqFileDecryptor` — handle authenticated,
 chunked, streaming encryption with strong, modern defaults. A 10 GB backup encrypts in
 roughly 130 KB of working memory, stream-to-stream or file-to-file. You should not have to
@@ -53,6 +58,21 @@ you never have to take that on faith.
 - **Honest about limits.** The [Known Gaps](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md) ledger lists everything that is
   not yet done. The library has not been independently audited; engagements are welcome.
 
+## The threat model, in one table
+
+| Defends against | How |
+| --- | --- |
+| Tampering, chunk reordering, splicing, truncation | Per-chunk AES-256-GCM; header, chunk position, and final-chunk marker bound as AAD — any change is an authentication failure |
+| Decryption oracles | Every authenticity failure throws the same generic `PqDecryptionException` — wrong passphrase, flipped bit, and forged header are indistinguishable |
+| Harvest-now-decrypt-later | AES-256 content encryption today; X25519 + ML-KEM-768 (FIPS 203) key establishment for recipients via the Hybrid package |
+| Passphrase guessing | Argon2id or PBKDF2 with a unique per-file salt |
+| Hostile containers | KDF cost and chunk-size limits enforced *before* any expensive work |
+
+It does **not** hide metadata (names, timestamps, size to within a chunk), rescue a weak
+passphrase, or protect a compromised endpoint. The full model — assets, actors, trust
+boundaries, assumptions, and explicit non-goals — is published in
+[docs/THREAT-MODEL.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/THREAT-MODEL.md).
+
 ## When to use this
 
 - You're on **.NET 8 or .NET 10** and want a drop-in, fail-closed file/stream encryptor
@@ -91,6 +111,9 @@ Being clear about scope is part of the security contract. Reach for something el
 
 ## Install
 
+No sign-up, no license key, no activation call — add the package and encrypt in the same
+minute:
+
 ```bash
 # Core (passphrase + envelope-key engine)
 dotnet add package PostQuantum.FileEncryption --version 1.5.0
@@ -104,6 +127,7 @@ dotnet add package PostQuantum.FileEncryption.Signing --version 1.5.0
 # Optional: cloud envelope-key providers (the master key stays in your KMS/HSM)
 dotnet add package PostQuantum.FileEncryption.Aws            # AWS KMS
 dotnet add package PostQuantum.FileEncryption.AzureKeyVault  # Azure Key Vault / Managed HSM
+dotnet add package PostQuantum.FileEncryption.Gcp            # Google Cloud KMS
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
@@ -119,6 +143,19 @@ both. Core depends only on
 `Konscious.Security.Cryptography.Argon2` (and only when you select Argon2id); everything
 else is from .NET's `System.Security.Cryptography`. The Hybrid package additionally pulls in
 `BouncyCastle.Cryptography` so it runs on every platform without a native ML-KEM dependency.
+
+The family is deliberately **composable, not monolithic** — the core stays small and
+auditable, and you add exactly the surface you need:
+
+| Package (`PostQuantum.FileEncryption` +) | Adds | Reach for it when |
+| --- | --- | --- |
+| *(the core itself)* | The fail-closed engine: passphrase + envelope-key encryption | Always — everything else builds on it |
+| `.Hybrid` | X25519 + ML-KEM-768 public-key encryption, multi-recipient | Recipients decrypt with a private key, not a passphrase |
+| `.Signing` | Detached Ed25519 + ML-DSA-65 signatures | You need sender authenticity, not just secrecy |
+| `.Aws` / `.AzureKeyVault` / `.Gcp` | KMS envelope-key providers | The master key must stay in your cloud KMS/HSM |
+| `.Extensions.DependencyInjection` | `AddPqFileEncryption()` etc. | ASP.NET Core / generic-host apps |
+| `.Analyzers` | Compile-time misuse checks (dev-only) | Always safe to add — it ships no runtime code |
+| `.Tool` | The `pqfe` CLI (`dotnet tool install`) | Encrypt/sign from scripts and terminals |
 
 ---
 
@@ -189,6 +226,33 @@ dotnet run --project samples/PostQuantum.FileEncryption.Demo
 It's a **Blazor Server** app on purpose: .NET's `AesGcm` is unsupported in browser
 WebAssembly, so the cryptography runs on the server runtime. (The browser demo above
 sidesteps this with the Rust/WASM core.)
+
+---
+
+## Verify it yourself
+
+None of this library's trust claims ask for faith — each one is checkable in a command:
+
+```bash
+# 1. Provenance: the package you downloaded was built by this repo's public release
+#    workflow, on GitHub's runners, from a tagged commit you can read:
+gh attestation verify PostQuantum.FileEncryption.1.5.0.nupkg \
+  --repo systemslibrarian/postquantum-file-encryption
+
+# 2. The frozen format: reproduce the pinned known-answer vectors — byte-exact
+#    ciphertexts published in docs/TEST-VECTORS.md and committed as ready-to-use
+#    binaries in test-vectors/ (decrypt one with the pqfe CLI and the published
+#    passphrase — see test-vectors/README.md); if the format drifted, this fails:
+dotnet test tests/PostQuantum.FileEncryption.Tests -c Release \
+  --filter FullyQualifiedName~KnownAnswerVector
+
+# 3. Independence: a separate Rust implementation decrypts the same vectors
+#    (and the .NET tests decrypt a Rust-produced container):
+cd samples/pqfe-wasm && cargo test
+```
+
+SBOM verification and the full supply-chain walkthrough are in
+[docs/SUPPLY-CHAIN.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/SUPPLY-CHAIN.md).
 
 ---
 
@@ -391,17 +455,19 @@ Encrypt under an external key provider so the master key never enters your proce
 built-in, dependency-free local-KEK provider is included, and production cloud providers
 ship as companion packages:
 [**PostQuantum.FileEncryption.Aws**](https://www.nuget.org/packages/PostQuantum.FileEncryption.Aws)
-(AWS KMS) and
+(AWS KMS),
 [**PostQuantum.FileEncryption.AzureKeyVault**](https://www.nuget.org/packages/PostQuantum.FileEncryption.AzureKeyVault)
-(Azure Key Vault / Managed HSM).
+(Azure Key Vault / Managed HSM), and
+[**PostQuantum.FileEncryption.Gcp**](https://www.nuget.org/packages/PostQuantum.FileEncryption.Gcp)
+(Google Cloud KMS).
 
 ```csharp
 using var provider = LocalKekContentKeyProvider.Generate();   // or new(kek)...
 byte[] container = await new PqFileEncryptor().EncryptBytesAsync(secret, provider);
 byte[] plaintext = await new PqFileDecryptor().DecryptBytesAsync(container, provider);
 
-// ...or keep the master key in AWS KMS / Azure Key Vault — rotation re-wraps the small
-// content key; the multi-gigabyte payload is never re-encrypted:
+// ...or keep the master key in AWS KMS / Azure Key Vault / Google Cloud KMS — rotation
+// re-wraps the small content key; the multi-gigabyte payload is never re-encrypted:
 var kmsProvider = new AwsKmsContentKeyProvider(new AmazonKeyManagementServiceClient(), "alias/my-app-key");
 await new PqFileEncryptor().EncryptFileAsync("backup.tar", "backup.tar.pqfe", kmsProvider);
 ```
@@ -484,7 +550,7 @@ Be clear-eyed about what *post-quantum* means here today:
 - **What's stable now:** the symmetric, passphrase-based engine. AES-256 is
   quantum-resistant for the *confidentiality of your data* (≈128-bit security under
   Grover), so a passphrase-encrypted file is sound against a harvest-now-decrypt-later
-  adversary. This is the engine being finalized for `1.0`.
+  adversary — production-ready since `1.0`.
 - **What's the recommended public-key path:** the **`PostQuantum.FileEncryption.Hybrid`**
   package — a **hybrid X25519 + ML-KEM-768 combiner** plus **multiple recipients**. Fully
   managed (BouncyCastle for *both* primitives), so it runs **anywhere** with no native
@@ -494,6 +560,10 @@ Be clear-eyed about what *post-quantum* means here today:
   (`PqKeyPair`, `PqRecipientPublicKey`, `PqRecipientPrivateKey`, recipient overloads on
   `PqFileEncryptor`/`PqFileDecryptor`). Marked `[Obsolete]` with diagnostic id `PQFE002`
   since `1.0.0-rc.2`, kept for source-compatibility only. Migrate to the Hybrid package.
+- **What happens when the algorithms have to change:** ML-KEM-1024, X-Wing, a second
+  AEAD — the registry mechanism, the migration guarantee for existing ciphertext, and the
+  harvest-now-decrypt-later reasoning are stated plainly in
+  [docs/CRYPTO-AGILITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CRYPTO-AGILITY.md).
 
 ```bash
 dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.5.0

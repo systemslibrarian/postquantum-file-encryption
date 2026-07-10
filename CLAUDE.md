@@ -60,7 +60,7 @@ src/PostQuantum.FileEncryption/       — the library
   Internal/PqContainer.cs                     — orchestration (establish key → header → codec)
   Internal/PqKeyFileFormat.cs                 — the PQKF v1 encrypted key-file framing
   Internal/FileIo.cs                          — atomic temp-file write + in-place ordering helper
-src/PostQuantum.FileEncryption.{Hybrid,Signing,Aws,AzureKeyVault,
+src/PostQuantum.FileEncryption.{Hybrid,Signing,Aws,AzureKeyVault,Gcp,
     Extensions.DependencyInjection,Analyzers}/ — the lockstep sibling packages
 tests/PostQuantum.FileEncryption.Tests/  — round-trip, KDF, recipient, known-answer, boundary, fuzz tests
 tests/PostQuantum.FileEncryption.Analyzers.Tests/ — analyzer rule tests
@@ -118,7 +118,7 @@ The on-disk formats are **FROZEN for the entire 1.x line**: the `.pqfe` **v2** c
 
 ## When you bump the package version
 
-The eight packages (core, Hybrid, Signing, Aws, AzureKeyVault, DI Extensions, Analyzers,
+The nine packages (core, Hybrid, Signing, Aws, AzureKeyVault, Gcp, DI Extensions, Analyzers,
 and the `pqfe` Tool) ship in **lockstep**, and the documented version must never lag the
 `<Version>` in the `.csproj` files. Bumping the NuGet version is not done until the docs are
 swept in the **same change**. After changing `<Version>` in the project files, grep the repo

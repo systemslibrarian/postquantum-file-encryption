@@ -81,6 +81,14 @@ await new PqHybridEncryptor().EncryptFileToAsync("report.pdf", "report.pqfe", re
 // Any one of alice/bob/carol can decrypt with their own private key.
 ```
 
+**Up to 55 recipients per container.** The limit is not arbitrary: each recipient entry is
+1,186 bytes (the ML-KEM-768 ciphertext dominates it), and the frozen `.pqfe` v2 header
+carries all entries in a length field capped at 65,535 bytes — ⌊65,534 / 1,186⌋ = 55. The
+limit is enforced *before* any wrapping work, and widening the field is banked as a
+format-v3 candidate ([KNOWN-GAPS.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/KNOWN-GAPS.md)).
+For genuinely larger audiences, wrap to a group key held in a KMS via `IContentKeyProvider`
+instead — access-group membership then lives where it can be revoked.
+
 File and stream APIs (`EncryptFileAsync`, `EncryptAsync`, `DecryptFileAsync`, `DecryptAsync`) are
 also available, with atomic file output and progress reporting.
 

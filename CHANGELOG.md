@@ -6,6 +6,60 @@ All notable changes to this project are documented here. The format is based on
 locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines and `<EnablePackageValidation>`,
 and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
+## [Unreleased]
+
+### Added
+
+- **`PostQuantum.FileEncryption.Gcp`** — a Google Cloud KMS envelope-key provider,
+  completing the AWS KMS / Azure Key Vault / Google Cloud KMS trio over the
+  `IContentKeyProvider` seam. `GcpKmsContentKeyProvider` generates the per-file content key
+  locally (Cloud KMS has no server-side data-key generation — the same envelope pattern as
+  the Azure provider and Google's Tink), wraps it with Cloud KMS `Encrypt` bound to
+  library-specific additional authenticated data plus optional caller bytes, and unwraps
+  against only the configured `CryptoKey` — a tampered, foreign-key, or AAD-mismatched blob
+  fails closed with `PqDecryptionException`, indistinguishable from tampering, while
+  operational failures propagate as the SDK's own exceptions. The CRC32C integrity fields
+  Cloud KMS offers are populated on every request and verified on every response (the .NET
+  SDK does not do this itself), pinned by the RFC 3720 check value in tests. Unit-tested
+  against an in-process fake reproducing the service's binding and `INVALID_ARGUMENT`
+  semantics, like its AWS and Azure siblings. No change to the `.pqfe` v2 container format,
+  which remains **FROZEN** for the `1.x` line.
+
+### Fixed
+
+- **Encrypted key files (`PQKF`) now validate options and limits at the boundary.**
+  `ExportEncrypted` validates the KDF options before writing, so an out-of-range option (for
+  example a salt size or Argon2id parallelism that overflows its single on-disk byte) fails
+  fast with `ArgumentOutOfRangeException` instead of silently producing a key file that even
+  the correct passphrase could never open. `ImportEncrypted` likewise validates caller-supplied
+  `PqDecryptionLimits`, so a below-minimum limit surfaces as the configuration error it is
+  rather than as a hostile-file-shaped `PqFormatException`.
+- **Exception-contract consistency on recipient key establishment.** A corrupt ML-KEM-768
+  recipient key (the public half on encrypt, the private half on decrypt — both validated only
+  for length on import) now fails closed inside the library's exception hierarchy
+  (`PqEncryptionException` / `PqDecryptionException`) instead of leaking a raw platform or
+  BouncyCastle exception, matching the treatment the mirror paths already had.
+- **Detached-signature verification validates the sidecar before hashing the content**, per the
+  ordering `docs/SIGNATURE-FORMAT.md` mandates, so a structurally invalid signature is rejected
+  without a full SHA-512 pass over a large input. The two signature components are now evaluated
+  in independent guarded steps, so an unexpected throw from one half can never skip the other —
+  both always run and either failing yields the same single generic error.
+- **Cancellation is honored immediately before the password KDF.** A token cancelled between
+  header parsing and key derivation no longer pays the full (potentially gibibyte-scale)
+  Argon2id/PBKDF2 cost first. The KDF itself remains non-interruptible once started (a library
+  limitation of the underlying primitives), now noted in `KNOWN-GAPS.md`.
+- **`LocalKekContentKeyProvider`** reports a structurally malformed wrapped key as
+  `PqFormatException`, aligning with every other parser and keeping `PqDecryptionException`
+  reserved for a single generic authentication-failure message.
+- **`pqfe encrypt` / `pqfe decrypt` refuse to overwrite an existing output** unless `--force`
+  is given (exit code 73), matching `keygen`'s existing "a file silently replaced is a file
+  lost" guard.
+- **Documentation of frozen-format reader leniencies corrected.** `KNOWN-GAPS.md` now records
+  the KeySource-4 (multi-recipient) body's tolerance of trailing bytes and the abort-on-unknown-
+  `KemId` scan behavior, the directory-fsync durability boundary, and the `DecryptAtomicAsync`
+  in-memory ~2 GiB ceiling — all format-v3 candidates or documented limitations, none a `1.x`
+  behavior change.
+
 ## [1.5.0] - 2026-07-02
 
 The key-file, hardening, and developer-experience release. Private keys gain a safe at-rest
@@ -695,6 +749,7 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
+[unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.5.0...HEAD
 [1.5.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...v1.4.0
