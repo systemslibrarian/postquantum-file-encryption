@@ -25,6 +25,17 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
   semantics, like its AWS and Azure siblings. No change to the `.pqfe` v2 container format,
   which remains **FROZEN** for the `1.x` line.
 
+- **Standalone native `pqfe` CLI binaries** are attached to every release for `linux-x64`,
+  `win-x64`, and `osx-arm64` — single-file, no .NET runtime required, each with a SHA-256 sum
+  and a SLSA-style build-provenance attestation. Built natively per target (AOT does not
+  cross-compile) in the release pipeline.
+- **Differential round-trip coverage for the Rust core.** A new property test sweeps the
+  framing matrix (chunk sizes × data lengths straddling one, two, and three chunks, plus
+  per-byte tamper and truncation-at-every-length), catching any encode/decode asymmetry the
+  fixed known-answer vectors cannot. The cross-implementation CI harness now also randomizes
+  payload sizes each run, so the .NET ↔ Rust agreement is exercised at new points continuously
+  rather than at six fixed sizes.
+
 ### Fixed
 
 - **Encrypted key files (`PQKF`) now validate options and limits at the boundary.**

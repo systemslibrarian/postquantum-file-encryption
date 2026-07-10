@@ -253,3 +253,76 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" artifacts/* --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md for details."
+
+  # Standalone, single-file native `pqfe` binaries so users without the .NET runtime can
+  # encrypt/sign from the terminal. Each is built natively for its target (AOT cannot
+  # cross-compile), carries a SLSA-style provenance attestation like the NuGet packages, and
+  # ships a SHA-256 sum. Runs after the release exists so it can attach the assets to it.
+  native-cli:
+    name: Native pqfe CLI (${{ matrix.rid }})
+    needs: release
+    permissions:
+      contents: write       # upload release assets
+      id-token: write       # provenance attestation (OIDC)
+      attestations: write   # provenance attestation
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            ext: ''
+          - os: windows-latest
+            rid: win-x64
+            ext: '.exe'
+          - os: macos-latest
+            rid: osx-arm64
+            ext: ''
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install AOT prerequisites (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        # The .NET native-AOT toolchain on Linux needs clang and zlib headers (same as the
+        # AOT smoke test in ci.yml).
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish native AOT binary
+        run: |
+          dotnet publish samples/Pqfe.Cli/Pqfe.Cli.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            -p:PublishAot=true \
+            -o out
+
+      - name: Stage and checksum the binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="out/pqfe${{ matrix.ext }}"
+          test -f "$bin" || { echo "AOT publish produced no binary at $bin"; ls -la out; exit 1; }
+          asset="pqfe-${{ matrix.rid }}${{ matrix.ext }}"
+          cp "$bin" "$asset"
+          # sha256sum on Linux/Git-Bash, shasum on macOS.
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$asset" > "$asset.sha256"
+          else
+            shasum -a 256 "$asset" > "$asset.sha256"
+          fi
+          echo "ASSET=$asset" >> "$GITHUB_ENV"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: ${{ env.ASSET }}
+
+      - name: Upload binary to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release upload "${GITHUB_REF_NAME}" "${ASSET}" "${ASSET}.sha256" --clobber

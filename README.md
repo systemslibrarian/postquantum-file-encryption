@@ -178,6 +178,12 @@ pqfe sign   report.pdf.pqfe me.key                     # writes report.pdf.pqfe.
 pqfe verify report.pdf.pqfe me.key.pub                 # exit 0 = authentic, 65 = reject
 ```
 
+**No .NET runtime? Download a standalone binary.** Each release attaches native, single-file
+`pqfe` executables — `pqfe-linux-x64`, `pqfe-win-x64.exe`, `pqfe-osx-arm64` — each with a
+SHA-256 sum and a build-provenance attestation you can verify with `gh attestation verify`.
+The `encrypt`/`decrypt` commands refuse to overwrite an existing output unless you pass
+`--force`.
+
 The source lives at [`samples/Pqfe.Cli`](https://github.com/systemslibrarian/postquantum-file-encryption/tree/main/samples/Pqfe.Cli) and is built on the public
 API. It's also the canary that proves `IsAotCompatible=true` end-to-end: CI publishes it
 with `PublishAot=true` and round-trips a real file as the smoke test.
