@@ -67,6 +67,13 @@ public static class PqFileEncryptionServiceCollectionExtensions
     /// </param>
     /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
     /// <exception cref="ArgumentOutOfRangeException">A limit is outside the format's supported range.</exception>
+    /// <remarks>
+    /// Because registration uses <c>TryAdd</c> (see the type-level remarks), an <em>earlier</em>
+    /// limit-free <see cref="AddPqFileEncryption(IServiceCollection, PqEncryptionOptions)"/> call
+    /// wins: this overload's limited <see cref="PqFileDecryptor"/> is then silently not
+    /// registered, and the resolved decryptor enforces no ceilings. Register this limits overload
+    /// first (or as the only registration) when the host decrypts untrusted input.
+    /// </remarks>
     public static IServiceCollection AddPqFileEncryption(
         this IServiceCollection services,
         PqEncryptionOptions? options,

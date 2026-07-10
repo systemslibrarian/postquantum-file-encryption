@@ -181,7 +181,11 @@ public sealed class PqFileDecryptor
     /// <remarks>
     /// <para>
     /// The recovered plaintext is buffered in memory before being written, so peak memory is
-    /// proportional to the plaintext size. For very large inputs prefer the file API
+    /// proportional to the plaintext size, and this overload cannot decrypt a plaintext larger
+    /// than the runtime's single-array ceiling (~2 GiB): such a container throws
+    /// <see cref="System.IO.IOException"/> after the decryption work, and
+    /// <see cref="PqDecryptionLimits"/> does not bound this buffer. For very large or untrusted
+    /// inputs prefer the file API
     /// (<see cref="DecryptFileAsync(string, string, string, IProgress{PqProgress}?, CancellationToken)"/>),
     /// which is already atomic via a temp file and rename without buffering.
     /// </para>

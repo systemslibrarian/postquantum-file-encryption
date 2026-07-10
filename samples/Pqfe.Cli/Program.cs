@@ -27,6 +27,7 @@ internal static class Program
     private const int ExitUsage = 64;
     private const int ExitDataErr = 65;
     private const int ExitNoInput = 66;
+    private const int ExitCantCreate = 73; // sysexits.h EX_CANTCREAT — output exists, no --force
     private const int ExitIoErr = 74;
     private const int ExitInterrupted = 130; // shell convention for SIGINT
 
@@ -111,7 +112,10 @@ internal static class Program
     private static async Task<int> EncryptAsync(string[] rest, CancellationToken cancellationToken)
     {
         if (!TryParsePaths(rest, out string? input, out string? output, out var flags))
-            return Fail("usage: pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR]", ExitUsage);
+            return Fail("usage: pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR] [--force]", ExitUsage);
+
+        if (!flags.Force && File.Exists(output))
+            return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
 
         var options = new PqEncryptionOptions
         {
@@ -137,7 +141,10 @@ internal static class Program
     private static async Task<int> DecryptAsync(string[] rest, CancellationToken cancellationToken)
     {
         if (!TryParsePaths(rest, out string? input, out string? output, out var flags))
-            return Fail("usage: pqfe decrypt <input> <output> [--passphrase-env VAR]", ExitUsage);
+            return Fail("usage: pqfe decrypt <input> <output> [--passphrase-env VAR] [--force]", ExitUsage);
+
+        if (!flags.Force && File.Exists(output))
+            return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
 
         byte[] passphrase = ReadPassphrase(flags.PassphraseEnv, confirm: false, cancellationToken);
         try
@@ -401,6 +408,9 @@ internal static class Program
                     if (i + 1 >= args.Length) return false;
                     flags = flags with { PassphraseEnv = args[++i] };
                     break;
+                case "--force":
+                    flags = flags with { Force = true };
+                    break;
                 default:
                     if (a.StartsWith('-')) return false;
                     positionals.Add(a);
@@ -558,7 +568,7 @@ internal static class Program
             """);
     }
 
-    private readonly record struct Flags(bool UseArgon2id, string? PassphraseEnv);
+    private readonly record struct Flags(bool UseArgon2id, string? PassphraseEnv, bool Force);
 
     /// <summary>
     /// A usage-level failure raised deep in a helper. Main maps it to exit 64 after every

@@ -80,11 +80,13 @@ internal static class HybridSigning
     }
 
     /// <summary>
-    /// Verifies a serialized sidecar against a SHA-512 content digest. Fail-closed: returns
-    /// only on full success; structural problems raise <see cref="PqFormatException"/>, any
-    /// cryptographic mismatch raises <see cref="PqSignatureException"/>.
+    /// Validates the sidecar's structural framing (length, magic, version, algorithm) and
+    /// throws <see cref="PqFormatException"/> if it is not a recognizable detached signature.
+    /// Per docs/SIGNATURE-FORMAT.md a verifier MUST clear these checks <em>before</em> hashing
+    /// the content, so this runs at the public boundary ahead of the (possibly large) SHA-512
+    /// pass — a garbage sidecar is rejected without reading the input.
     /// </summary>
-    public static void Verify(byte[] contentDigest, ReadOnlySpan<byte> signature, PqSigningPublicKey publicKey)
+    public static void ValidateSidecar(ReadOnlySpan<byte> signature)
     {
         if (signature.Length != SignatureLength)
         {
@@ -102,42 +104,72 @@ internal static class HybridSigning
         {
             throw new PqFormatException("Unsupported detached-signature algorithm.");
         }
+    }
+
+    /// <summary>
+    /// Verifies a serialized sidecar against a SHA-512 content digest. Fail-closed: returns
+    /// only on full success; structural problems raise <see cref="PqFormatException"/>, any
+    /// cryptographic mismatch raises <see cref="PqSignatureException"/>.
+    /// </summary>
+    public static void Verify(byte[] contentDigest, ReadOnlySpan<byte> signature, PqSigningPublicKey publicKey)
+    {
+        // Idempotent with the boundary call in PqVerifier — kept here so Verify is safe on its
+        // own (four byte comparisons; negligible).
+        ValidateSidecar(signature);
 
         byte[] message = BuildSignedMessage(contentDigest);
         byte[] edSig = signature.Slice(HeaderLength, SigningSizes.Ed25519Signature).ToArray();
         byte[] mlSig = signature.Slice(HeaderLength + SigningSizes.Ed25519Signature, SigningSizes.MlDsa65Signature).ToArray();
 
-        bool edOk;
-        bool mlOk;
-        try
+        // Each component is evaluated in its own guarded step so that an unexpected throw from
+        // one half cannot skip the other — the two verifications always both run, and either a
+        // false result or a caught fault yields the same generic failure below. BouncyCastle
+        // returns false (not throws) for every hostile-content case we know of; this makes the
+        // fail-closed, single-message contract independent of that. Process-level faults (OOM,
+        // cancellation, thread interrupt) are NOT caught — they signal infrastructure, not a
+        // hostile signature, and must not be reported to a caller as a forgery.
+        Exception? fault = null;
+        bool edOk = TryVerifyComponent(() =>
         {
             var ed = new Ed25519Signer();
             ed.Init(forSigning: false, new Ed25519PublicKeyParameters(publicKey.Ed25519PublicKey));
             ed.BlockUpdate(message, 0, message.Length);
-            edOk = ed.VerifySignature(edSig);
-
+            return ed.VerifySignature(edSig);
+        }, ref fault);
+        bool mlOk = TryVerifyComponent(() =>
+        {
             var mlDsa = new MLDsaSigner(MLDsaParameters.ml_dsa_65, deterministic: false);
             mlDsa.Init(forSigning: false, MLDsaPublicKeyParameters.FromEncoding(MLDsaParameters.ml_dsa_65, publicKey.MlDsaPublicKey));
             mlDsa.BlockUpdate(message, 0, message.Length);
-            mlOk = mlDsa.VerifySignature(mlSig);
+            return mlDsa.VerifySignature(mlSig);
+        }, ref fault);
+
+        // Non-short-circuit: both components are always evaluated, and either failing yields
+        // the same generic error — no oracle for which half failed. A captured fault (if any)
+        // rides along only as diagnostics; the message is identical either way.
+        if (!(edOk & mlOk))
+        {
+            throw fault is null
+                ? new PqSignatureException(VerifyFailedMessage)
+                : new PqSignatureException(VerifyFailedMessage, fault);
+        }
+    }
+
+    /// <summary>
+    /// Runs one component verification, mapping an unexpected (non-infrastructure) throw to a
+    /// <c>false</c> result so the caller can still evaluate the other component. The first such
+    /// fault is captured for diagnostics; infrastructure faults propagate untouched.
+    /// </summary>
+    private static bool TryVerifyComponent(Func<bool> verify, ref Exception? fault)
+    {
+        try
+        {
+            return verify();
         }
         catch (Exception ex) when (ex is not (OutOfMemoryException or OperationCanceledException or ThreadInterruptedException))
         {
-            // BouncyCastle returns false (rather than throwing) for every hostile-content case
-            // we know of, but the fail-closed, single-message contract must not rest on a
-            // dependency's internals: any unexpected throw becomes the same generic failure,
-            // never a raw exception that reveals which half rejected the input or why.
-            // Process-level faults (OOM, cancellation, thread interrupt) pass through — they
-            // signal infrastructure, not a hostile signature, and a caller that quarantines on
-            // PqSignatureException must never be told an authentic file is forged.
-            throw new PqSignatureException(VerifyFailedMessage, ex);
-        }
-
-        // Non-short-circuit: both components are always evaluated, and either failing yields
-        // the same generic error — no oracle for which half failed.
-        if (!(edOk & mlOk))
-        {
-            throw new PqSignatureException(VerifyFailedMessage);
+            fault ??= ex;
+            return false;
         }
     }
 
