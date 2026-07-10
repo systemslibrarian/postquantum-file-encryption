@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>PostQuantum.FileEncryption.Gcp</RootNamespace>
+    <AssemblyName>PostQuantum.FileEncryption.Gcp</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>PostQuantum.FileEncryption.Gcp</PackageId>
+    <Version>1.5.0</Version>
+    <FileVersion>1.5.0.0</FileVersion>
+    <InformationalVersion>1.5.0</InformationalVersion>
+    <MinClientVersion>6.0.0</MinClientVersion>
+    <Title>PostQuantum.FileEncryption.Gcp</Title>
+    <Description>Google Cloud KMS envelope-key provider for PostQuantum.FileEncryption, for .NET 8 and .NET 10. GcpKmsContentKeyProvider implements the IContentKeyProvider seam over Cloud KMS Encrypt/Decrypt: every file is encrypted under a fresh per-file content key that Cloud KMS wraps under your key-ring key — the master key never leaves Google Cloud. The wrap is bound to the configured CryptoKey and library-specific additional authenticated data, every request and response is verified end to end with the CRC32C integrity fields Cloud KMS provides, and unwrap fails closed (PqDecryptionException, no oracle) on any invalid or foreign ciphertext. Works with every PqFileEncryptor/PqFileDecryptor overload that accepts a key provider; rotation re-wraps the small content key instead of re-encrypting the file. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release.</Description>
+    <PackageReleaseNotes>Initial release of the Google Cloud KMS envelope-key provider, completing the AWS KMS / Azure Key Vault / Google Cloud KMS trio over the IContentKeyProvider seam. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageTags>gcp;google-cloud;kms;cloud-kms;gcp-kms;envelope-encryption;key-management;data-key;encryption;file-encryption;aes-gcm;authenticated-encryption;aead;cryptography;security;post-quantum;pqc;dotnet;net8;net10</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/systemslibrarian/postquantum-file-encryption</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/systemslibrarian/postquantum-file-encryption</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- No published baseline exists on nuget.org for this package yet; enable after first publish. -->
+    <EnablePackageValidation>false</EnablePackageValidation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../../LICENSE" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../../assets/icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Kms.V1" Version="3.25.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1" PrivateAssets="All" />
+    <ProjectReference Include="../PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PostQuantum.FileEncryption.Tests" />
+  </ItemGroup>
+
+</Project>

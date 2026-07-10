@@ -31,6 +31,7 @@
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.Gcp/PostQuantum.FileEncryption.Gcp.csproj" />
   </ItemGroup>
 
 </Project>
