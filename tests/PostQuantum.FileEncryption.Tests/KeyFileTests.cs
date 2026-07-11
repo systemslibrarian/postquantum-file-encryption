@@ -148,6 +148,34 @@ public sealed class KeyFileTests
     }
 
     [Fact]
+    public void Out_of_range_export_options_fail_fast_instead_of_writing_an_unopenable_key_file()
+    {
+        // A salt size that overflows its single on-disk length byte would otherwise serialize a
+        // header disagreeing with the key actually derived — a key file the correct passphrase
+        // can never open. Export must reject it up front, like PqFileEncryptor does.
+        using var keyPair = PqHybridKeyPair.Generate();
+        var badSalt = new PqEncryptionOptions { SaltSizeBytes = 300 };
+        var badParallelism = new PqEncryptionOptions { Kdf = PqKdf.Argon2id, Argon2Parallelism = 256 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => keyPair.PrivateKey.ExportEncrypted(Passphrase, badSalt));
+        Assert.Throws<ArgumentOutOfRangeException>(() => keyPair.PrivateKey.ExportEncrypted(Passphrase, badParallelism));
+    }
+
+    [Fact]
+    public void A_below_minimum_import_limit_is_a_configuration_error_not_a_format_error()
+    {
+        // A limit under the format minimum is the caller's misconfiguration; it must surface as
+        // ArgumentOutOfRangeException at the call site, not as a hostile-file-shaped
+        // PqFormatException from deep in key establishment.
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] keyFile = keyPair.PrivateKey.ExportEncrypted(Passphrase, FastKdf);
+        var belowMinimum = new PqDecryptionLimits { MaxArgon2MemoryKiB = 1024 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            PqHybridPrivateKey.ImportEncrypted(keyFile, Passphrase, belowMinimum));
+    }
+
+    [Fact]
     public void Garbage_and_truncated_inputs_are_format_errors()
     {
         Assert.Throws<PqFormatException>(() =>

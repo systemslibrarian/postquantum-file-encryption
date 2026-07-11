@@ -92,6 +92,25 @@ public sealed class HybridTests
     }
 
     [Fact]
+    public async Task Encrypting_to_a_corrupt_ml_kem_recipient_key_is_rejected_as_a_library_exception()
+    {
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] publicBytes = keyPair.PublicKey.Export();
+        // Encoding is X25519(32) ‖ ML-KEM-ek(1184); push the ML-KEM half out of its valid
+        // FIPS 203 range. Import checks only the length, so encapsulation is the first place
+        // this fails — and it must surface as PqEncryptionException, not a raw BouncyCastle
+        // ArgumentException, exactly like the X25519 small-order case above.
+        for (int i = 32; i < publicBytes.Length; i++)
+        {
+            publicBytes[i] = 0xFF;
+        }
+        var hostile = PqHybridPublicKey.Import(publicBytes);
+
+        await Assert.ThrowsAsync<PqEncryptionException>(() =>
+            new PqHybridEncryptor(Fast()).EncryptBytesAsync(RandomBytes(100), hostile));
+    }
+
+    [Fact]
     public async Task Every_unwrap_failure_mode_yields_the_same_message()
     {
         // Wrong key, tampered KEM ciphertext, small-order ephemeral point, and tampered wrap

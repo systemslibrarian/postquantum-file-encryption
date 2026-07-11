@@ -46,6 +46,12 @@ internal static class PqKeyFileFormat
         byte keyType, ReadOnlySpan<byte> keyBytes, ReadOnlySpan<char> passphrase, PqEncryptionOptions? options)
     {
         ThrowIfEmptyPassphrase(passphrase);
+        // Validate before writing anything: an out-of-range option (e.g. a salt or parallelism
+        // that overflows its on-disk byte) would otherwise serialize a header that disagrees
+        // with the key actually derived, producing a key file that even the correct passphrase
+        // can never open. Fail fast at the caller instead.
+        PqEncryptionOptions effectiveOptions = options ?? DefaultOptions;
+        effectiveOptions.Validate();
         byte[] passphraseBytes = new byte[Encoding.UTF8.GetByteCount(passphrase)];
         byte[] plaintext = new byte[1 + keyBytes.Length];
         try
@@ -59,7 +65,7 @@ internal static class PqKeyFileFormat
             output.Write(Magic);
             output.WriteByte(FormatVersion);
             PqContainer.EncryptPassphraseAsync(
-                    input, output, passphraseBytes, options ?? DefaultOptions,
+                    input, output, passphraseBytes, effectiveOptions,
                     plaintext.Length, progress: null, CancellationToken.None)
                 .GetAwaiter().GetResult();
             return output.ToArray();
@@ -90,6 +96,10 @@ internal static class PqKeyFileFormat
             throw new PqFormatException("Unsupported encrypted key file version.");
         }
         ThrowIfEmptyPassphrase(passphrase);
+        // A caller-supplied limit below the format minimum is a configuration error; surface it
+        // as one here (ArgumentOutOfRangeException) rather than letting it masquerade as a
+        // hostile-file rejection deep in key establishment.
+        (limits ?? PqDecryptionLimits.Default).Validate();
 
         byte[] passphraseBytes = new byte[Encoding.UTF8.GetByteCount(passphrase)];
         // Sized so the backing buffer never reallocates (the plaintext is always smaller than

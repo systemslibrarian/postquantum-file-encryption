@@ -56,6 +56,10 @@ internal static class PqContainer
         // callers leave them null so salt and nonce prefix are freshly random per file.
         await InstrumentedAsync("encrypt", "passphrase", totalBytes, async () =>
         {
+            // The password KDF (Argon2id / PBKDF2) is memory-hard and non-interruptible once
+            // started, so honor cancellation at the last moment before committing to it — a
+            // token already cancelled must not pay the full derivation cost.
+            cancellationToken.ThrowIfCancellationRequested();
             (byte[] keyParams, byte[] contentKey) = await KeyEstablishment.BuildPassphraseAsync(passphrase, options, saltOverride).ConfigureAwait(false);
             // The codec zeroes contentKey in its own finally; this one covers the window where
             // header creation throws before the codec is ever entered (re-zeroing is harmless).
@@ -80,6 +84,10 @@ internal static class PqContainer
                 throw new PqDecryptionException("This container is encrypted to a recipient key, not a passphrase.");
             }
             EnforceChunkLimit(header, limits);
+            // A hostile header can legally demand the format-maximum KDF cost (up to 2 GiB of
+            // Argon2id memory) which then runs to completion uninterruptibly. Honor a cancelled
+            // token here, before that cost is committed, rather than only after in ReadBodyAsync.
+            cancellationToken.ThrowIfCancellationRequested();
             byte[] contentKey = await KeyEstablishment.DerivePassphraseKeyAsync(passphrase, header, limits).ConfigureAwait(false);
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);

@@ -14,6 +14,9 @@ The two implementations validate each other: the Rust core decrypts the .NET-pro
 and the .NET library decrypts the Rust-produced vector. CI runs both suites on every change.
 
 All containers are shown as **Base64**. See [FILE-FORMAT.md](FILE-FORMAT.md) for the byte layout.
+The same bytes are committed as **ready-to-use binary artifacts** in
+[`test-vectors/`](../test-vectors/) at the repository root, with pinned SHA-256 sums and a
+30-second verification walkthrough — no decoding required.
 
 ---
 

@@ -117,7 +117,11 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
 
         if (wrapInfo.Length != WrapInfoLength)
         {
-            throw new PqDecryptionException("The wrapped key is malformed (wrong length).");
+            // Structural problem, not an authentication failure: match the taxonomy used by
+            // every other parser (UnwrapRecipientKey, ParseKeyProviderParams, the hybrid block
+            // parser) and keep PqDecryptionException reserved for one generic auth-failure
+            // message, with no second distinguishable message under that type.
+            throw new PqFormatException("The wrapped key is malformed (wrong length).");
         }
 
         ReadOnlySpan<byte> span = wrapInfo.Span;

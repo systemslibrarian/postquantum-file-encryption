@@ -70,9 +70,10 @@ Not because they don't matter — because they are third-party, not-our-code, or
 - **Cryptographic primitives.** AES-GCM, PBKDF2, HKDF, SHA-512, platform ML-KEM (.NET BCL);
   ML-KEM/X25519/Ed25519/ML-DSA-65 (BouncyCastle); Argon2id (Konscious). Inventory and
   versions: [SECURITY-ARCHITECTURE.md](SECURITY-ARCHITECTURE.md). This library composes them.
-- **Cloud provider internals.** `PostQuantum.FileEncryption.Aws` and `.AzureKeyVault` wrap
-  vendor SDKs; the SDKs and live-service semantics are out of scope. The **binding logic**
-  (encryption context / pinned key id + algorithm) is in scope as part of the envelope seam.
+- **Cloud provider internals.** `PostQuantum.FileEncryption.Aws`, `.AzureKeyVault`, and
+  `.Gcp` wrap vendor SDKs; the SDKs and live-service semantics are out of scope. The
+  **binding logic** (encryption context / pinned key id + algorithm / AAD + CRC32C
+  verification) is in scope as part of the envelope seam.
 - **The Rust → WASM core** (`samples/pqfe-wasm`) is a second implementation of the same
   format, held byte-compatible by cross-implementation tests + a live interop CI job. It is
   *reference for* the format, not the primary audit subject; its own dependency audit runs in

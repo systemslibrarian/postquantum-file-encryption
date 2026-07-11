@@ -107,13 +107,16 @@ Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   both primitives, runs anywhere). Removal of the inline mode is targeted for a future
   major release; until then it continues to honour the existing fail-closed contract.
 - **Cloud KMS/HSM providers are not integration-tested against live clouds in CI.** The
-  envelope seam (`IContentKeyProvider`, `KeySource = 5`) now has three implementations: the
+  envelope seam (`IContentKeyProvider`, `KeySource = 5`) now has four implementations: the
   built-in `LocalKekContentKeyProvider`, **`PostQuantum.FileEncryption.Aws`** (AWS KMS
-  GenerateDataKey/Decrypt with a bound encryption context), and
+  GenerateDataKey/Decrypt with a bound encryption context),
   **`PostQuantum.FileEncryption.AzureKeyVault`** (Key Vault / Managed HSM wrap/unwrap, pinned
-  key id and algorithm). The cloud providers are unit-tested against in-process fakes of the
-  SDK clients that reproduce the services' binding semantics — CI has no cloud credentials,
-  so live-service integration is exercised by consumers, not by this repo's pipeline.
+  key id and algorithm), and **`PostQuantum.FileEncryption.Gcp`** (Cloud KMS Encrypt/Decrypt
+  with bound AAD and end-to-end CRC32C verification; the content key is generated locally
+  because Cloud KMS has no server-side data-key generation). The cloud providers are
+  unit-tested against in-process fakes of the SDK clients that reproduce the services'
+  binding semantics — CI has no cloud credentials, so live-service integration is exercised
+  by consumers, not by this repo's pipeline.
   HashiCorp Vault and PKCS#11 providers remain unimplemented; rewrap/rotation tooling is
   still designed-only. See [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md).
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
@@ -132,8 +135,11 @@ Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   providers zero every plaintext-key buffer they can reach (including the AWS SDK's response
   `MemoryStream` buffer), but the key also transits SDK-internal HTTP buffers and, in the AWS
   case, exists transiently as a base64 `string` inside the JSON reader — a `string` cannot be
-  zeroed. Those copies live until garbage collection. Same class of limitation as the
-  BouncyCastle entry above.
+  zeroed. The GCP provider likewise zeroes every reachable copy (including the response
+  `ByteString`'s backing array), but the key also crosses protobuf/gRPC serialization
+  buffers — in *both* directions, since Cloud KMS has no server-side data-key generation and
+  the locally generated content key is uploaded for wrapping. Those copies live until
+  garbage collection. Same class of limitation as the BouncyCastle entry above.
 
 ### Format and feature gaps
 
@@ -155,15 +161,27 @@ Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   authenticated; only the file's tail past the final frame is outside the envelope. Rejecting
   trailing data would change frozen v2 behavior (and the Rust/WASM implementation in step), so
   it is a format-v3 candidate, not a `1.x` change.
-- **Two lenient v2 reader corners are frozen with the format.** (1) The header's reserved
+- **Three lenient v2 reader corners are frozen with the format.** (1) The header's reserved
   `Flags` byte is defined "must be 0" but readers do not reject a nonzero value (it is still
   bound into the AAD, so it cannot be *modified* after encryption); (2) the passphrase
-  KeyParams parsers tolerate trailing bytes where the recipient parser enforces exact length
-  (also harmless today — the whole header is AAD, so appended bytes break every frame's
-  authentication). Neither is exploitable, but both mean a nonconforming writer's container
-  can decrypt. Tightening either would change frozen v2 reader behavior (and the Rust/WASM
-  implementation in step), so both are format-v3 candidates, alongside the trailing-data
-  entry below.
+  KeyParams parsers tolerate trailing bytes, where the inline recipient parser (KeySource 1/2)
+  and the single-recipient hybrid block (KeySource 3) enforce exact length; (3) the
+  multi-recipient hybrid body parser (KeySource 4) consumes exactly its declared block count
+  and does not check that the body ends there, so trailing bytes or extra blocks past the
+  count are ignored. All three are harmless today — the whole header is AAD, so appended bytes
+  break every frame's authentication — but each means a nonconforming writer's container can
+  decrypt. Tightening any would change frozen v2 reader behavior (and the Rust/WASM
+  implementation in step), so all are format-v3 candidates, alongside the trailing-data entry
+  above.
+- **A malformed hybrid recipient block aborts the multi-recipient scan.** In a KeySource-4
+  container, a Mode-3 block whose `KemId` is not the one known value raises `PqFormatException`
+  out of the block scan, so a later block that *is* for the caller's key is never tried. This
+  is fail-closed (no plaintext, no key-dependent oracle — only the format-vs-decryption
+  exception type differs), but it means one malformed block from a nonconforming writer denies
+  decryption to every recipient listed after it. Switching abort→skip would make the reader
+  *accept* containers it currently rejects — a loosening of frozen v2 behavior — so it, too, is
+  a format-v3 candidate (a future `KemId` such as ML-KEM-1024 is exactly when skip-and-continue
+  would matter).
 - **The hybrid KEK combiner does not bind the DH/KEM transcript.** `HKDF(ss_pq ‖ ss_x25519)`
   omits the KEM ciphertext and the ephemeral/recipient public keys from the derivation, unlike
   X-Wing or HPKE. Today this is fully covered by the container design — the serialized header,
@@ -173,6 +191,11 @@ Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   envelope (rewrap/rotation tooling, detached key blocks) would inherit real block malleability.
   The combiner is spec-frozen with v2 (`FILE-FORMAT.md`), so transcript binding is a format-v3
   item, recorded here so no rewrap feature ships without it.
+- **The hybrid multi-recipient cap is 55.** Each KeySource-4 recipient entry is 1,186 bytes
+  and the v2 header's KeyParams length field is a `ushort`, so ⌊65,534 / 1,186⌋ = 55
+  recipients fit. The limit is enforced pre-flight (since `1.5.0`) with a clear message
+  rather than failing after the wrapping work. Widening the field is a format-v3 candidate;
+  for larger audiences today, wrap to a KMS-held group key via `IContentKeyProvider`.
 - **No compression, no deduplication.** Out of scope. (Encrypted private-key *files* left
   this list with the `PQKF` format in `1.5.0` — see "Resolved in `1.5.0`" above — but key
   management beyond that framing remains out of scope.)
@@ -197,6 +220,21 @@ Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   **Destination integrity is preserved either way** — no partial or corrupted file is ever
   moved to the destination path; only the temp file may linger. Operators who need
   guaranteed cleanup of orphaned `*.tmp-*` files should run a periodic sweep.
+- **Rename durability on power loss is not guaranteed.** The file write path fsyncs the temp
+  file's data before `File.Move`, so a crash cannot leave a *truncated* file at the
+  destination. It does **not** fsync the containing directory after the rename (there is no
+  portable BCL API for it; Linux would need a P/Invoked directory `fsync`), so a power loss in
+  the seconds after a successful return can, on some filesystems, roll the directory entry
+  back to the pre-existing file. The fail-safe still holds — the destination is either the old
+  file or the new one, never a partial — but callers requiring the rename itself to survive
+  immediate power loss should fsync the directory (or the whole volume) themselves.
+- **`DecryptAtomicAsync` buffers the whole plaintext in memory.** The all-or-nothing stream
+  overload holds the full decrypted output in a `MemoryStream` until the final frame
+  authenticates, so peak memory is proportional to plaintext size and it cannot exceed the
+  ~2 GiB single-array limit (a larger valid container throws `IOException`, not a `Pq*`
+  exception, and `PqDecryptionLimits` does not bound this buffer). For untrusted or large
+  inputs, prefer the file APIs (temp-file staging) or the non-atomic stream overload with a
+  bounded destination. This is documented on the method; noted here for completeness.
 
 ### Demos
 

@@ -47,10 +47,27 @@ internal static class HybridKeyEstablishment
         var random = new SecureRandom();
 
         var encapsulator = new MLKemEncapsulator(MLKemParameters.ml_kem_768);
-        encapsulator.Init(MLKemPublicKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, recipient.MlKemEncapsulationKey));
-        byte[] kemCiphertext = new byte[encapsulator.EncapsulationLength];
-        byte[] sharedSecretPq = new byte[encapsulator.SecretLength];
-        encapsulator.Encapsulate(kemCiphertext, sharedSecretPq);
+        byte[] kemCiphertext;
+        byte[] sharedSecretPq;
+        try
+        {
+            // Init validates the encoded key (FIPS 203 modulus check) and must run before the
+            // length properties are read.
+            encapsulator.Init(MLKemPublicKeyParameters.FromEncoding(MLKemParameters.ml_kem_768, recipient.MlKemEncapsulationKey));
+            kemCiphertext = new byte[encapsulator.EncapsulationLength];
+            sharedSecretPq = new byte[encapsulator.SecretLength];
+            encapsulator.Encapsulate(kemCiphertext, sharedSecretPq);
+        }
+        catch (ArgumentException ex)
+        {
+            // PqHybridPublicKey.Import validates only the length, so an ML-KEM half with
+            // out-of-range coefficients fails FIPS 203 validation here. Mirror the X25519
+            // small-order handling below and keep it inside the library's exception contract
+            // instead of leaking a raw BouncyCastle ArgumentException. Encrypt-side, so a
+            // descriptive message leaks nothing.
+            throw new PqEncryptionException(
+                "The recipient public key is invalid: its ML-KEM-768 half failed FIPS 203 validation.", ex);
+        }
 
         try
         {

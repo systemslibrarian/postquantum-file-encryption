@@ -53,6 +53,9 @@ public sealed class PqVerifier
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(publicKey);
 
+        // Reject a structurally invalid sidecar before hashing the (possibly large) input —
+        // the ordering docs/SIGNATURE-FORMAT.md mandates, so a garbage signature costs nothing.
+        HybridSigning.ValidateSidecar(signature.Span);
         byte[] digest = await SHA512.HashDataAsync(input, cancellationToken).ConfigureAwait(false);
         HybridSigning.Verify(digest, signature.Span, publicKey);
     }
@@ -64,6 +67,8 @@ public sealed class PqVerifier
     {
         ArgumentNullException.ThrowIfNull(publicKey);
 
+        // Structural check before hashing, matching the stream path and the spec's ordering.
+        HybridSigning.ValidateSidecar(signature);
         byte[] digest = SHA512.HashData(data);
         HybridSigning.Verify(digest, signature, publicKey);
     }

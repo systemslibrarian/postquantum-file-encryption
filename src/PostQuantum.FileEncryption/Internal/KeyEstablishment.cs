@@ -272,7 +272,21 @@ internal static class KeyEstablishment
         offset += ContainerFormat.TagLength;
         byte[] wrappedKey = p.Slice(offset, ContainerFormat.KeyLength).ToArray();
 
-        using MLKem decapsulationKey = MLKem.ImportDecapsulationKey(MLKemAlgorithm.MLKem768, privateKey.DecapsulationKey);
+        MLKem decapsulationKey;
+        try
+        {
+            decapsulationKey = MLKem.ImportDecapsulationKey(MLKemAlgorithm.MLKem768, privateKey.DecapsulationKey);
+        }
+        catch (CryptographicException ex)
+        {
+            // PqRecipientPrivateKey.Import validates only the length, so a corrupt or bit-rotted
+            // stored key fails FIPS 203 decode here; mirror the encrypt side and keep it inside
+            // the library's exception contract instead of leaking a platform exception.
+            throw new PqDecryptionException(
+                "Decryption failed: the recipient key is wrong, or the container has been altered.", ex);
+        }
+
+        using MLKem _decapsulationKey = decapsulationKey;
         byte[] sharedSecret = decapsulationKey.Decapsulate(kemCiphertext);
         try
         {
