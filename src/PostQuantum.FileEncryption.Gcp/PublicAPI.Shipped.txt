@@ -1,1 +1,6 @@
 #nullable enable
+PostQuantum.FileEncryption.Gcp.GcpKmsContentKeyProvider
+PostQuantum.FileEncryption.Gcp.GcpKmsContentKeyProvider.GcpKmsContentKeyProvider(Google.Cloud.Kms.V1.KeyManagementServiceClient! kms, string! cryptoKeyName, System.ReadOnlyMemory<byte> additionalAuthenticatedData = default(System.ReadOnlyMemory<byte>)) -> void
+PostQuantum.FileEncryption.Gcp.GcpKmsContentKeyProvider.ProviderId.get -> string!
+PostQuantum.FileEncryption.Gcp.GcpKmsContentKeyProvider.UnwrapKeyAsync(System.ReadOnlyMemory<byte> wrapInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+PostQuantum.FileEncryption.Gcp.GcpKmsContentKeyProvider.WrapNewKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(byte[]! contentKey, byte[]! wrapInfo)>!

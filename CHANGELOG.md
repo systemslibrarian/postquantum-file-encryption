@@ -6,7 +6,13 @@ All notable changes to this project are documented here. The format is based on
 locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines and `<EnablePackageValidation>`,
 and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
-## [Unreleased]
+## [1.6.0] - 2026-07-10
+
+The cloud-provider, security-hardening, and developer-experience release. A Google Cloud KMS
+envelope-key provider completes the AWS / Azure / GCP trio; an adversarial multi-zone review
+of the engine fixed eight fail-closed-contract bugs; and native CLI binaries, differential
+round-trip coverage, committed test vectors, and a crypto-agility guide round out the tooling.
+No change to the frozen `.pqfe` v2 / `PQKF` v1 / `.sig` v1 formats.
 
 ### Added
 
@@ -760,7 +766,7 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.5.0...HEAD
+[1.6.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.3.0...v1.4.0

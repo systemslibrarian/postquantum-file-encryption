@@ -27,7 +27,7 @@ careful, paranoid, fail-closed thing every time. And because the code, the forma
 specification, the test vectors, the threat model, and the gaps ledger are all public,
 you never have to take that on faith.
 
-> **Status: `1.5.0` — stable release.**
+> **Status: `1.6.0` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
@@ -116,13 +116,13 @@ minute:
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.5.0
+dotnet add package PostQuantum.FileEncryption --version 1.6.0
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.5.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.6.0
 
 # Optional: detached Ed25519 + ML-DSA-65 signatures (sender authenticity)
-dotnet add package PostQuantum.FileEncryption.Signing --version 1.5.0
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.6.0
 
 # Optional: cloud envelope-key providers (the master key stays in your KMS/HSM)
 dotnet add package PostQuantum.FileEncryption.Aws            # AWS KMS
@@ -131,11 +131,11 @@ dotnet add package PostQuantum.FileEncryption.Gcp            # Google Cloud KMS
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.5.0
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.6.0
 
 # Recommended: compile-time misuse checks (hard-coded passphrases, raw keys on disk,
 # discarded tasks, swallowed fail-closed exceptions). Development-only dependency.
-dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.5.0
+dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.6.0
 ```
 
 Targets **.NET 8 and .NET 10** (`net8.0`; `net10.0`), with an identical public API on
@@ -242,7 +242,7 @@ None of this library's trust claims ask for faith — each one is checkable in a
 ```bash
 # 1. Provenance: the package you downloaded was built by this repo's public release
 #    workflow, on GitHub's runners, from a tagged commit you can read:
-gh attestation verify PostQuantum.FileEncryption.1.5.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.6.0.nupkg \
   --repo systemslibrarian/postquantum-file-encryption
 
 # 2. The frozen format: reproduce the pinned known-answer vectors — byte-exact
@@ -572,7 +572,7 @@ Be clear-eyed about what *post-quantum* means here today:
   [docs/CRYPTO-AGILITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CRYPTO-AGILITY.md).
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.5.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.6.0
 ```
 
 ```csharp
@@ -603,11 +603,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.5.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.6.0.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.5.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.6.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"

@@ -10,9 +10,9 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Hybrid</PackageId>
-    <Version>1.5.0</Version>
-    <FileVersion>1.5.0.0</FileVersion>
-    <InformationalVersion>1.5.0</InformationalVersion>
+    <Version>1.6.0</Version>
+    <FileVersion>1.6.0.0</FileVersion>
+    <InformationalVersion>1.6.0</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Hybrid</Title>
     <Description>Open-source (MIT) post-quantum hybrid public-key encryption for PostQuantum.FileEncryption, for .NET 8 and .NET 10. Adds X25519 + ML-KEM-768 (FIPS 203) hybrid recipient encryption and multi-recipient support on top of the FROZEN, publicly specified .pqfe v2 container format — a file's content key stays safe if either primitive is later broken. Fully managed via BouncyCastle for both primitives (no platform ML-KEM dependency); runs anywhere .NET 8 or later does, including Linux, Windows, macOS, and constrained environments. Constant-memory streaming AES-256-GCM data plane via the core package handles files of any size. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release. Recommended path for new code; supersedes the deprecated inline ML-KEM-only recipient mode (PQFE002) in the core package.</Description>
