@@ -184,12 +184,14 @@ jobs:
           for size in 0 1 65535 65536 65537 5242880 $RANDOM_SIZES; do
             head -c "$size" /dev/urandom > "$RUNNER_TEMP/plain.bin"
 
-            "$DOTNET" encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/dotnet.pqfe" --passphrase-env PQFE_PASS
+            # --force: the loop reuses these output paths every iteration, and the CLI now
+            # refuses to overwrite an existing output without it.
+            "$DOTNET" encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/dotnet.pqfe" --passphrase-env PQFE_PASS --force
             "$RUST"   decrypt "$RUNNER_TEMP/dotnet.pqfe" "$RUNNER_TEMP/dotnet.out"
             cmp "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/dotnet.out"
 
             "$RUST"   encrypt "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/rust.pqfe"
-            "$DOTNET" decrypt "$RUNNER_TEMP/rust.pqfe" "$RUNNER_TEMP/rust.out" --passphrase-env PQFE_PASS
+            "$DOTNET" decrypt "$RUNNER_TEMP/rust.pqfe" "$RUNNER_TEMP/rust.out" --passphrase-env PQFE_PASS --force
             cmp "$RUNNER_TEMP/plain.bin" "$RUNNER_TEMP/rust.out"
 
             echo "size $size: both directions OK"
