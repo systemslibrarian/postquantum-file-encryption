@@ -11,7 +11,10 @@
 //! Every case must satisfy `decrypt(encrypt(x)) == x`; a mismatch or error means the encode and
 //! decode halves disagree — exactly the asymmetry a round-trip check exists to catch.
 
-use pqfe_wasm::{decrypt_bytes, encrypt_bytes_with};
+use pqfe_wasm::{
+    decrypt_bytes, decrypt_bytes_hybrid, encrypt_bytes_hybrid, encrypt_bytes_hybrid_multi,
+    encrypt_bytes_with, generate_hybrid_keypair, PqError,
+};
 
 const PASSPHRASE: &[u8] = b"round-trip-property-passphrase";
 // The format's PBKDF2 floor; kept at the minimum so the framing matrix stays cheap.
@@ -29,8 +32,12 @@ fn pattern(len: usize) -> Vec<u8> {
 
 fn assert_round_trips(data: &[u8], chunk_size: u32) {
     let container = encrypt_bytes_with(data, PASSPHRASE, SALT, NONCE_PREFIX, ITERS, chunk_size);
-    let recovered = decrypt_bytes(&container, PASSPHRASE)
-        .unwrap_or_else(|e| panic!("chunk {chunk_size}, len {}: decrypt failed: {e:?}", data.len()));
+    let recovered = decrypt_bytes(&container, PASSPHRASE).unwrap_or_else(|e| {
+        panic!(
+            "chunk {chunk_size}, len {}: decrypt failed: {e:?}",
+            data.len()
+        )
+    });
     assert_eq!(
         recovered,
         data,
@@ -79,6 +86,47 @@ fn tampering_with_any_frame_byte_fails_closed() {
         );
         container[i] = original[i];
     }
+}
+
+#[test]
+fn hybrid_single_recipient_round_trips() {
+    let (public_key, private_key) = generate_hybrid_keypair();
+    // Straddle the empty case and the 64 KiB default chunk boundary.
+    for &len in &[0usize, 1, 100, 64 * 1024, 64 * 1024 + 5, 200_000] {
+        let data = pattern(len);
+        let container = encrypt_bytes_hybrid(&data, &public_key).expect("hybrid encrypt");
+        let restored = decrypt_bytes_hybrid(&container, &private_key)
+            .unwrap_or_else(|e| panic!("len {len}: hybrid round-trip failed: {e:?}"));
+        assert_eq!(restored, data, "len {len}: hybrid round-trip mismatch");
+    }
+}
+
+#[test]
+fn hybrid_multi_recipient_round_trips_for_each_recipient() {
+    let keys: Vec<_> = (0..3).map(|_| generate_hybrid_keypair()).collect();
+    let publics: Vec<&[u8]> = keys.iter().map(|(pk, _)| pk.as_slice()).collect();
+    let data = pattern(70_000); // multi-chunk
+
+    let container = encrypt_bytes_hybrid_multi(&data, &publics).expect("multi encrypt");
+
+    // Every listed recipient — first, middle, and last — must recover the same plaintext.
+    for (i, (_, private_key)) in keys.iter().enumerate() {
+        let restored = decrypt_bytes_hybrid(&container, private_key)
+            .unwrap_or_else(|e| panic!("recipient {i}: multi round-trip failed: {e:?}"));
+        assert_eq!(restored, data, "recipient {i}: multi round-trip mismatch");
+    }
+}
+
+#[test]
+fn hybrid_round_trip_rejects_a_stranger_key() {
+    let (public_key, _) = generate_hybrid_keypair();
+    let (_, stranger_private) = generate_hybrid_keypair();
+    let container = encrypt_bytes_hybrid(b"secret", &public_key).expect("hybrid encrypt");
+    assert_eq!(
+        decrypt_bytes_hybrid(&container, &stranger_private),
+        Err(PqError::Decryption),
+        "a key that is not a recipient must fail closed"
+    );
 }
 
 #[test]

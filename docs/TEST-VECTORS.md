@@ -190,6 +190,32 @@ omitted here for length — the source constants are the normative copies.
 
 ---
 
+## Vector 8 — hybrid multi-recipient (X25519 + ML-KEM-768, KeySource 4, decrypt-only)
+
+Pins the multi-recipient path that Vector 6 (single recipient) cannot: the KeySource-4 body
+layout (`RecipientCount ‖ (Mode ‖ BlockLength ‖ block)*`, [FILE-FORMAT.md](FILE-FORMAT.md))
+and the block scan that tries, and skips, a non-matching recipient block before reaching the
+caller's. The container wraps one content key to **three** recipients; the pinned private key
+is the **middle** one, so a passing decrypt proves the reader advanced past an earlier block
+that was not its own. As with Vector 6, encryption is randomized, so the vector is
+decrypt-only. Exercised by `tests/.../HybridMultiRecipientKnownAnswerVectorTests.cs` and,
+cross-implementation, by the Rust core (`samples/pqfe-wasm/tests/vectors.rs`, `HYBRID8_*`) —
+both pin the identical bytes. The key pairs were generated solely for this vector and protect
+nothing.
+
+| Field | Value |
+| --- | --- |
+| Key source | `4` (multiple recipients) |
+| Recipients | 3 (hybrid, Mode 3); pinned key is recipient #2 of 3 |
+| Recipient private key | `X25519(32) ‖ ML-KEM-dk(2400)` = 2,432 bytes |
+| Expected plaintext (UTF-8) | `PostQuantum.FileEncryption hybrid known-answer vector v2.` |
+
+The 2,432-byte private key and the ~3.6 KiB container are pinned as the normative copies in
+the two test suites above (`PrivateKeyVector` / `ContainerVector` and `HYBRID8_PRIVATE_KEY` /
+`HYBRID8_KS4_VECTOR`); they are omitted here for length.
+
+---
+
 ## How to verify
 
 ```bash

@@ -40,7 +40,7 @@ done. Last reviewed against: **`1.2.0`**.
 | Fail-closed suite (tamper, truncate, wrong key, bad format) treated as first-class | ✅ | `tests/PostQuantum.FileEncryption.Tests` |
 | Coverage-guided fuzzing of both parsers (.NET and Rust) | ✅ | SharpFuzz + cargo-fuzz, nightly CI with cached corpus ([FUZZING.md](FUZZING.md)) |
 | OSS-Fuzz onboarding | ⚠️ | Integration files ready (`oss-fuzz/`); upstream onboarding not yet accepted |
-| Independent second implementation, held byte-compatible in CI | ⚠️ | Rust/WASM reference (`samples/pqfe-wasm`): pinned vectors both directions **plus a live interop CI job** (fresh random payloads, both directions, every push) — **passphrase key source only**; hybrid recipient mode is .NET-only |
+| Independent second implementation, held byte-compatible in CI | ✅ | Rust/WASM reference (`samples/pqfe-wasm`): pinned vectors both directions **plus a live interop CI job** (fresh random payloads, both directions, every push) covering **both** the passphrase key source **and** the X25519 + ML-KEM-768 hybrid recipient mode (KeySource 3/4), with keys generated on each side used by the other |
 | Code coverage published | ✅ | Codecov badge in README |
 | Performance benchmarks tracked over time | ✅ | `benchmarks/` + weekly benchmark CI |
 
@@ -93,9 +93,12 @@ The open gaps, in priority order:
 1. **Independent audit** — blocked on funding, not willingness.
 2. **OSS-Fuzz onboarding** and corpus maturity.
 3. **OpenSSF Best Practices badge** — process work, no blocker.
-4. **Hybrid recipient mode in the second (Rust) implementation** — today the
-   cross-implementation guarantee covers the passphrase path only.
-5. **Author signing** — blocked on certificate cost.
+4. **Author signing** — blocked on certificate cost.
+
+Closed since the last review: the second (Rust) implementation now covers the **hybrid
+recipient mode** (X25519 + ML-KEM-768, KeySource 3/4), held byte-compatible by pinned
+known-answer vectors and a live both-directions interop CI job — previously the
+cross-implementation guarantee reached only the passphrase path.
 
 When a row above changes, this document changes in the same release.
 

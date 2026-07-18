@@ -150,8 +150,9 @@ jobs:
     # Live byte-compatibility proof: fresh random payloads every run, encrypted by one
     # implementation and decrypted by the other, in both directions, across chunk-boundary
     # sizes. Complements the pinned known-answer vectors, which cannot catch drift on
-    # inputs they don't cover. Passphrase key source only — the Rust core does not
-    # implement recipient mode (see KNOWN-GAPS.md).
+    # inputs they don't cover. Covers both the passphrase key source and the X25519 +
+    # ML-KEM-768 hybrid recipient mode (KeySource 3/4), with keys generated on each side
+    # used by the other.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -169,6 +170,9 @@ jobs:
 
       - name: Build the .NET CLI
         run: dotnet publish samples/Pqfe.Cli/Pqfe.Cli.csproj -c Release -o "$RUNNER_TEMP/pqfe-cli"
+
+      - name: Build the .NET hybrid interop driver
+        run: dotnet publish samples/PqfeHybridInterop/PqfeHybridInterop.csproj -c Release -o "$RUNNER_TEMP/pqfe-hybrid"
 
       - name: Round-trip fresh payloads in both directions
         run: |
@@ -229,6 +233,72 @@ jobs:
             echo ".NET accepted a wrong passphrase — fail-closed violation" >&2; exit 1
           fi
           echo "Both implementations fail closed on a wrong passphrase"
+
+      - name: Hybrid recipient round-trips (.NET ⇄ Rust)
+        run: |
+          set -euo pipefail
+          DHYB="$RUNNER_TEMP/pqfe-hybrid/pqfe-hybrid-interop"
+          RUST="samples/pqfe-wasm/target/release/examples/pqfe_io"
+          W="$RUNNER_TEMP/hyb"; mkdir -p "$W"
+
+          # Keys generated on each side must be usable by the other (standard FIPS 203 / RFC 7748
+          # encodings), so cross both key origins and both encrypt/decrypt directions.
+          "$DHYB" keygen-hybrid "$W/d.pub" "$W/d.priv"
+          "$RUST" keygen-hybrid "$W/r.pub" "$W/r.priv"
+
+          for size in 0 1 65535 65536 65537 1048576; do
+            head -c "$size" /dev/urandom > "$W/plain.bin"
+
+            # Rust encrypts to a .NET-generated key; .NET decrypts.
+            "$RUST" encrypt-hybrid "$W/plain.bin" "$W/r2d.pqfe" "$W/d.pub"
+            "$DHYB" decrypt-hybrid "$W/r2d.pqfe" "$W/r2d.out" "$W/d.priv"
+            cmp "$W/plain.bin" "$W/r2d.out"
+
+            # .NET encrypts to a Rust-generated key; Rust decrypts.
+            "$DHYB" encrypt-hybrid "$W/plain.bin" "$W/d2r.pqfe" "$W/r.pub"
+            "$RUST" decrypt-hybrid "$W/d2r.pqfe" "$W/d2r.out" "$W/r.priv"
+            cmp "$W/plain.bin" "$W/d2r.out"
+
+            echo "hybrid size $size: both directions OK"
+          done
+
+          # Multi-recipient (KeySource 4): three recipients, decrypt with the MIDDLE one, from
+          # both container origins — exercises the block scan skipping a non-matching block.
+          "$DHYB" keygen-hybrid "$W/a.pub" "$W/a.priv"
+          "$DHYB" keygen-hybrid "$W/b.pub" "$W/b.priv"
+          "$DHYB" keygen-hybrid "$W/c.pub" "$W/c.priv"
+          head -c 200000 /dev/urandom > "$W/plain.bin"
+
+          "$RUST" encrypt-hybrid "$W/plain.bin" "$W/rmulti.pqfe" "$W/a.pub" "$W/b.pub" "$W/c.pub"
+          "$DHYB" decrypt-hybrid "$W/rmulti.pqfe" "$W/rmulti.out" "$W/b.priv"
+          cmp "$W/plain.bin" "$W/rmulti.out"
+
+          "$DHYB" encrypt-hybrid "$W/plain.bin" "$W/dmulti.pqfe" "$W/a.pub" "$W/b.pub" "$W/c.pub"
+          "$RUST" decrypt-hybrid "$W/dmulti.pqfe" "$W/dmulti.out" "$W/b.priv"
+          cmp "$W/plain.bin" "$W/dmulti.out"
+          echo "hybrid multi-recipient (middle) both directions OK"
+
+      - name: Hybrid fail-closed agreement (stranger key rejected by both)
+        run: |
+          set -euo pipefail
+          DHYB="$RUNNER_TEMP/pqfe-hybrid/pqfe-hybrid-interop"
+          RUST="samples/pqfe-wasm/target/release/examples/pqfe_io"
+          W="$RUNNER_TEMP/hybfail"; mkdir -p "$W"
+
+          "$DHYB" keygen-hybrid "$W/good.pub" "$W/good.priv"
+          "$DHYB" keygen-hybrid "$W/stranger.pub" "$W/stranger.priv"
+          head -c 4096 /dev/urandom > "$W/plain.bin"
+
+          "$RUST" encrypt-hybrid "$W/plain.bin" "$W/c.pqfe" "$W/good.pub"
+          if "$DHYB" decrypt-hybrid "$W/c.pqfe" "$W/x.out" "$W/stranger.priv"; then
+            echo ".NET accepted a stranger key on a Rust container — fail-closed violation" >&2; exit 1
+          fi
+
+          "$DHYB" encrypt-hybrid "$W/plain.bin" "$W/d.pqfe" "$W/good.pub"
+          if "$RUST" decrypt-hybrid "$W/d.pqfe" "$W/y.out" "$W/stranger.priv"; then
+            echo "Rust accepted a stranger key on a .NET container — fail-closed violation" >&2; exit 1
+          fi
+          echo "Both implementations fail closed on a non-recipient key"
 
   audit:
     name: Rust — dependency audit

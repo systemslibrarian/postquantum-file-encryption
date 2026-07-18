@@ -5,6 +5,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/PostQuantum.FileEncryption.Demo/PostQuantum.FileEncryption.Demo.csproj" />
     <Project Path="samples/Pqfe.Cli/Pqfe.Cli.csproj" />
+    <Project Path="samples/PqfeHybridInterop/PqfeHybridInterop.csproj" />
     <Project Path="samples/quickstarts/Pqfe.QuickStart.Backup/Pqfe.QuickStart.Backup.csproj" />
     <Project Path="samples/quickstarts/Pqfe.QuickStart.WebUpload/Pqfe.QuickStart.WebUpload.csproj" />
   </Folder>

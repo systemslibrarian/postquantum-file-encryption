@@ -246,9 +246,13 @@ Last reviewed against: **`1.5.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   second implementation, it is a separate codebase to keep in step with the format; it is held
   byte-compatible by cross-implementation tests (Rust decrypts the .NET vectors; .NET decrypts a
   Rust-produced container) **and a live interop CI job** that round-trips fresh random payloads
-  in both directions, across chunk boundaries, on every push (`ci.yml` → `interop`). It
-  currently supports only the **passphrase** key source — **hybrid/ML-KEM recipient mode is not
-  implemented in the Rust/WASM core**.
+  in both directions, across chunk boundaries, on every push (`ci.yml` → `interop`). The Rust
+  core implements both the **passphrase** key source and the **X25519 + ML-KEM-768 hybrid
+  recipient** mode (KeySource 3/4) — the latter pinned by known-answer vectors (Vectors 6 and 8)
+  and by the interop job, which generates keys on each side for the other to use. The **browser
+  UI** (`samples/pqfe-web`) still exposes passphrase mode only; recipient private keys are not
+  handled in-browser. The inline ML-KEM-*only* recipient mode (deprecated `PQFE002`) is not
+  implemented in the Rust core.
 
 ### Process and assurance gaps
 
