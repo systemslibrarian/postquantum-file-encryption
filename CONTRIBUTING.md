@@ -31,9 +31,11 @@ These mirror [CLAUDE.md](CLAUDE.md), the project's working conventions:
 dotnet build -c Release       # warnings are errors
 dotnet test  -c Release       # 70+ tests
 cd samples/pqfe-wasm && cargo test   # Rust conformance (decrypts the .NET vectors, byte-exact)
+bash scripts/check-docs-consistency.sh   # version markers current, no dead internal links
 ```
 
-CI runs both suites on Ubuntu and Windows, plus CodeQL and a dependency audit. PRs must pass.
+CI runs both suites on Ubuntu and Windows, plus CodeQL, a dependency audit, and a
+documentation-consistency guard (`scripts/check-docs-consistency.sh`). PRs must pass.
 
 ## Style
 

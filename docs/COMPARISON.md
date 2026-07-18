@@ -73,6 +73,6 @@ verifiably**, a single-purpose tool that cannot be misused is the better fit.
 This library is **younger** than age and libsodium and has **not been independently audited**
 (see [KNOWN-GAPS.md](../KNOWN-GAPS.md)). age and libsodium have years of scrutiny. Where that
 scrutiny is the deciding factor today, prefer them — and revisit this library as it matures toward
-an audited `1.0`.
+an independent audit.
 
 *To God be the glory — 1 Corinthians 10:31.*

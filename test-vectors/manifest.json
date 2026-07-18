@@ -1,0 +1,215 @@
+{
+  "formatVersion": 2,
+  "description": "PostQuantum.FileEncryption .pqfe v2 conformance vectors. Positive vectors must decrypt to the stated plaintext; negative vectors must be rejected (reject-format = PqFormatException / structural; reject-decryption = PqDecryptionException / authentication); lenient vectors pin frozen v2 reader leniencies that a future v3 profile may tighten (docs/CONFORMANCE.md 2.2, KNOWN-GAPS.md). Regenerate with PQFE_REGEN_VECTORS=1.",
+  "vectors": [
+    {
+      "id": "pos-passphrase-pbkdf2",
+      "category": "positive",
+      "expect": "accept",
+      "file": "passphrase-pbkdf2.pqfe",
+      "sha256": "ab32cc1d2f5f673d77d80fc2f45307abe4a33a35552f2b5c677a9c5818718547",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "plaintextUtf8": "PostQuantum.FileEncryption known-answer vector v2.",
+      "notes": "Frozen KAT Vector 1 (PBKDF2-HMAC-SHA256)."
+    },
+    {
+      "id": "pos-passphrase-argon2id",
+      "category": "positive",
+      "expect": "accept",
+      "file": "passphrase-argon2id.pqfe",
+      "sha256": "4e165d1238fcad436bad8b7cd72072b9196e4492aaddfcddfbc82029f0eca4ee",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "plaintextUtf8": "PostQuantum.FileEncryption known-answer vector v2.",
+      "notes": "Frozen KAT Vector 2 (Argon2id)."
+    },
+    {
+      "id": "pos-passphrase-pbkdf2-rustcore",
+      "category": "positive",
+      "expect": "accept",
+      "file": "passphrase-pbkdf2-rustcore.pqfe",
+      "sha256": "b428f6492c78fe03b8b3197872e60bd737764be066cdaddab594f06f18e6ade6",
+      "keySource": 1,
+      "passphrase": "cross-impl-passphrase",
+      "plaintextUtf8": "Encrypted by the Rust/WASM core, decrypted by .NET.",
+      "notes": "Frozen KAT Vector 3 (produced by the Rust core)."
+    },
+    {
+      "id": "neg-bad-magic",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/bad-magic.pqfe",
+      "sha256": "f47f270c19c20fcc43f8c4a002d0a67ef2bc0f1bdd157335386535362c8a51ed",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "First magic byte flipped: not a PQFE container."
+    },
+    {
+      "id": "neg-bad-version",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/bad-version.pqfe",
+      "sha256": "ecfde5eb5566a130df5b29e29ff553ae450a19a8355c017cee88fcb8ece767b6",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "FormatVersion set to 3: unsupported version."
+    },
+    {
+      "id": "neg-unknown-aead",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/unknown-aead.pqfe",
+      "sha256": "1a2825c6af10553ba8eb9843e1034a05a3cda08129ad76db8548c760a06f4ed0",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "AeadId set to 2: only 1 (AES-256-GCM) is defined at v2."
+    },
+    {
+      "id": "neg-unknown-keysource",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/unknown-keysource.pqfe",
+      "sha256": "10559de476f149e48e9d13b2c9ec7d0c13ff8656563ee20117dbc0048a981582",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "KeySource set to 9: not a defined key source."
+    },
+    {
+      "id": "neg-chunksize-zero",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/chunksize-zero.pqfe",
+      "sha256": "8f21862e307d8a1451bce1f3f7b5717c64d67953478485b08aeb3531642abec8",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "ChunkSize set to 0: below the 1024-byte floor, rejected before any KDF work."
+    },
+    {
+      "id": "neg-pbkdf2-iterations-out-of-range",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/pbkdf2-iterations-out-of-range.pqfe",
+      "sha256": "f4bc9336df37462d68b17a9172cceb6a83873ec78335bd15fbed6ea2ae59fd95",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "PBKDF2 iteration count set to 1: range-checked and rejected before deriving the key."
+    },
+    {
+      "id": "neg-header-tamper",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/header-tamper.pqfe",
+      "sha256": "6157f5667e71ce0ed2bf2ad355b4a46369a1ee68cda47e61401e25bde0358387",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "One nonce-prefix byte flipped: the header is per-frame AAD, so every frame fails authentication."
+    },
+    {
+      "id": "neg-ciphertext-tamper",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/ciphertext-tamper.pqfe",
+      "sha256": "afdba0ac77439c26ca7d4dd01851bb361187dbfd7de78a3ff60c0eccaccab8e4",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "One frame byte flipped: authentication fails."
+    },
+    {
+      "id": "neg-tag-truncated",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/tag-truncated.pqfe",
+      "sha256": "8755cdbd572d3dbd151d355c158776ce3e89fab38057cbdc0b88f03093c969f6",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "Final 16-byte tag dropped: truncation fails closed."
+    },
+    {
+      "id": "neg-prefix-truncated",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/prefix-truncated.pqfe",
+      "sha256": "923e8ac5ce855298b3a488ec66019bab2f8fa1077fe30e87f56737525b8b9669",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "Truncated mid-frame after the header: no authenticated final frame."
+    },
+    {
+      "id": "neg-not-a-container",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/not-a-container.bin",
+      "sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "64 zero bytes: no PQFE magic."
+    },
+    {
+      "id": "neg-wrong-passphrase",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "passphrase-pbkdf2.pqfe",
+      "sha256": "ab32cc1d2f5f673d77d80fc2f45307abe4a33a35552f2b5c677a9c5818718547",
+      "keySource": 1,
+      "passphrase": "wrong-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "The frozen Vector 1 opened with the wrong passphrase: fails closed, no oracle."
+    },
+    {
+      "id": "lenient-nonzero-flags",
+      "category": "lenient",
+      "expect": "accept",
+      "file": "lenient/nonzero-flags.pqfe",
+      "sha256": "165da7c1ff8d1d59ac3a73947cc8daaaf9af88a3fc70d1af946c221de0744d87",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "plaintextUtf8": "PostQuantum.FileEncryption conformance: reserved Flags byte set to 0x01.",
+      "notes": "Reserved Flags byte = 0x01. The frozen reader does not reject it (it is AAD-bound). Format-v3 candidate."
+    },
+    {
+      "id": "lenient-trailing-keyparams",
+      "category": "lenient",
+      "expect": "accept",
+      "file": "lenient/trailing-keyparams.pqfe",
+      "sha256": "ae073c1a4b5509d595906aa8f3e61df420788d170fdb2adb4eb610e0b29992ae",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "plaintextUtf8": "PostQuantum.FileEncryption conformance: trailing bytes in passphrase KeyParams.",
+      "notes": "4 trailing bytes after the PBKDF2 KeyParams. The passphrase parser ignores them. Format-v3 candidate."
+    },
+    {
+      "id": "lenient-trailing-after-final",
+      "category": "lenient",
+      "expect": "accept",
+      "file": "lenient/trailing-after-final.pqfe",
+      "sha256": "473e64d699519ffe12a658eecb0bb48c5eb17253cd01ca74610e5984f889acb6",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "plaintextUtf8": "PostQuantum.FileEncryption known-answer vector v2.",
+      "notes": "4 bytes appended after the final frame. Decryption stops at the authenticated final frame. Format-v3 candidate."
+    },
+    {
+      "id": "lenient-multi-recipient-trailing",
+      "category": "lenient",
+      "expect": "accept",
+      "file": "lenient/multi-recipient-trailing.pqfe",
+      "sha256": "2e47c71eef62fbb8b59204ad46821b9cfb6c5d5de0e47a2c49a94a735d6fc84e",
+      "keySource": 4,
+      "plaintextUtf8": "PostQuantum.FileEncryption conformance: trailing block past the multi-recipient count.",
+      "privateKeyFile": "lenient/multi-recipient-trailing.key",
+      "notes": "A KeySource-4 body that declares 1 recipient but carries a second block past the count. The reader consumes exactly the declared count and ignores the rest. Format-v3 candidate."
+    }
+  ]
+}

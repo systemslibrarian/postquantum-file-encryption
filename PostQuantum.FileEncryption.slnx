@@ -8,6 +8,7 @@
     <Project Path="samples/PqfeHybridInterop/PqfeHybridInterop.csproj" />
     <Project Path="samples/quickstarts/Pqfe.QuickStart.Backup/Pqfe.QuickStart.Backup.csproj" />
     <Project Path="samples/quickstarts/Pqfe.QuickStart.WebUpload/Pqfe.QuickStart.WebUpload.csproj" />
+    <Project Path="samples/quickstarts/Pqfe.QuickStart.WebUpload.Keygen/Pqfe.QuickStart.WebUpload.Keygen.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/PostQuantum.FileEncryption.Analyzers/PostQuantum.FileEncryption.Analyzers.csproj" />
@@ -22,5 +23,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/PostQuantum.FileEncryption.Analyzers.Tests/PostQuantum.FileEncryption.Analyzers.Tests.csproj" />
     <Project Path="tests/PostQuantum.FileEncryption.Tests/PostQuantum.FileEncryption.Tests.csproj" />
+    <Project Path="tests/Pqfe.QuickStart.WebUpload.Tests/Pqfe.QuickStart.WebUpload.Tests.csproj" />
   </Folder>
 </Solution>

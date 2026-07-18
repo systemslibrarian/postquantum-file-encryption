@@ -19,3 +19,4 @@
 *.pqfe          binary
 *.pqkf          binary
 *.bin           binary
+*.key           binary

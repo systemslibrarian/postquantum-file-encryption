@@ -49,7 +49,7 @@ EventPipe, or OpenTelemetry) to pipe operation start/stop/fail, algorithm label,
 timing into your SIEM. Events carry **no** secrets. Failures are reported by exception-type name,
 not message, so they never leak why decryption failed.
 
-## Upgrade / rollback runbook (pre-1.0)
+## Upgrade / rollback runbook
 
 1. Pin the package version; review [CHANGELOG.md](../CHANGELOG.md) before upgrading.
 2. If a release bumps `FormatVersion`, follow the migration note (continue-to-read or rewrap).

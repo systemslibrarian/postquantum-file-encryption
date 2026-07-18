@@ -1,0 +1,29 @@
+name: Docs consistency
+
+# Continuously guards against the documentation drift the release-time check can only catch at
+# tag time: current-version markers that lag the shipped <Version>, and dead internal Markdown
+# links. See scripts/check-docs-consistency.sh for the exact rules. Runs on every push and PR;
+# it only greps text, so it needs no .NET SDK and finishes in seconds.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-consistency-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Version markers & internal links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Check documentation consistency
+        run: bash scripts/check-docs-consistency.sh
