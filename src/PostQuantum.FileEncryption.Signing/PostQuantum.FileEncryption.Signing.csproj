@@ -14,9 +14,9 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Signing</PackageId>
-    <Version>1.6.0</Version>
-    <FileVersion>1.6.0.0</FileVersion>
-    <InformationalVersion>1.6.0</InformationalVersion>
+    <Version>1.7.0</Version>
+    <FileVersion>1.7.0.0</FileVersion>
+    <InformationalVersion>1.7.0</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Signing</Title>
     <Description>Open-source (MIT) post-quantum hybrid detached signatures for PostQuantum.FileEncryption, for .NET 8 and .NET 10. Signs any file or stream — typically a .pqfe container — with Ed25519 + ML-DSA-65 (FIPS 204) together and writes a small detached .sig sidecar, so a signature stays unforgeable if either primitive is later broken. Verification is fail-closed: both signatures must verify or PqSignatureException is thrown, with no oracle distinguishing why. Constant-memory streaming via SHA-512 pre-hash handles files of any size. The sidecar format is versioned and publicly specified (docs/SIGNATURE-FORMAT.md). Fully managed via BouncyCastle (no platform ML-DSA dependency); runs anywhere .NET 8 or later does. Adds sender authenticity on top of the encryption packages: AES-GCM proves a container was not altered, a detached signature proves who produced it. Public API surface locked by Microsoft.CodeAnalysis.PublicApiAnalyzers; CycloneDX SBOM and SLSA-style build-provenance attestation on every release.</Description>

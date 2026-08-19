@@ -6,7 +6,7 @@ validation — the point of publishing it is that every claim below is checkable
 is named, and the list of what's *missing* is as load-bearing as the list of what's done.
 
 Status legend: ✅ done and verifiable · ⚠️ partial, with the limitation stated · ❌ not
-done. Last reviewed against: **`1.6.0`**.
+done. Last reviewed against: **`1.7.0`**.
 
 ## 1. Cryptographic design
 

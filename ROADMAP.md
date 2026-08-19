@@ -5,7 +5,7 @@ what is production-ready, what is deprecated, and what comes after `1.0`. See
 [KNOWN-GAPS.md](KNOWN-GAPS.md) for the full open-issues ledger and
 [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) for the hybrid design.
 
-## Now — `1.6.0`
+## Now — `1.7.0`
 
 The library ships as a **nine-package lockstep family** — the core, `Hybrid`, `Signing`, the
 `Aws` / `AzureKeyVault` / `Gcp` KMS adapters, `Extensions.DependencyInjection`, `Analyzers`,

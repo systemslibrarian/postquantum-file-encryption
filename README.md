@@ -27,7 +27,7 @@ careful, paranoid, fail-closed thing every time. And because the code, the forma
 specification, the test vectors, the threat model, and the gaps ledger are all public,
 you never have to take that on faith.
 
-> **Status: `1.6.0` — stable release.**
+> **Status: `1.7.0` — stable release.**
 > The symmetric, passphrase-based engine is production-ready and the `.pqfe` v2 container
 > format is **FROZEN for the `1.x` line**. The companion **`PostQuantum.FileEncryption.Hybrid`**
 > package provides production X25519 + ML-KEM-768 hybrid public-key encryption with
