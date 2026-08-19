@@ -42,7 +42,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Cloud.Kms.V1" Version="3.26.0" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.400" PrivateAssets="All" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1" PrivateAssets="All" />
     <ProjectReference Include="../PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
   </ItemGroup>
