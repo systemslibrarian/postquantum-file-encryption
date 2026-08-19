@@ -8,8 +8,12 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
-Developer-experience and documentation hardening. No change to the frozen `.pqfe` v2 / `PQKF`
-v1 / `.sig` v1 formats, and no change to the public API surface.
+## [1.7.0] - 2026-08-19
+
+Cross-implementation hybrid interop, a machine-readable conformance corpus, and developer-experience
+hardening. No change to the frozen `.pqfe` v2 / `PQKF` v1 / `.sig` v1 formats, and no change to the
+public API surface of any shipped package — every existing container, key file and signature reads
+and writes exactly as it did under `1.6.0`.
 
 ### Changed
 
@@ -57,6 +61,22 @@ v1 / `.sig` v1 formats, and no change to the public API surface.
   core package `<Version>`, or if any relative Markdown link points at a file that does not
   exist. This is the continuous counterpart to the release-time version check, closing the gap
   that let the docs drift between releases.
+
+### Dependencies
+
+- **Shipped-package dependency floors raised.** `BouncyCastle.Cryptography` 2.6.2 → 2.7.0
+  (`.Hybrid`), `AWSSDK.KeyManagementService` 4.0.12.9 → 4.0.100.8 (`.Aws`), `Google.Cloud.Kms.V1`
+  3.25.0 → 3.26.0 (`.Gcp`), and `Microsoft.Extensions.DependencyInjection.Abstractions`
+  10.0.9 → 10.0.11 (`.Extensions.DependencyInjection`). Every one stays inside its current major,
+  and each new version still carries `netstandard2.0` and `net8.0` assets, so the `net8.0;net10.0`
+  plus `netstandard2.0` target set is unchanged and no consumer is forced across a major boundary.
+  No security advisory applies to any of these — the BouncyCastle advisories are all bounded at
+  `< 2.3.1`, well below the version already shipped in `1.6.0`.
+- **Test and CI toolchain updated** — `Microsoft.NET.Test.Sdk` 18.9.0, `xunit.runner.visualstudio`
+  4.0.0, `CsCheck` 4.8.0, `Microsoft.Extensions.DependencyInjection` 10.0.11 (test host), plus
+  `actions/setup-dotnet` 6.0.0, `actions/checkout` 7.0.1, `ossf/scorecard-action` 2.4.4,
+  `github/codeql-action/upload-sarif` 4.37.6 and `actions/attest-build-provenance` 4.2.2. None of
+  these reach a published package.
 
 ## [1.6.0] - 2026-07-10
 
