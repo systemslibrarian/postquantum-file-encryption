@@ -8,7 +8,7 @@ Real-world encryption failures overwhelmingly come from *misuse*, not broken pri
 library's API is fail-closed by design; these rules extend that discipline to the calling code.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.6.0
+dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.7.0
 ```
 
 A development-only dependency: nothing is added to your runtime output or your users'
