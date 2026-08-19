@@ -10,7 +10,7 @@ targets). The content is pre-hashed with streaming SHA-512, so signing a 10 GB b
 constant memory.
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Signing --version 1.6.0
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.7.0
 ```
 
 ## Sign and verify a file
