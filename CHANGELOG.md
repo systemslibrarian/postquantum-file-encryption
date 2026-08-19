@@ -6,6 +6,58 @@ All notable changes to this project are documented here. The format is based on
 locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers` baselines and `<EnablePackageValidation>`,
 and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
+## [Unreleased]
+
+Developer-experience and documentation hardening. No change to the frozen `.pqfe` v2 / `PQKF`
+v1 / `.sig` v1 formats, and no change to the public API surface.
+
+### Changed
+
+- **The ASP.NET Core web-upload quickstart now keeps its advertised security boundary at
+  runtime, not just in prose.** It requires a recipient public key at startup and never
+  generates or stores a private key on the server; it streams each upload with `MultipartReader`
+  straight into the encryptor (so a large upload is never spooled to a temporary plaintext file
+  by buffered `IFormFile` handling); and it stages ciphertext to a `.partial` file, publishing
+  it atomically only when complete and deleting the staged file on every failure path. The
+  sample is now built with the misuse `Analyzers` referenced, holding it to the rules consumers
+  are told to adopt.
+- **Documentation reconciled to the shipped `1.6.0`.** `ROADMAP.md`, `docs/GOLD-STANDARD.md`,
+  `KNOWN-GAPS.md`, `docs/DEPLOYMENT.md`, and `docs/COMPARISON.md` no longer carry stale
+  pre-`1.0`/`1.2.0`/`1.5.0` version and status markers, and the roadmap now reflects the shipped
+  cloud-KMS trio and nine-package family.
+- **`docs/CONFORMANCE.md` reader obligations split** into strict reader requirements and a
+  documented *frozen v2 reference-reader compatibility profile*. The strict rules no longer
+  claim the reader rejects a nonzero reserved `Flags` byte (the frozen v2 reader deliberately
+  accepts it, as a format-v3 candidate in `KNOWN-GAPS.md`), and the all-or-nothing wording now
+  distinguishes the atomic file APIs from stream APIs. No reader behavior changed.
+
+### Added
+
+- **`Pqfe.QuickStart.WebUpload.Keygen`** — a small offline tool that generates a hybrid
+  recipient key pair on a trusted machine, writing the public key and a passphrase-encrypted
+  `PQKF` private key, so the web sample's identity is provisioned off-server.
+- **`Pqfe.QuickStart.WebUpload.Tests`** — an integration test that uploads a payload above the
+  form-buffer threshold and proves the stored bytes are a real `.pqfe` container only the
+  private key opens, that a stranger key fails closed, and that a file-less request is rejected
+  with nothing written.
+- **A machine-readable conformance-vector corpus** at `test-vectors/manifest.json`, pinning
+  every vector by SHA-256 with the outcome a conforming reader must produce. Alongside the
+  existing positive KATs it commits ~11 **negative** vectors (deterministic mutations of Vector
+  1: bad magic/version, unknown AEAD/key-source, out-of-range chunk size and PBKDF2 iterations,
+  header/ciphertext tamper, tag/prefix truncation, wrong passphrase) and four **lenient**
+  vectors that pin the frozen v2 reader corners from CONFORMANCE.md §2.2 (nonzero reserved
+  `Flags`, trailing `KeyParams` bytes, trailing bytes after the final frame, and a block past a
+  multi-recipient count). Both implementations run the identical corpus — .NET
+  `ConformanceManifestTests` and the Rust core's `tests/conformance.rs` — so an outside
+  implementer can prove conformance against the same artifacts. No format change; the frozen
+  positive vectors are byte-identical.
+- **Continuous documentation-consistency guard** (`scripts/check-docs-consistency.sh`, run by
+  the `docs-consistency` workflow on every push and PR): fails if a current-version marker
+  (README **Status:**, the ROADMAP "Now" heading, any "Last reviewed against" line) lags the
+  core package `<Version>`, or if any relative Markdown link points at a file that does not
+  exist. This is the continuous counterpart to the release-time version check, closing the gap
+  that let the docs drift between releases.
+
 ## [1.6.0] - 2026-07-10
 
 The cloud-provider, security-hardening, and developer-experience release. A Google Cloud KMS
@@ -766,6 +818,7 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.6.0...HEAD
 [1.6.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...v1.4.1

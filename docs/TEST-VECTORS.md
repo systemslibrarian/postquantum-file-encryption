@@ -226,15 +226,31 @@ dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~Cr
 cd samples/pqfe-wasm && cargo test
 ```
 
-## Negative vectors
+## Negative vectors and the frozen leniencies — the committed corpus
 
-Implementations must also **reject** corrupted input. Both suites confirm that each vector
-fails closed (a `PqDecryptionException` / `PqError::Decryption`) when:
+Implementations must also **reject** corrupted input, and must **accept** exactly the inputs the
+frozen v2 reader accepts — including its documented leniencies. Both are pinned as a committed,
+machine-readable corpus at [`test-vectors/`](../test-vectors/), indexed by
+[`test-vectors/manifest.json`](../test-vectors/manifest.json) and run in both implementations by
+the .NET `ConformanceManifestTests` and the Rust core's `tests/conformance.rs`.
 
-- the passphrase is wrong,
-- any byte of the header, ciphertext, or tag is flipped,
-- the container is truncated (any proper prefix), or
-- the input is not a container at all (rejected as a format error).
+Each manifest entry declares the outcome a conforming reader must produce:
+
+- **`reject-format`** — a structural error (`PqFormatException` / `PqError::Format`): bad magic,
+  unsupported version, unknown AEAD or key source, out-of-range chunk size, or an out-of-range
+  PBKDF2 iteration count (range-checked before any KDF work).
+- **`reject-decryption`** — an authentication failure (`PqDecryptionException` /
+  `PqError::Decryption`): a wrong passphrase, any flipped header/ciphertext/tag byte, or a
+  truncation (dropped tag or any proper prefix). The error type stays consistent across these so
+  the reader is not an oracle.
+- **`accept`** — the positive vectors above, plus the **lenient** vectors that pin the frozen v2
+  reader corners from [CONFORMANCE.md](CONFORMANCE.md) §2.2: a nonzero reserved `Flags` byte,
+  trailing bytes in passphrase `KeyParams`, trailing bytes after the final frame, and a block
+  past a multi-recipient count. A `1.x` reader must accept these; they are format-v3 candidates.
+
+The negatives are deterministic single mutations of Vector 1, so any implementer can reproduce
+and inspect them. Regenerate the corpus only as part of a deliberate major-version format
+revision (`PQFE_REGEN_VECTORS=1`), never to make a failing test pass.
 
 ---
 

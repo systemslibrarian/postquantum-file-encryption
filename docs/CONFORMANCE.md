@@ -49,22 +49,41 @@ A writer MAY:
 
 ## 2. Consumer obligations (reader)
 
+Reader conformance has two layers. Section **2.1** is the set of security-critical checks
+every conforming reader **MUST** perform — the ideal, strict reader. Section **2.2** is the
+**frozen v2 reference-reader compatibility profile**: a handful of places where the reference
+.NET and Rust readers are deliberately *lenient*, documented so that a strict implementation
+knows exactly where it may differ without breaking byte-compatibility. These leniencies are
+frozen for the `1.x` line; a `2.0` reader profile may tighten them (see
+[KNOWN-GAPS.md](../KNOWN-GAPS.md) format-v3 candidates), but a `1.x`-conformant reader **MUST
+NOT** reject a file *solely* because the reference reader accepts it — doing so desyncs the
+implementations.
+
+### 2.1 Strict reader requirements (MUST)
+
 A conforming reader:
 
 1. Rejects any input whose first four bytes are not `PQFE` with a format error.
 2. Rejects any input with `FormatVersion != 2`.
-3. Rejects any `AeadId`, `KeySource`, or `Flags` value not defined in this spec at the time
-   of the read.
+3. Rejects any `AeadId` or `KeySource` value not defined in this spec at the time of the read.
 4. Rejects `ChunkSize` outside `[1024, 16 * 1024 * 1024]` bytes.
 5. Range-checks every cost parameter read from `KeyParams` (PBKDF2 iteration count, Argon2id
    memory/iterations/parallelism) against the published bounds and rejects out-of-range
    values **before** doing any KDF work. This prevents a hostile header from forcing
    unbounded memory or CPU.
 6. Reconstructs each per-frame nonce as `NoncePrefix || BE_UInt64(i)` and verifies each
-   frame's authentication tag. **A single failed tag MUST abort the operation**; partial
-   plaintext MUST NOT be returned. (For stream APIs that have already emitted earlier
-   authentic frames, the final-frame check still MUST fail closed; see
-   [KNOWN-GAPS.md](../KNOWN-GAPS.md).)
+   frame's authentication tag. **A single failed tag MUST abort the operation**, and the
+   operation as a whole MUST fail closed — no plaintext recovered from a container that fails
+   authentication anywhere may be presented as a successful decryption.
+   - The **all-or-nothing (file / in-memory / atomic) APIs** guarantee that *no* plaintext is
+     published on any failure: the reference implementation stages output and only publishes
+     after the final frame authenticates.
+   - **Stream APIs** authenticate each chunk *before* emitting it, but a stream that has
+     already been written cannot be un-written; if truncation is only discovered at the
+     missing final frame, earlier — authentic — chunks may already have reached the sink. Such
+     a reader still MUST fail the operation closed and MUST NOT emit any *unauthenticated*
+     byte. Callers needing strict atomicity over a stream must buffer. See
+     [KNOWN-GAPS.md](../KNOWN-GAPS.md).
 7. Detects truncation: a container that ends without a final-marked frame MUST be rejected
    as a decryption error, not a format error. (The error type SHOULD be consistent across
    wrong-key / tampered / truncated outcomes, so the library does not become a decryption
@@ -78,6 +97,29 @@ A reader MAY:
 - Refuse `FormatVersion = 1` containers. The reference implementation has done so since
   `0.2.0`.
 
+### 2.2 Frozen v2 reference-reader compatibility profile
+
+The reference readers tolerate the following. Each is harmless under v2 because the **entire
+header is bound as per-frame AAD**, so none of these bytes can be *modified* after encryption
+without breaking authentication — but each means a *non-conforming writer's* container can
+still decrypt. They are frozen for `1.x`; tightening any would change what working files are
+accepted (and desync the Rust/WASM reader), so all are recorded as **format-v3 candidates** in
+[KNOWN-GAPS.md](../KNOWN-GAPS.md), not `1.x` fixes.
+
+1. **Reserved `Flags` byte.** Offset 7 is specified "must be 0", but the reference reader does
+   **not** reject a nonzero value. It is bound into the AAD, so it cannot be altered after
+   encryption. A strict reader MAY reject nonzero `Flags`; a `1.x`-conformant reader MUST NOT
+   reject a container solely for this reason.
+2. **Trailing bytes after the final frame.** Decryption stops at the authenticated final frame
+   (`FILE-FORMAT.md`, rule 5); bytes appended past it are ignored, not rejected. Everything
+   *inside* the envelope remains fully authenticated.
+3. **Trailing bytes inside passphrase `KeyParams`.** The passphrase (`KeySource = 1`) KeyParams
+   parser tolerates extra trailing bytes, where the inline recipient parser (`KeySource = 2`)
+   and the single-recipient hybrid block (`KeySource = 3`) enforce exact length.
+4. **Trailing content in the multi-recipient body.** The `KeySource = 4` parser consumes
+   exactly its declared recipient-block count and does not verify the body ends there, so extra
+   blocks or trailing bytes past the count are ignored.
+
 ---
 
 ## 3. Test-vector checklist
@@ -88,6 +130,13 @@ reference implementations are cross-checked: the .NET test suite includes
 `CrossImplementationTests.cs` which decrypts a Rust-produced container, and the Rust suite
 decrypts the .NET-produced known-answer vectors. Adding a third implementation requires
 running both directions.
+
+The positive, negative, and lenient cases are also committed as a **machine-readable corpus** at
+[`test-vectors/manifest.json`](../test-vectors/manifest.json): every vector with its SHA-256 and
+the required outcome (`accept` / `reject-format` / `reject-decryption`), including one `accept`
+vector for each frozen leniency in §2.2 above. The reference implementations run it as
+`ConformanceManifestTests` (.NET) and `tests/conformance.rs` (Rust); a new implementation proves
+conformance by producing the same outcome for every entry.
 
 Coverage table:
 
