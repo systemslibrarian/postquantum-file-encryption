@@ -20,7 +20,7 @@ getrandom = { version = "0.2", features = ["js"] }
 # .NET Hybrid package. Same digest-0.11 RustCrypto generation as sha2/pbkdf2 above.
 ml-kem = "0.2"
 hkdf = "0.13"
-x25519-dalek = { version = "2", features = ["static_secrets"] }
+x25519-dalek = { version = "3", features = ["static_secrets"] }
 rand_core = "0.6"
 
 [dev-dependencies]
