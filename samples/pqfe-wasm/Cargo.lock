@@ -446,7 +446,7 @@ dependencies = [
  "hkdf",
  "ml-kem",
  "pbkdf2",
- "rand_core 0.6.4",
+ "rand_core 0.10.1",
  "sha2",
  "wasm-bindgen",
  "x25519-dalek",
