@@ -5,12 +5,15 @@ what is production-ready, what is deprecated, and what comes after `1.0`. See
 [KNOWN-GAPS.md](KNOWN-GAPS.md) for the full open-issues ledger and
 [docs/ROADMAP-v3.md](docs/ROADMAP-v3.md) for the hybrid design.
 
-## Now — `1.0.1`
+## Now — `1.6.0`
 
-The library is at its first stable release. The `.pqfe` v2 container format is FROZEN for
-the entire `1.x` line, the public API surface is locked, and the supply-chain assurances
-below are continuous. Every release from `1.0.0` forward is governed by the [versioning
-policy](docs/VERSIONING.md) (SemVer with package validation against the previous release).
+The library ships as a **nine-package lockstep family** — the core, `Hybrid`, `Signing`, the
+`Aws` / `AzureKeyVault` / `Gcp` KMS adapters, `Extensions.DependencyInjection`, `Analyzers`,
+and the `pqfe` CLI tool — all released together at the same version. The `.pqfe` v2 container
+format is FROZEN for the entire `1.x` line, the public API surface is locked, and the
+supply-chain assurances below are continuous. Every release from `1.0.0` forward is governed
+by the [versioning policy](docs/VERSIONING.md) (SemVer with package validation against the
+previous release).
 
 **Production-ready and the recommended path:**
 
@@ -72,15 +75,28 @@ policy](docs/VERSIONING.md) (SemVer with package validation against the previous
   the workflow and the recipe documented in
   [docs/REPRODUCIBLE-BUILDS.md](docs/REPRODUCIBLE-BUILDS.md).
 
-## After `1.0` — `1.x` minor work
+## `1.x` minor work
 
-Format-compatible additions that fit inside frozen `.pqfe` v2:
+Format-compatible additions that fit inside frozen `.pqfe` v2.
 
-- **Cloud KMS provider packages** — AWS KMS, Azure Key Vault, HashiCorp Vault, and a
-  PKCS#11/HSM adapter, each as its own NuGet package implementing the existing
-  `IContentKeyProvider` interface. The core stays dependency-light.
-- **Rewrap / rotation tooling** for envelope-encrypted containers — re-wrap the content key
-  to a new KEK or to a new set of recipients without re-encrypting the data plane.
+**Shipped since `1.0`:**
+
+- **Cloud KMS provider packages** — `Aws` (AWS KMS), `AzureKeyVault`, and `Gcp` (Cloud KMS),
+  each as its own NuGet package implementing the existing `IContentKeyProvider` interface.
+  The core stays dependency-light.
+- **Hybrid recipient encryption and detached hybrid signatures** as the `Hybrid` and
+  `Signing` packages, the encrypted `PQKF` key-file format, misuse `Analyzers`, and the
+  `pqfe` CLI tool.
+
+**Still open (format-compatible, `1.x`-eligible):**
+
+- **HashiCorp Vault Transit and a PKCS#11/HSM adapter** as further `IContentKeyProvider`
+  sibling packages, once the provider contract-test kit is stable.
+- **Rotation / transcode tooling** for envelope-encrypted containers — because the serialized
+  header is AAD for every content frame, safe provider migration in v2 is a *streaming
+  transcode* (fresh CEK and nonces, whole file rewritten), not a header-only rewrap. True
+  header-only rewrap needs a future format that separates a mutable wrap area from the stable
+  data-plane commitment, so it is a `2.0` item.
 - **Removal of the inline ML-KEM-only recipient mode** in a future major release
   (`2.0`). Until then it continues to honour the existing fail-closed contract; new code
   must use `PostQuantum.FileEncryption.Hybrid`.

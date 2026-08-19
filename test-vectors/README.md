@@ -15,6 +15,28 @@ entire `1.x` line: these files must never change, and a CI test
 | `keyfile.pqkf` | 5 | `PQKF` v1 encrypted key file framing |
 | `hybrid-recipient.pqfe` | 6 | X25519 + ML-KEM-768 hybrid wrap block and combiner |
 
+## The machine-readable manifest and the full conformance corpus
+
+[`manifest.json`](manifest.json) is the machine-readable index for the whole corpus — every
+vector with its SHA-256, the outcome a conforming reader must produce (`accept`,
+`reject-format`, or `reject-decryption`), and, for accepts, the passphrase and expected
+plaintext. Alongside the positive vectors above it pins:
+
+- **`negative/`** — malformed containers a conforming reader must **reject**, each a
+  single deterministic mutation of `passphrase-pbkdf2.pqfe`: bad magic, bad version, unknown
+  AEAD/key-source, out-of-range chunk size and PBKDF2 iterations, header/ciphertext tamper, and
+  tag/prefix truncation (plus a wrong-passphrase case that needs no new file).
+- **`lenient/`** — well-formed containers that exercise the **frozen v2 reader leniencies**
+  documented in [docs/CONFORMANCE.md](../docs/CONFORMANCE.md) §2.2 (a nonzero reserved `Flags`
+  byte, trailing bytes in passphrase `KeyParams`, trailing bytes after the final frame, and a
+  block past a multi-recipient count). A conforming `1.x` reader must **accept** these; they are
+  format-v3 candidates that a future strict profile may tighten.
+
+Both implementations run the identical corpus: the .NET `ConformanceManifestTests` and the Rust
+core's `tests/conformance.rs`. To regenerate the corpus after a *deliberate* format revision,
+run the generator with `PQFE_REGEN_VECTORS=1` (see `tests/.../ConformanceVectors.cs`) — never to
+make a failing test pass.
+
 ## Verify in 30 seconds
 
 The three passphrase vectors open with the `pqfe` CLI and the **published** passphrases —
