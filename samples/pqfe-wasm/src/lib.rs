@@ -461,22 +461,32 @@ fn decrypt_frames(data: &[u8], header: &Header, cek: &[u8; KEY_LEN]) -> Result<V
 // and FILE-FORMAT.md prescribe.
 
 use hkdf::Hkdf;
+use ml_kem::array::Array;
 use ml_kem::kem::{Decapsulate, Encapsulate};
-use ml_kem::{Ciphertext, EncodedSizeUser, KemCore, MlKem768};
+use ml_kem::ml_kem_768::{
+    Ciphertext as MlKem768Ct, DecapsulationKey as MlKem768Dk, EncapsulationKey as MlKem768Ek,
+};
+use ml_kem::{ExpandedKeyEncoding, Kem, Key as MlKemKey, KeyExport, MlKem768, TryKeyInit};
 
 /// ML-KEM-768 decapsulation: `ss_pq = Decapsulate(dk, ct)`. Deterministic per FIPS 203, so this
 /// yields the exact 32-byte shared secret the .NET (BouncyCastle) encryptor derived.
 fn mlkem_decapsulate(dk_bytes: &[u8], ct_bytes: &[u8]) -> Result<[u8; 32], PqError> {
-    type Dk = <MlKem768 as KemCore>::DecapsulationKey;
-    let encoded = ml_kem::Encoded::<Dk>::try_from(dk_bytes)
-        .map_err(|_| PqError::Format("ML-KEM decapsulation key has the wrong length"))?;
-    let dk = Dk::from_bytes(&encoded);
-    let ct = Ciphertext::<MlKem768>::try_from(ct_bytes)
+    // ml-kem 0.3's `as_bytes`/`KeySize` is the 64-byte *seed*; the wire format here carries the
+    // 2400-byte *expanded* key that BouncyCastle produces, so the expanded encoding is required.
+    let encoded: &Array<u8, <MlKem768Dk as ExpandedKeyEncoding>::EncodedSize> =
+        dk_bytes
+            .try_into()
+            .map_err(|_| PqError::Format("ML-KEM decapsulation key has the wrong length"))?;
+    let dk = MlKem768Dk::from_expanded_bytes(encoded)
+        .map_err(|_| PqError::Format("ML-KEM decapsulation key is invalid"))?;
+    let ct = MlKem768Ct::try_from(ct_bytes)
         .map_err(|_| PqError::Format("ML-KEM ciphertext has the wrong length"))?;
     // FIPS 203 decapsulation never fails (implicit rejection yields a pseudorandom secret); a
     // ciphertext meant for another key simply produces a different secret, so the wrap tag below
     // mismatches. There is no error oracle here.
-    let ss = dk.decapsulate(&ct).map_err(|_| PqError::Decryption)?;
+    // ml-kem 0.3's Decapsulate is infallible — FIPS 203 implicit rejection yields a pseudorandom
+    // secret rather than an error, so a ciphertext for another key just fails the wrap tag below.
+    let ss = dk.decapsulate(&ct);
     let mut out = [0u8; 32];
     out.copy_from_slice(&ss);
     Ok(out)
@@ -639,36 +649,39 @@ pub fn decrypt_bytes_hybrid(data: &[u8], private_key: &[u8]) -> Result<Vec<u8>, 
 /// `fill_bytes` panics rather than returning a broken key — the same posture as `random_bytes`.
 struct GetrandomRng;
 
-impl rand_core::RngCore for GetrandomRng {
-    fn next_u32(&mut self) -> u32 {
+// rand_core 0.10 restructured its traits: `TryRng` is the base, and `Rng`/`CryptoRng` are
+// blanket-implemented for any `TryRng`/`TryCryptoRng` whose Error is `Infallible`. `RngCore` is
+// now a deprecated stub. Implementing the fallible pair therefore yields the infallible ones,
+// and `rand_core::Error` no longer exists.
+impl rand_core::TryRng for GetrandomRng {
+    type Error = core::convert::Infallible;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
         let mut b = [0u8; 4];
-        self.fill_bytes(&mut b);
-        u32::from_le_bytes(b)
+        random_bytes(&mut b);
+        Ok(u32::from_le_bytes(b))
     }
-    fn next_u64(&mut self) -> u64 {
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
         let mut b = [0u8; 8];
-        self.fill_bytes(&mut b);
-        u64::from_le_bytes(b)
+        random_bytes(&mut b);
+        Ok(u64::from_le_bytes(b))
     }
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        random_bytes(dest);
-    }
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        random_bytes(dest);
+    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+        random_bytes(dst);
         Ok(())
     }
 }
-impl rand_core::CryptoRng for GetrandomRng {}
+impl rand_core::TryCryptoRng for GetrandomRng {}
 
 /// ML-KEM-768 encapsulation against a recipient encapsulation key: returns `(ct, ss_pq)`.
 fn mlkem_encapsulate(ek_bytes: &[u8]) -> Result<(Vec<u8>, [u8; 32]), PqError> {
-    type Ek = <MlKem768 as KemCore>::EncapsulationKey;
-    let encoded = ml_kem::Encoded::<Ek>::try_from(ek_bytes)
+    let key: &MlKemKey<MlKem768Ek> = ek_bytes
+        .try_into()
         .map_err(|_| PqError::Format("recipient ML-KEM encapsulation key has the wrong length"))?;
-    let ek = Ek::from_bytes(&encoded);
-    let (ct, ss) = ek
-        .encapsulate(&mut GetrandomRng)
+    let ek = MlKem768Ek::new(key)
         .map_err(|_| PqError::Format("recipient ML-KEM encapsulation key is invalid"))?;
+    // ml-kem 0.3's encapsulate_with_rng is infallible; key validity is checked at construction.
+    let (ct, ss) = ek.encapsulate_with_rng(&mut GetrandomRng);
     let mut ss_pq = [0u8; 32];
     ss_pq.copy_from_slice(&ss);
     Ok((ct[..].to_vec(), ss_pq))
@@ -782,7 +795,7 @@ fn encrypt_hybrid_inner(data: &[u8], recipients: &[&[u8]]) -> Result<Vec<u8>, Pq
 pub fn generate_hybrid_keypair() -> (Vec<u8>, Vec<u8>) {
     use x25519_dalek::{PublicKey, StaticSecret};
 
-    let (dk, ek) = MlKem768::generate(&mut GetrandomRng);
+    let (dk, ek) = MlKem768::generate_keypair_from_rng(&mut GetrandomRng);
     let mut x25519_sk = [0u8; 32];
     random_bytes(&mut x25519_sk);
     let secret = StaticSecret::from(x25519_sk);
@@ -790,11 +803,12 @@ pub fn generate_hybrid_keypair() -> (Vec<u8>, Vec<u8>) {
 
     let mut public_key = Vec::with_capacity(HYBRID_PUBLIC_KEY_LEN);
     public_key.extend_from_slice(public.as_bytes());
-    public_key.extend_from_slice(&ek.as_bytes());
+    public_key.extend_from_slice(&ek.to_bytes());
 
     let mut private_key = Vec::with_capacity(HYBRID_PRIVATE_KEY_LEN);
     private_key.extend_from_slice(&secret.to_bytes());
-    private_key.extend_from_slice(&dk.as_bytes());
+    // expanded (2400-byte) encoding, not the 64-byte seed — see mlkem_decapsulate
+    private_key.extend_from_slice(&dk.to_expanded_bytes());
 
     debug_assert_eq!(public_key.len(), HYBRID_PUBLIC_KEY_LEN);
     debug_assert_eq!(private_key.len(), HYBRID_PRIVATE_KEY_LEN);
