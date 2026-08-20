@@ -23,9 +23,9 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>pqfe</ToolCommandName>
     <PackageId>PostQuantum.FileEncryption.Tool</PackageId>
-    <Version>1.7.0</Version>
-    <FileVersion>1.7.0.0</FileVersion>
-    <InformationalVersion>1.7.0</InformationalVersion>
+    <Version>1.7.1</Version>
+    <FileVersion>1.7.1.0</FileVersion>
+    <InformationalVersion>1.7.1</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>pqfe — PostQuantum.FileEncryption CLI</Title>
     <Description>Command-line file encryption and signing built on PostQuantum.FileEncryption: `pqfe encrypt` / `pqfe decrypt` for the FROZEN .pqfe v2 container format, plus `pqfe keygen` / `pqfe sign` / `pqfe verify` for detached Ed25519 + ML-DSA-65 hybrid signatures (.sig sidecars). Authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id passphrase derivation, atomic output files, fail-closed decryption and verification (wrong passphrase, tampered ciphertext, and bad signatures are indistinguishable within their class), and sysexits.h exit codes for scripting. Passphrases come from a no-echo prompt or an environment variable for CI use. Install: dotnet tool install -g PostQuantum.FileEncryption.Tool. Requires the .NET 10 runtime or later.</Description>

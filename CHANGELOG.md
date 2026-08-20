@@ -8,6 +8,25 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-08-20
+
+Patch: WASM sample crate upgrades. No format change, no public API change, and no change to any
+shipped .NET package; a drop-in over 1.7.0.
+
+### Changed
+
+- **`samples/pqfe-wasm` migrated to `aes-gcm` 0.11, `ml-kem` 0.3 and `rand_core` 0.10.** These
+  could not move independently: ml-kem 0.2 pins rand_core 0.6 while ml-kem 0.3 requires rand_core
+  0.10. rand_core 0.10 also restructured its traits — `RngCore` is now a deprecated stub and
+  `Rng`/`CryptoRng` are blanket-implemented over `TryRng`/`TryCryptoRng`.
+
+  The interop-critical detail: in ml-kem 0.3 `DecapsulationKey::KeySize` is `U64`, so `as_bytes()`
+  returns the 64-byte **seed** where 0.2 returned the 2400-byte **expanded** key. The wire format
+  here is `HYBRID_PRIVATE_KEY_LEN = 2432 = 32 + 2400`, matching BouncyCastle on the .NET side, so
+  the expanded encoding is now used explicitly via `to_expanded_bytes`/`from_expanded_bytes`.
+  Verified with a debug-profile test run, since the length assertions are `debug_assert_eq!` and
+  compiled out in release.
+
 ## [1.7.0] - 2026-08-19
 
 Cross-implementation hybrid interop, a machine-readable conformance corpus, and developer-experience
