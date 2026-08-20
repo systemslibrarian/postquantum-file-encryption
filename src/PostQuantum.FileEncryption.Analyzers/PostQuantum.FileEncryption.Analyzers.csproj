@@ -18,9 +18,9 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>PostQuantum.FileEncryption.Analyzers</PackageId>
-    <Version>1.7.0</Version>
-    <FileVersion>1.7.0.0</FileVersion>
-    <InformationalVersion>1.7.0</InformationalVersion>
+    <Version>1.7.1</Version>
+    <FileVersion>1.7.1.0</FileVersion>
+    <InformationalVersion>1.7.1</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>PostQuantum.FileEncryption.Analyzers</Title>
     <Description>Roslyn analyzers that catch dangerous misuse of the PostQuantum.FileEncryption family at compile time, before it ships: hard-coded passphrases (PQFE101), raw private-key bytes written to disk instead of a passphrase-protected key file (PQFE102), discarded encrypt/decrypt/sign/verify tasks whose authentication never completes or fails unobserved (PQFE103), and silently swallowed fail-closed exceptions (PQFE104). Real-world encryption failures come from misuse, not broken primitives — these rules put the library's fail-closed discipline into the IDE. Development-only dependency; adds nothing to your runtime output.</Description>

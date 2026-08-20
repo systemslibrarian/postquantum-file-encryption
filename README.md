@@ -116,13 +116,13 @@ minute:
 
 ```bash
 # Core (passphrase + envelope-key engine)
-dotnet add package PostQuantum.FileEncryption --version 1.7.0
+dotnet add package PostQuantum.FileEncryption --version 1.7.1
 
 # Add this only if you need public-key (recipient) encryption
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.7.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.7.1
 
 # Optional: detached Ed25519 + ML-DSA-65 signatures (sender authenticity)
-dotnet add package PostQuantum.FileEncryption.Signing --version 1.7.0
+dotnet add package PostQuantum.FileEncryption.Signing --version 1.7.1
 
 # Optional: cloud envelope-key providers (the master key stays in your KMS/HSM)
 dotnet add package PostQuantum.FileEncryption.Aws            # AWS KMS
@@ -131,11 +131,11 @@ dotnet add package PostQuantum.FileEncryption.Gcp            # Google Cloud KMS
 
 # Optional: Microsoft.Extensions.DependencyInjection integration
 # (AddPqFileEncryption() / AddPqHybridFileEncryption())
-dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.7.0
+dotnet add package PostQuantum.FileEncryption.Extensions.DependencyInjection --version 1.7.1
 
 # Recommended: compile-time misuse checks (hard-coded passphrases, raw keys on disk,
 # discarded tasks, swallowed fail-closed exceptions). Development-only dependency.
-dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.7.0
+dotnet add package PostQuantum.FileEncryption.Analyzers --version 1.7.1
 ```
 
 Targets **.NET 8 and .NET 10** (`net8.0`; `net10.0`), with an identical public API on
@@ -572,7 +572,7 @@ Be clear-eyed about what *post-quantum* means here today:
   [docs/CRYPTO-AGILITY.md](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/CRYPTO-AGILITY.md).
 
 ```bash
-dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.7.0
+dotnet add package PostQuantum.FileEncryption.Hybrid --version 1.7.1
 ```
 
 ```csharp
