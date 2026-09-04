@@ -31,6 +31,17 @@ public sealed class PqSigner
         ArgumentException.ThrowIfNullOrEmpty(inputPath);
         ArgumentException.ThrowIfNullOrEmpty(signaturePath);
         ArgumentNullException.ThrowIfNull(privateKey);
+        // A detached-signature writer has no meaningful in-place mode: the same path for input
+        // and signature would atomically replace the signed file with its own signature —
+        // silent data loss producing a signature that can never verify. Refuse up front.
+        // (Best-effort: case-insensitive on the OSes whose default filesystems are.)
+        StringComparison pathComparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        if (string.Equals(Path.GetFullPath(inputPath), Path.GetFullPath(signaturePath), pathComparison))
+        {
+            throw new ArgumentException("The signature path must differ from the input path.", nameof(signaturePath));
+        }
 
         byte[] signature;
         await using (var input = FileIo.OpenRead(inputPath))

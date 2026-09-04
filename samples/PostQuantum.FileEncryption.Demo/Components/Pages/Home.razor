@@ -142,7 +142,10 @@
         {
             using var input = await ReadFileAsync(_decryptFile);
             using var output = new MemoryStream();
-            await new PqFileDecryptor().DecryptAsync(input, output, _decryptPassphrase, progress, ct);
+            // Untrusted limits: uploads are anonymous, and a hostile ~200-byte header could
+            // otherwise legally demand 2 GiB of Argon2id memory per request (ANTI-PATTERNS.md).
+            await new PqFileDecryptor(PqDecryptionLimits.Untrusted)
+                .DecryptAsync(input, output, _decryptPassphrase, progress, ct);
             string outName = SuggestDecryptedName(_decryptFile.Name);
             await DownloadAsync(outName, output.ToArray());
             return $"Decrypted {_decryptFile.Name} → {outName}.";

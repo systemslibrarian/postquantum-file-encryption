@@ -131,7 +131,7 @@ while IFS= read -r mdfile; do
       echo "::error file=$mdfile,line=$lineno::dead internal link '$target' (no file at '$dir/$path')" >&2
       mark_fail
     fi
-  done < <(perl -ne 'while (/\]\(([^)]+)\)/g) { print "$.:$1\n" }' "$mdfile" 2>/dev/null || true)
+  done < <(perl -ne 'while (/\]\(\s*<?([^)\s>]+)>?(?:\s[^)]*)?\)/g) { my $t = $1; $t =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge; print "$.:$t\n" }' "$mdfile" 2>/dev/null || true)
 done < <(git ls-files '*.md')
 
 # ------------------------------------------------------------------ verdict

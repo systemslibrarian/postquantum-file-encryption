@@ -121,6 +121,17 @@ internal static class KeyEstablishment
                     throw new PqFormatException(
                         $"Container demands Argon2id parallelism {parallelism}, above this decryptor's configured limit of {limits.MaxArgon2Parallelism} (see PqDecryptionLimits).");
                 }
+                if (passphrase.IsEmpty)
+                {
+                    // Konscious rejects an empty password with a raw ArgumentException. The
+                    // byte-passphrase overloads deliberately accept empty input for legacy
+                    // containers (see PqContainer.EncryptPassphraseAsync), and an empty
+                    // passphrase against a PBKDF2 header runs the KDF and fails with the
+                    // uniform PqDecryptionException — so this path must fail the same way,
+                    // not with a third-party exception steered by an unauthenticated header byte.
+                    throw new PqDecryptionException(
+                        "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
+                }
                 return await DeriveArgon2idAsync(passphrase, salt, (int)memoryKiB, (int)iterations, parallelism).ConfigureAwait(false);
             }
             default:
@@ -287,8 +298,9 @@ internal static class KeyEstablishment
             // PqRecipientPrivateKey.Import validates only the length, so a corrupt or bit-rotted
             // stored key fails FIPS 203 decode here; mirror the encrypt side and keep it inside
             // the library's exception contract instead of leaking a platform exception.
+            _ = ex; // key-dependent failure: no inner exception may distinguish the stage
             throw new PqDecryptionException(
-                "Decryption failed: the recipient key is wrong, or the container has been altered.", ex);
+                "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
         }
 
         using MLKem _decapsulationKey = decapsulationKey;
@@ -303,10 +315,11 @@ internal static class KeyEstablishment
                 gcm.Decrypt(wrapNonce, wrappedKey, wrapTag, contentKey, WrapAad);
                 return contentKey;
             }
-            catch (AuthenticationTagMismatchException ex)
+            catch (AuthenticationTagMismatchException)
             {
+                // Same generic literal as the engine: no stage-distinguishing message or inner.
                 throw new PqDecryptionException(
-                    "Decryption failed: the recipient key is wrong, or the container has been altered.", ex);
+                    "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
             }
             finally
             {

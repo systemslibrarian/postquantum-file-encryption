@@ -147,6 +147,30 @@ public sealed class HybridTests
     }
 
     [Fact]
+    public async Task Key_unwrap_and_body_authentication_failures_are_indistinguishable()
+    {
+        // The cross-STAGE oracle: an attacker submitting a crafted container to a service
+        // must not learn whether the service's key could unwrap the content key. A wrong key
+        // (unwrap-stage failure) and a tampered body (post-unwrap authentication failure)
+        // must yield one message and one exception shape — no distinguishing InnerException.
+        using var alice = PqHybridKeyPair.Generate();
+        using var mallory = PqHybridKeyPair.Generate();
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesAsync(RandomBytes(2000), alice.PublicKey);
+
+        byte[] tamperedBody = (byte[])container.Clone();
+        tamperedBody[^1] ^= 0x01; // a final-tag byte: unwrap succeeds, chunk authentication fails
+
+        var wrongKey = await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(container, mallory.PrivateKey));
+        var bodyTamper = await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(tamperedBody, alice.PrivateKey));
+
+        Assert.Equal(wrongKey.Message, bodyTamper.Message);
+        Assert.Null(wrongKey.InnerException);
+        Assert.Null(bodyTamper.InnerException);
+    }
+
+    [Fact]
     public async Task Every_header_bit_flip_fails_closed_with_a_typed_exception()
     {
         // One flipped bit at every byte position across the fixed header and the whole

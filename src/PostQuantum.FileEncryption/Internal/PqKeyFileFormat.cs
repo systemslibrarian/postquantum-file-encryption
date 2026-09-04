@@ -121,7 +121,7 @@ internal static class PqKeyFileFormat
                         input.Length, progress: null, CancellationToken.None)
                     .GetAwaiter().GetResult();
             }
-            catch (NotSupportedException)
+            catch (NotSupportedException ex) when (ex is not PlatformNotSupportedException)
             {
                 // The fixed-capacity stream refused a write past 1 + expectedKeyLength + 1:
                 // the (authenticated) plaintext is larger than any key of the expected type,

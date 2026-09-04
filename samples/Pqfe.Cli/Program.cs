@@ -50,7 +50,10 @@ internal static class Program
         using var cts = new CancellationTokenSource();
         ConsoleCancelEventHandler onCancel = (_, e) =>
         {
-            e.Cancel = true;
+            // First Ctrl+C: cooperative (cleanup runs). A second Ctrl+C is allowed to
+            // terminate the process, so a synchronous read the token cannot reach (e.g. a
+            // redirected-stdin passphrase read on a silent pipe) can always be escaped.
+            e.Cancel = !cts.IsCancellationRequested;
             // A Ctrl+C racing process exit can fire after the CTS is disposed; swallowing the
             // ObjectDisposedException here beats crashing on the very keystroke we intercepted.
             try { cts.Cancel(); }
@@ -113,25 +116,48 @@ internal static class Program
     {
         if (!TryParsePaths(rest, out string? input, out string? output, out var flags))
             return Fail("usage: pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR] [--force]", ExitUsage);
+        if (flags.Untrusted)
+            return Fail("--untrusted applies to decrypt only.", ExitUsage);
 
-        if (!flags.Force && File.Exists(output))
-            return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
-
-        var options = new PqEncryptionOptions
+        // Claim the output path up front (not just File.Exists): the refusal contract must
+        // hold across the interactive passphrase prompt, which can stay open indefinitely —
+        // a bare existence check would silently clobber a file created during the prompt.
+        bool claimed = false;
+        if (!flags.Force)
         {
-            Kdf = flags.UseArgon2id ? PqKdf.Argon2id : PqKdf.Pbkdf2HmacSha256,
-        };
+            switch (TryClaimOutput(output))
+            {
+                case ClaimOutcome.Exists:
+                    return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
+                case ClaimOutcome.Claimed:
+                    claimed = true;
+                    break;
+            }
+        }
 
-        byte[] passphrase = ReadPassphrase(flags.PassphraseEnv, confirm: true, cancellationToken);
         try
         {
-            var encryptor = new PqFileEncryptor(options);
-            var progress = new Progress<PqProgress>(ReportProgress);
-            await encryptor.EncryptFileAsync(input, output, passphrase, progress, cancellationToken).ConfigureAwait(false);
+            var options = new PqEncryptionOptions
+            {
+                Kdf = flags.UseArgon2id ? PqKdf.Argon2id : PqKdf.Pbkdf2HmacSha256,
+            };
+
+            byte[] passphrase = ReadPassphrase(flags.PassphraseEnv, confirm: true, cancellationToken);
+            try
+            {
+                var encryptor = new PqFileEncryptor(options);
+                var progress = new Progress<PqProgress>(ReportProgress);
+                await encryptor.EncryptFileAsync(input, output, passphrase, progress, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(passphrase);
+            }
         }
-        finally
+        catch
         {
-            CryptographicOperations.ZeroMemory(passphrase);
+            if (claimed) ReleaseClaimedOutput(output);
+            throw;
         }
 
         Console.Error.WriteLine($"\nEncrypted {input} -> {output}");
@@ -141,21 +167,43 @@ internal static class Program
     private static async Task<int> DecryptAsync(string[] rest, CancellationToken cancellationToken)
     {
         if (!TryParsePaths(rest, out string? input, out string? output, out var flags))
-            return Fail("usage: pqfe decrypt <input> <output> [--passphrase-env VAR] [--force]", ExitUsage);
+            return Fail("usage: pqfe decrypt <input> <output> [--untrusted] [--passphrase-env VAR] [--force]", ExitUsage);
 
-        if (!flags.Force && File.Exists(output))
-            return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
+        // See EncryptAsync: claim the path so the refusal holds across the passphrase prompt.
+        bool claimed = false;
+        if (!flags.Force)
+        {
+            switch (TryClaimOutput(output))
+            {
+                case ClaimOutcome.Exists:
+                    return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
+                case ClaimOutcome.Claimed:
+                    claimed = true;
+                    break;
+            }
+        }
 
-        byte[] passphrase = ReadPassphrase(flags.PassphraseEnv, confirm: false, cancellationToken);
         try
         {
-            var decryptor = new PqFileDecryptor();
-            var progress = new Progress<PqProgress>(ReportProgress);
-            await decryptor.DecryptFileAsync(input, output, passphrase, progress, cancellationToken).ConfigureAwait(false);
+            byte[] passphrase = ReadPassphrase(flags.PassphraseEnv, confirm: false, cancellationToken);
+            try
+            {
+                // --untrusted caps the KDF cost a hostile container header may demand (a
+                // ~90-byte file can otherwise legally ask for 2 GiB of Argon2id memory).
+                var decryptor = new PqFileDecryptor(
+                    flags.Untrusted ? PqDecryptionLimits.Untrusted : PqDecryptionLimits.Default);
+                var progress = new Progress<PqProgress>(ReportProgress);
+                await decryptor.DecryptFileAsync(input, output, passphrase, progress, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(passphrase);
+            }
         }
-        finally
+        catch
         {
-            CryptographicOperations.ZeroMemory(passphrase);
+            if (claimed) ReleaseClaimedOutput(output);
+            throw;
         }
 
         Console.Error.WriteLine($"\nDecrypted {input} -> {output}");
@@ -211,6 +259,18 @@ internal static class Program
     {
         if (!TryParseSigning(rest, out string? input, out string? keyPath, out string? signaturePath, out string? passphraseEnv))
             return Fail("usage: pqfe sign <input> <keyfile> [--signature PATH] [--passphrase-env VAR]", ExitUsage);
+
+        // --signature pointing at the input or the key file would atomically replace that
+        // file with the ~3 KB signature — silent data loss reported as success. Refuse.
+        StringComparison pathCmp = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        string fullSignature = Path.GetFullPath(signaturePath);
+        if (string.Equals(fullSignature, Path.GetFullPath(input), pathCmp)
+            || string.Equals(fullSignature, Path.GetFullPath(keyPath), pathCmp))
+        {
+            return Fail("--signature must not point at the input or the key file.", ExitUsage);
+        }
 
         byte[] keyBytes = await File.ReadAllBytesAsync(keyPath, cancellationToken).ConfigureAwait(false);
         try
@@ -411,6 +471,9 @@ internal static class Program
                 case "--force":
                     flags = flags with { Force = true };
                     break;
+                case "--untrusted":
+                    flags = flags with { Untrusted = true };
+                    break;
                 default:
                     if (a.StartsWith('-')) return false;
                     positionals.Add(a);
@@ -422,6 +485,49 @@ internal static class Program
         input = positionals[0];
         output = positionals[1];
         return true;
+    }
+
+    private enum ClaimOutcome { Exists, Claimed, NotClaimed }
+
+    /// <summary>
+    /// Atomically claims the output path with a zero-byte placeholder so the overwrite
+    /// refusal cannot be raced by a file appearing while the passphrase prompt is open.
+    /// <see cref="ClaimOutcome.NotClaimed"/> means the path could not be probed (e.g. its
+    /// directory does not exist) — proceed and let the library produce its clearer error.
+    /// </summary>
+    private static ClaimOutcome TryClaimOutput(string output)
+    {
+        try
+        {
+            new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None).Dispose();
+            return ClaimOutcome.Claimed;
+        }
+        catch (IOException)
+        {
+            return File.Exists(output) ? ClaimOutcome.Exists : ClaimOutcome.NotClaimed;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return ClaimOutcome.NotClaimed;
+        }
+    }
+
+    /// <summary>Removes the placeholder left by <see cref="TryClaimOutput"/> — only if it is
+    /// still the empty file we created (never a file someone else has since written).</summary>
+    private static void ReleaseClaimedOutput(string output)
+    {
+        try
+        {
+            using (var probe = new FileStream(output, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                if (probe.Length != 0) return;
+            }
+            File.Delete(output);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best-effort cleanup; the real failure is already propagating.
+        }
     }
 
     private static byte[] ReadPassphrase(string? envVar, bool confirm, CancellationToken cancellationToken) =>
@@ -536,7 +642,7 @@ internal static class Program
 
             Usage:
               pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR]
-              pqfe decrypt <input> <output>                [--passphrase-env VAR]
+              pqfe decrypt <input> <output> [--untrusted]  [--passphrase-env VAR]
               pqfe keygen  <keyfile> [--encrypt [--passphrase-env VAR]]
               pqfe sign    <input> <keyfile>     [--signature PATH] [--passphrase-env VAR]
               pqfe verify  <input> <keyfile.pub> [--signature PATH]
@@ -552,6 +658,9 @@ internal static class Program
                                     processes and can surface in crash dumps and process
                                     inspection — scope VAR to the single invocation.
               --signature PATH      Detached-signature path (default: <input> + ".sig").
+              --untrusted           (decrypt) Enforce PqDecryptionLimits.Untrusted: tight
+                                    ceilings on the KDF cost a hostile container header can
+                                    demand. Recommended for files from untrusted sources.
               --encrypt             (keygen) Protect the private key file with a passphrase
                                     (PQKF format: an Argon2id-hardened .pqfe container).
                                     sign detects an encrypted key file automatically and
@@ -568,7 +677,7 @@ internal static class Program
             """);
     }
 
-    private readonly record struct Flags(bool UseArgon2id, string? PassphraseEnv, bool Force);
+    private readonly record struct Flags(bool UseArgon2id, string? PassphraseEnv, bool Force, bool Untrusted);
 
     /// <summary>
     /// A usage-level failure raised deep in a helper. Main maps it to exit 64 after every

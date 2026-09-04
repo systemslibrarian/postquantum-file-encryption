@@ -44,14 +44,23 @@ jobs:
         # corpus (fuzz/corpus, cached above) is gitignored. -n keeps any
         # coverage-accumulated inputs restored from cache.
         run: |
-          mkdir -p fuzz/corpus/decrypt
+          mkdir -p fuzz/corpus/decrypt fuzz/corpus/decrypt_hybrid
           cp -n fuzz/seed-corpus/*.pqfe fuzz/corpus/decrypt/ 2>/dev/null || true
+          cp -n fuzz/seed-corpus/*.pqfe fuzz/corpus/decrypt_hybrid/ 2>/dev/null || true
 
       - name: Fuzz the decrypt parser
         working-directory: samples/pqfe-wasm
         run: |
           DURATION="${{ github.event.inputs.duration_seconds || '300' }}"
           cargo +nightly fuzz run decrypt -- -max_total_time="$DURATION" -rss_limit_mb=4096 -timeout=20
+
+      - name: Fuzz the hybrid decrypt parser
+        working-directory: samples/pqfe-wasm
+        # The recipient-block parsers (KeySource 3/4) are unreachable from the passphrase
+        # target; this one drives decrypt_bytes_hybrid with the pinned conformance key.
+        run: |
+          DURATION="${{ github.event.inputs.duration_seconds || '300' }}"
+          cargo +nightly fuzz run decrypt_hybrid -- -max_total_time="$DURATION" -rss_limit_mb=4096 -timeout=20
 
       - name: Upload crash artifacts
         if: failure()

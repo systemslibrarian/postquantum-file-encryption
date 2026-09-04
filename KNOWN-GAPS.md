@@ -122,19 +122,18 @@ Last reviewed against: **`1.7.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
   exist, but the `string` overloads remain for ergonomics and cannot zero the caller's `string`.
 
-- **The failure *stage* is distinguishable across key-establishment and body authentication.**
-  Within each stage messages are uniform and pinned by tests (wrong passphrase vs. tampered
-  bytes is one identical message), but the stages differ: a hybrid/provider key that fails to
-  *unwrap* the content key throws "not encrypted to this key…" while a successfully unwrapped
-  container whose *body* fails authentication throws the generic tamper message (with a
-  different inner exception). An external probe confirmed the two are programmatically
-  distinguishable. That tells an attacker submitting a crafted container to a service whether
-  the service's key could open it — a key-possession/membership signal, though never a
-  plaintext or key-recovery oracle. Unifying the public message and inner-exception policy
-  across stages is `1.x`-safe (exception text is not part of the frozen format) but changes
-  observable behavior callers may match on, so it is deliberately a considered decision rather
-  than a quiet patch; until then, services should log raw exception detail privately and
-  return a uniform error to untrusted callers.
+- **In-library key-dependent failures are now stage-uniform; cloud-provider unwrap errors are
+  not.** Every key-dependent failure raised by the library itself — wrong passphrase, wrong
+  hybrid recipient key (KeySource 3/4), wrong inline ML-KEM key (KeySource 2), wrong local
+  KEK, tampered wrap, tampered body — throws `PqDecryptionException` with one identical
+  message and **no inner exception**, so which *stage* rejected the input is not observable
+  (previously, unwrap-stage failures carried distinct messages — a key-possession signal for
+  services exposing raw errors; an external probe confirmed it, and it was unified in
+  response). The residual: the Aws/AzureKeyVault/Gcp providers surface their own uniform but
+  provider-specific messages for *remote* unwrap failures, so a KeySource-5 deployment using a
+  cloud KMS still distinguishes "KMS refused the wrap" from "body failed authentication".
+  Services in that position should return a uniform error to untrusted callers and keep raw
+  detail in private logs.
 
 ### Dependency assurance
 
@@ -315,8 +314,13 @@ Last reviewed against: **`1.7.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
   executions) and scheduled nightly in CI with a cached corpus (`.github/workflows/fuzz.yml`).
   OSS-Fuzz integration files are ready (`oss-fuzz/`) but upstream onboarding is not yet done, and
   the accumulated corpora are still small. See [docs/FUZZING.md](docs/FUZZING.md).
-- **Recipient round-trip is not exercised on this CI host**, which lacks platform ML-KEM; those
-  tests self-skip there. The capability gating *is* tested everywhere.
+- **Recipient round-trip tests self-skip on hosts without platform ML-KEM** (including the
+  current CI runners). The path is now pinned wherever it *can* run: a committed decrypt-only
+  known-answer vector (`test-vectors/mlkem-recipient.pqfe`, Vector 9 in
+  [docs/TEST-VECTORS.md](docs/TEST-VECTORS.md)) exercises the frozen KeySource-2 bytes on any
+  host where `PqKeyPair.IsSupported`, its artifact hashes are pinned on every host, and the
+  full suite (RecipientTests included) has run green on a Linux host with OpenSSL 3.5. The
+  capability gating *is* tested everywhere.
 - **NuGet author-signing** requires a code-signing certificate (not configured); nuget.org applies
   repository signatures on publish. The release workflow produces an SBOM and a provenance attestation.
 - **Two target frameworks.** `net8.0` and `net10.0`. The public API is identical on both, with

@@ -118,7 +118,10 @@ internal static class HybridKeyEstablishment
     public static byte[] UnwrapFromRecipient(ReadOnlySpan<byte> body, PqHybridPrivateKey key)
         => TryUnwrapBlock(body, key)
            ?? throw new PqDecryptionException(
-               "Decryption failed — this file is not encrypted to this key, or it has been altered.");
+               // The engine's exact generic literal: which STAGE failed (key unwrap here vs.
+               // body authentication later) must not be observable, or a service exposing raw
+               // errors becomes a key-possession oracle.
+               "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
 
     // ---- multiple recipients (KeySource = 4) ----
 
@@ -182,7 +185,8 @@ internal static class HybridKeyEstablishment
         }
 
         throw new PqDecryptionException(
-            "Decryption failed — none of the recipients in this file match this key, or it has been altered.");
+            // Same generic literal as the engine and the single-recipient path — see above.
+            "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
     }
 
     // ---- shared ----
