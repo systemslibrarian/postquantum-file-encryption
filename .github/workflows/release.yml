@@ -2,9 +2,11 @@ name: Release
 
 # Triggered by pushing a version tag (e.g. v0.1.0). Builds and tests, packs the NuGet package
 # and symbols, generates a CycloneDX SBOM, attaches a build-provenance attestation (SLSA-style),
-# publishes to NuGet (if NUGET_API_KEY is configured), and creates a GitHub Release with the
-# artifacts. Author-signing the NuGet package additionally requires a code-signing certificate
-# (see docs); nuget.org applies repository signatures automatically on publish.
+# publishes to NuGet via Trusted Publishing (the NuGet/login step exchanges this job's OIDC
+# token for a short-lived API key, so no long-lived push credential is stored anywhere), and
+# creates a GitHub Release with the artifacts. Author-signing the NuGet package additionally
+# requires a code-signing certificate (see docs); nuget.org applies repository signatures
+# automatically on publish.
 
 on:
   push:
@@ -19,10 +21,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      # Promoted to job level so the publish step's `if:` can see it (a secret cannot be
-      # referenced directly in an `if` expression).
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -131,6 +129,19 @@ jobs:
           name: release-artifacts
           path: artifacts/*
 
+      - name: NuGet login (Trusted Publishing)
+        # Exchanges this job's OIDC token (id-token: write) for a short-lived (~1 h) nuget.org
+        # API key via the Trusted Publishing policy configured on the nuget.org profile. No
+        # long-lived push credential exists in the repo or its secrets. Deliberately placed
+        # after the pack/validate/SBOM tool steps so third-party tooling never runs with a
+        # publish credential in scope. Skipped on forks (they have no policy), mirroring the
+        # old "publish only if a key is configured" behavior.
+        id: nuget-login
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: systemslibrarian
+
       - name: Publish core to NuGet
         # The dependency graph requires the core to be live before Hybrid is pushed: Hybrid's
         # nupkg pins PostQuantum.FileEncryption at the same version (a ProjectReference becomes
@@ -139,7 +150,9 @@ jobs:
         # Hybrid (".nupkg" sorts before ".Hybrid"), but the order is incidental — make it explicit.
         # Excludes anything matching *Hybrid*, *Signing*, *Aws*, *AzureKeyVault*, *Gcp*,
         # *Extensions*, or *Tool* from this step.
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -154,7 +167,7 @@ jobs:
         # on busy days. Without this probe, a consumer's restore of Hybrid in the immediate
         # post-push window can fail with "unable to resolve PostQuantum.FileEncryption X.Y.Z"
         # even though the package is published — it just isn't queryable yet.
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
         run: |
           set -euo pipefail
           # Strip the leading "v" from the tag — e.g. v1.0.0-rc.2 → 1.0.0-rc.2.
@@ -174,7 +187,9 @@ jobs:
           exit 1
 
       - name: Publish Hybrid to NuGet
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -187,7 +202,9 @@ jobs:
         # Signing, Aws, AzureKeyVault, and Gcp each pin only the core (same-version
         # PackageReference on pack), so they need the core indexed — already guaranteed
         # above — but have no ordering constraint vs Hybrid or each other.
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -203,7 +220,7 @@ jobs:
         # Same reasoning as the core wait above: the DI extensions nupkg pins the core,
         # Hybrid, AND Signing at the same version, so all three must be queryable before the
         # DI package is pushed or an immediate consumer restore can fail.
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
@@ -227,8 +244,20 @@ jobs:
             fi
           done
 
+      - name: NuGet login for the post-wait pushes (Trusted Publishing)
+        # The temporary key from the first login lives ~1 hour and the two indexing waits
+        # above can consume up to 45 minutes in the worst case — mint a fresh key for the
+        # final pushes instead of racing the expiry.
+        id: nuget-login-2
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: systemslibrarian
+
       - name: Publish the DI extensions package to NuGet
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login-2.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -240,7 +269,9 @@ jobs:
       - name: Publish the pqfe tool to NuGet
         # The tool bundles the library in its tools/ payload (PackAsTool), so unlike Hybrid
         # it has no package dependency on the core and no indexing-order constraint.
-        if: ${{ env.NUGET_API_KEY != '' }}
+        if: github.repository == 'systemslibrarian/postquantum-file-encryption'
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login-2.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           shopt -s nullglob
