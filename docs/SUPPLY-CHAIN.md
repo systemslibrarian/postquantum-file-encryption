@@ -15,12 +15,9 @@ produces and attaches:
 
 | Artifact | What it is | Where to find it |
 | --- | --- | --- |
-| `PostQuantum.FileEncryption.X.Y.Z.nupkg` | Core library package | nuget.org and GitHub Release |
-| `PostQuantum.FileEncryption.X.Y.Z.snupkg` | Core symbols package | nuget.org and GitHub Release |
-| `PostQuantum.FileEncryption.Hybrid.X.Y.Z.nupkg` | Hybrid package | nuget.org and GitHub Release |
-| `PostQuantum.FileEncryption.Hybrid.X.Y.Z.snupkg` | Hybrid symbols package | nuget.org and GitHub Release |
-| `sbom.core.cdx.json` | CycloneDX SBOM for the core | GitHub Release |
-| `sbom.hybrid.cdx.json` | CycloneDX SBOM for the Hybrid package | GitHub Release |
+| `PostQuantum.FileEncryption[.<Package>].X.Y.Z.nupkg` | The nine lockstep packages: core, Hybrid, Signing, Aws, AzureKeyVault, Gcp, DI extensions, Analyzers, and the `pqfe` tool | nuget.org and GitHub Release |
+| `PostQuantum.FileEncryption[.<Package>].X.Y.Z.snupkg` | Symbol packages for the seven library packages | nuget.org and GitHub Release |
+| `sbom.<package>.cdx.json` | CycloneDX SBOMs: core, hybrid, signing, aws, azurekeyvault, gcp, di, and tool | GitHub Release |
 | Build-provenance attestation | SLSA-style attestation over every `.nupkg` | GitHub attestations API |
 
 The release workflow also runs `Meziantou.Framework.NuGetPackageValidation.Tool` against
@@ -36,10 +33,11 @@ owner and the GitHub attestation infrastructure.
 
 ```bash
 # Download the package you want to verify, then:
-gh attestation verify PostQuantum.FileEncryption.1.0.1.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.7.1.nupkg \
   --owner systemslibrarian
 
-# The same command works for the Hybrid package and the .snupkg symbol files.
+# The same command works for every published .nupkg. Symbol packages (.snupkg) are NOT
+# covered by the attestation today — verifying one fails by construction.
 ```
 
 A successful run prints the subject digest, the workflow that produced it, the commit SHA,
@@ -53,7 +51,7 @@ its version, and its hash.
 
 ```bash
 # Pull from the release:
-gh release download v1.0.1 -p 'sbom.*.cdx.json'
+gh release download v1.7.1 -p 'sbom.*.cdx.json'
 
 # Glance at the core's direct + transitive components:
 jq '.components | map({name, version})' sbom.core.cdx.json
@@ -93,9 +91,13 @@ the verification script, and the CI job that runs it on every release tag are in
 [REPRODUCIBLE-BUILDS.md](REPRODUCIBLE-BUILDS.md):
 
 ```bash
-.github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption
-.github/scripts/verify-reproducibility.sh v1.0.1 PostQuantum.FileEncryption.Hybrid
+.github/scripts/verify-reproducibility.sh v1.7.1 PostQuantum.FileEncryption
+.github/scripts/verify-reproducibility.sh v1.7.1 PostQuantum.FileEncryption.Hybrid
 ```
+
+The scripted verification currently covers the core, Hybrid, DI extensions, and tool
+packages. The other five build from the same deterministic `Directory.Build.props`
+settings but are not yet in the script's matrix.
 
 A failing run is a finding worth a private security report — see
 [SECURITY.md](../SECURITY.md).
@@ -112,7 +114,7 @@ dotnet nuget locals all --list   # find your global package cache
 strings -n 8 lib/net10.0/PostQuantum.FileEncryption.dll | grep -i sourcelink
 # or use the package-validation tool directly:
 dotnet tool install --global Meziantou.Framework.NuGetPackageValidation.Tool
-meziantou.validate-nuget-package PostQuantum.FileEncryption.1.0.1.nupkg --excluded-rules Symbols
+meziantou.validate-nuget-package PostQuantum.FileEncryption.1.7.1.nupkg --excluded-rules Symbols
 ```
 
 A green result means the package is deterministic, SourceLink-wired, includes the README,
@@ -136,7 +138,8 @@ previous release, so every pack additionally proves binary compatibility at buil
 
 ## Continuous assurance
 
-These checks run automatically on every push (not just on release tags):
+These checks run continuously — on every push, and some on a nightly/weekly schedule (not
+just on release tags):
 
 | Job | Workflow | What it catches |
 | --- | --- | --- |
@@ -164,7 +167,7 @@ public Scorecard dashboard (linked from the README badge) shows the score histor
 # - dotnet    (test run + package validation)
 
 # 1. Pull artifacts:
-gh release download v1.0.1
+gh release download v1.7.1
 
 # 2. Verify build provenance on every .nupkg:
 for nupkg in PostQuantum.FileEncryption*.nupkg; do

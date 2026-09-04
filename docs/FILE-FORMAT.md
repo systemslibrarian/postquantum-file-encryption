@@ -93,12 +93,12 @@ Establishment and recovery:
 
 ```
 encrypt: (KemCiphertext, ss) = ML-KEM-768.Encapsulate(recipient_public_key)
-         KEK = HKDF-SHA256(ss, info = "PostQuantum.FileEncryption/v2 ml-kem-768 kek")
+         KEK = HKDF-SHA256(ss, salt = absent, info = "PostQuantum.FileEncryption/v2 ml-kem-768 kek")
          (WrappedKey, WrapTag) = AES-256-GCM-Encrypt(KEK, WrapNonce, CEK,
                                                       aad = "PostQuantum.FileEncryption/v2 cek-wrap")
 
 decrypt: ss  = ML-KEM-768.Decapsulate(KemCiphertext, recipient_private_key)
-         KEK = HKDF-SHA256(ss, info = ...)
+         KEK = HKDF-SHA256(ss, salt = absent, info = ...)
          CEK = AES-256-GCM-Decrypt(KEK, WrapNonce, WrappedKey, WrapTag, aad = ...)
 ```
 

@@ -6,7 +6,7 @@ validation — the point of publishing it is that every claim below is checkable
 is named, and the list of what's *missing* is as load-bearing as the list of what's done.
 
 Status legend: ✅ done and verifiable · ⚠️ partial, with the limitation stated · ❌ not
-done. Last reviewed against: **`1.7.0`**.
+done. Last reviewed against: **`1.7.1`**.
 
 ## 1. Cryptographic design
 
@@ -26,8 +26,8 @@ done. Last reviewed against: **`1.7.0`**.
 | Criterion | Status | Evidence |
 | --- | --- | --- |
 | Warnings as errors, latest-recommended analyzers | ✅ | `Directory.Build.props` |
-| Public API surface locked against accidental breaks | ✅ | PublicApiAnalyzers, `PublicAPI.Shipped.txt` in all three library packages |
-| Binary compatibility validated against the published baseline | ✅ | `EnablePackageValidation` vs. 1.1.0 |
+| Public API surface locked against accidental breaks | ✅ | PublicApiAnalyzers, `PublicAPI.Shipped.txt` in all seven library packages |
+| Binary compatibility validated against the published baseline | ⚠️ | `EnablePackageValidation` (baseline `1.7.1`) via `Directory.Build.props`; overridden **off** in the Aws, AzureKeyVault, Gcp, and Analyzers packages — a pre-first-publish gate never flipped after they shipped |
 | Key material zeroed (`CryptographicOperations.ZeroMemory` in `finally`) | ✅ | Throughout `Internal/`; reviewed per change |
 | AOT/trim compatible, proven end-to-end | ✅ | `IsAotCompatible` + CI native-AOT publish & round-trip smoke test |
 | Async + cancellation honored on all I/O | ✅ | Public API contract; cancellation cleanup tests |

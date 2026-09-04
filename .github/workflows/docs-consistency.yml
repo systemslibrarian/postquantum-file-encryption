@@ -1,0 +1,24 @@
+name: Docs consistency
+
+# The continuous counterpart to the release workflow's tag-time version gate: catches
+# current-version markers, worked artifact examples, and dead internal links drifting on
+# main between releases, instead of discovering them at the next tag (or never). See
+# scripts/check-docs-consistency.sh for exactly what is enforced and what is deliberately
+# left alone (historical mentions).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check documentation consistency
+        run: bash scripts/check-docs-consistency.sh

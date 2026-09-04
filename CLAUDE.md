@@ -131,6 +131,17 @@ for the *old* version string and update every user-facing reference:
   `gh attestation verify PostQuantum.FileEncryption.X.Y.Z.nupkg`, `gh release download vX.Y.Z`).
 - The "NuGet package version → Today" cell in [docs/ROADMAP-2.0.md](docs/ROADMAP-2.0.md).
 - Add the new `CHANGELOG.md` section and its compare-link footer.
+- The `SECURITY.md` supported-versions cell (current: `X.Y.Z`).
+- The "## Now — `X.Y.Z`" heading in `ROADMAP.md` and every "Last reviewed against"
+  marker (`KNOWN-GAPS.md`, `docs/GOLD-STANDARD.md`) — re-review the document, don't just
+  re-stamp it.
+- `PackageValidationBaselineVersion` in `Directory.Build.props` (the previous release becomes
+  the new baseline).
+- The pinned tag in `docs/AUDIT-SCOPE.md` and the worked verification examples in
+  `docs/SUPPLY-CHAIN.md`, `docs/REPRODUCIBLE-BUILDS.md`, and `docs/ANNOUNCE.md`.
+
+Most of these are enforced continuously by `scripts/check-docs-consistency.sh` (run by the
+`docs-consistency` workflow on every push and PR) — run it locally before tagging.
 
 Leave **historical** mentions alone — past changelog entries, compare links, and prose like
 "shipped `1.3.0`" are facts about earlier releases, not the current version. When in doubt,

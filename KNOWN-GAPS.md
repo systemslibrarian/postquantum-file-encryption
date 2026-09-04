@@ -5,7 +5,7 @@ incomplete, deferred, or imperfect, so that nobody has to discover it by reading
 or, worse, in production. If you find a gap not listed here, that itself is a gap — please
 open an issue.
 
-Last reviewed against: **`1.6.0`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
+Last reviewed against: **`1.7.1`**. See [ROADMAP.md](ROADMAP.md) for the forward plan.
 
 ## Release scope (read this first)
 
@@ -235,6 +235,44 @@ Last reviewed against: **`1.6.0`**. See [ROADMAP.md](ROADMAP.md) for the forward
   exception, and `PqDecryptionLimits` does not bound this buffer). For untrusted or large
   inputs, prefer the file APIs (temp-file staging) or the non-atomic stream overload with a
   bounded destination. This is documented on the method; noted here for completeness.
+
+- **Header-only CEK rewrap cannot ship on format v2.** The serialized header is bound as AAD
+  into every content frame, so replacing the wrapped CEK changes every frame's AAD and forces
+  every frame to be re-authenticated. Re-tagging under the *same* CEK and nonces with new AAD
+  would emit a second AES-GCM tag per (key, nonce) pair — and since old and rotated copies of a
+  file coexist, an attacker holding both could recover the GCM authentication key from such tag
+  pairs and forge ciphertext. Safe rotation on v2 is a **streaming transcode** with a fresh CEK
+  and nonce prefix (bounded memory, full-file I/O — [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md));
+  true header-only rewrap needs a format that keeps wrap material outside the chunk-AAD
+  commitment, a format-v3 candidate.
+- **`IContentKeyProvider` cannot verify content-key freshness.** For KeySource 5 the per-file
+  content key comes from the caller's provider, and cross-file AES-GCM nonce uniqueness rests
+  entirely on that key being fresh — the on-disk nonce prefix is only 4 random bytes. All
+  first-party providers draw a fresh random key per call, but a third-party provider that caches
+  or reuses a data key silently collapses nonce uniqueness to a 32-bit birthday bound across
+  files (~50% collision odds by ~77k files); colliding files reuse (key, nonce) pairs, leaking
+  keystream XOR and making the GCM authentication key recoverable. The contract is documented on
+  `IContentKeyProvider.WrapNewKeyAsync` and in [docs/KEY-MANAGEMENT.md](docs/KEY-MANAGEMENT.md);
+  an in-band defense (mixing per-file material into the CEK, or a wider nonce prefix) would
+  change what bytes mean — a format-v3 candidate.
+- **Passphrases are UTF-8 encoded with no Unicode normalization.** The same characters typed
+  through a decomposing input path (e.g. macOS NFD) versus a composed one (Windows NFC) produce
+  different bytes and a different derived key, surfacing as "wrong passphrase" on a file whose
+  passphrase the user knows. Normalizing inside the library now would change the derived key for
+  existing containers (and desync the Rust core), so `1.x` keeps byte-verbatim encoding; callers
+  accepting cross-platform human input should normalize to NFC before passing the passphrase.
+  Specifying normalization in the format is a format-v3 candidate.
+- **KDF derivation is not interruptible once started.** The platform PBKDF2 one-shot and the
+  Konscious Argon2id API expose no cancellation, so the `CancellationToken` is honored before and
+  after — but not during — key derivation; cancelling mid-derivation still pays the full
+  configured cost. `PqDecryptionLimits` is the real bound on worst-case uncancellable work for
+  hostile containers.
+- **Decrypted output files get default filesystem permissions.** The temp file behind the atomic
+  write is created with the platform default mode (typically `0644` under a standard umask on
+  Unix; the directory-inherited ACL on Windows) and the rename **replaces** the destination — so
+  decrypting over a pre-existing `0600` file leaves the new plaintext at the looser default.
+  Callers needing tighter permissions should run under a restrictive umask or re-apply the mode
+  after decryption.
 
 ### Demos
 

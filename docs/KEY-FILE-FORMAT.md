@@ -18,7 +18,7 @@ therefore mostly a *framing* specification.
 | -----: | ---: | ------------- | -------------------------------------------------------- |
 | 0      | 4    | Magic         | `PQKF` (`0x50 0x51 0x4B 0x46`)                           |
 | 4      | 1    | FormatVersion | `1`                                                      |
-| 5      | …    | Body          | A `.pqfe` v2 passphrase container (KeySource 1 or 2)     |
+| 5      | …    | Body          | A `.pqfe` v2 passphrase container (KeySource 1)          |
 
 The container's **plaintext** — the bytes recovered after successful authenticated
 decryption — is:
@@ -44,8 +44,9 @@ authentication.
 
 1. Writers MUST emit the magic and version exactly as specified, followed immediately by the
    container — no padding, no trailing bytes.
-2. The container MUST be a passphrase container (KeySource `1` = PBKDF2-HMAC-SHA256 or
-   `2` = Argon2id). Recipient and key-provider KeySources are not permitted in a key file.
+2. The container MUST be a passphrase container (KeySource `1`), whose KeyParams carry
+   KdfId `1` = PBKDF2-HMAC-SHA256 or `2` = Argon2id. Recipient and key-provider KeySources
+   are not permitted in a key file.
 3. The reference implementation defaults the KDF to **Argon2id** (19 MiB memory, 2 passes) —
    key files are small and long-lived, so the KDF is the entire cost of opening one, which is
    exactly the workload memory-hard KDFs exist for. Writers MAY choose PBKDF2 or different
