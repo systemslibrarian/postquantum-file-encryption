@@ -80,8 +80,13 @@ mkdir -p corpus && cp fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/*.pqfe \
 > instrumented method (even a constructor) earlier would crash the harness, not the parser.
 > Each iteration feeds the same input to **both** .NET targets — the container parser and the
 > `PQKF` encrypted key-file parser (the framing check fails fast on non-`PQKF` input, so the
-> second target is nearly free). The key-file target runs under `PqDecryptionLimits.Untrusted`
-> so a fuzzer-crafted Argon2id header cannot turn one iteration into a gigabyte-scale KDF.
+> second target is nearly free). **Both targets run under `PqDecryptionLimits.Untrusted`** so a
+> fuzzer-crafted (but format-legal) Argon2id header cannot turn one iteration into a
+> gigabyte-scale, multi-minute KDF — exactly that shape stalled scheduled runs for ~20 minutes
+> per input and failed them on timeout before the container target was capped. The
+> format-maxima range checks that the permissive Default limits would exercise are pinned by
+> `ParserBoundaryTests` and the committed negative vectors instead. The CI jobs also pass
+> `-timeout=20` per input and upload `timeout-*`/`oom-*` reproducers alongside `crash-*`.
 
 ## Scheduled CI
 

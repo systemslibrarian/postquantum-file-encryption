@@ -50,11 +50,21 @@ The project pins every known source of non-determinism:
 
 What does **not** affect reproducibility (with the above in place):
 
-- The operating system of the *verifier*. With `.gitattributes` normalising source line
-  endings on checkout, the source the compiler sees is byte-identical on Linux, macOS, and
-  Windows, and `Deterministic=true` then produces byte-identical assemblies.
 - Local NuGet caches. The compiler reads from `obj/`, which is regenerated from the same
   inputs.
+
+What **should not** affect it, but currently does:
+
+- **The operating system of the verifier.** In principle `.gitattributes`-normalised sources
+  plus `Deterministic=true` yield byte-identical assemblies on any OS. In practice, a macOS
+  arm64 rebuild of `v1.7.1` produced managed DLLs that differ from the Linux-built published
+  package — observed with this repository's own verifier, and independently reported. The
+  release-time verification on Linux passed for the same tag, so this is platform/toolchain
+  drift, not evidence of tampering — but it means **Linux (the CI environment) is the
+  demonstrated reproducibility envelope today**. Verify on Linux, or when investigating a
+  mismatch elsewhere, first match the exact SDK (`dotnet --version`) and OS of the release
+  build before suspecting the artifact. Root-causing (and either fixing or permanently
+  scoping) the cross-OS difference is tracked work.
 
 What **does** matter:
 

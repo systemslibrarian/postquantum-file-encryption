@@ -71,6 +71,29 @@ public sealed class ErrorHandlingTests
     }
 
     [Fact]
+    public async Task Cross_container_chunk_transplant_is_rejected()
+    {
+        // SECURITY.md claims the AAD defeats "splicing between containers": an authentic frame
+        // from a second container encrypted under the SAME passphrase must not transplant into
+        // the first at the same ordinal. The defense rests on the per-encryption salt and nonce
+        // prefix (fresh key + different header-as-AAD), which is exactly what this pins.
+        byte[] original = RandomBytes(2048);
+        var encryptor = new PqFileEncryptor(Fast(1024));
+        byte[] containerA = await encryptor.EncryptBytesAsync(original, Passphrase);
+        byte[] containerB = await encryptor.EncryptBytesAsync(original, Passphrase);
+
+        int HeaderLen(byte[] c) => 18 + BinaryPrimitives.ReadUInt16BigEndian(c.AsSpan(16, 2));
+        int frameLen = 1 + 4 + 1024 + 16;
+
+        var transplanted = (byte[])containerA.Clone();
+        Array.Copy(containerB, HeaderLen(containerB), transplanted, HeaderLen(containerA), frameLen);
+
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqFileDecryptor().DecryptAsync(new MemoryStream(transplanted), output, Passphrase));
+    }
+
+    [Fact]
     public async Task Unsupported_format_version_is_a_format_error()
     {
         byte[] container = await new PqFileEncryptor(Fast()).EncryptBytesAsync(RandomBytes(100), Passphrase);

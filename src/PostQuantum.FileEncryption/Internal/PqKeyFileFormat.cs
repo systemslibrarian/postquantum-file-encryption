@@ -102,29 +102,44 @@ internal static class PqKeyFileFormat
         (limits ?? PqDecryptionLimits.Default).Validate();
 
         byte[] passphraseBytes = new byte[Encoding.UTF8.GetByteCount(passphrase)];
-        // Sized so the backing buffer never reallocates (the plaintext is always smaller than
-        // the container), leaving exactly one key-bearing buffer for the finally to zero.
-        using var output = new MemoryStream(keyFile.Length);
+        // Fixed-capacity output: a valid key file's plaintext is exactly 1 + expectedKeyLength
+        // bytes, so cap the buffer there (+1 so an oversized plaintext is detectable). A fixed
+        // buffer never reallocates, which keeps exactly one key-bearing buffer for the finally
+        // to zero — including when the file holds a *different* kind of real key — and stops a
+        // hostile key file from forcing an output allocation proportional to its own size.
+        byte[] outputBuffer = new byte[1 + expectedKeyLength + 1];
         try
         {
+            using var output = new MemoryStream(outputBuffer, 0, outputBuffer.Length, writable: true);
+            output.SetLength(0);
             Encoding.UTF8.GetBytes(passphrase, passphraseBytes);
             using var input = new MemoryStream(keyFile[HeaderLength..].ToArray(), writable: false);
-            PqContainer.DecryptPassphraseAsync(
-                    input, output, passphraseBytes, limits ?? PqDecryptionLimits.Default,
-                    input.Length, progress: null, CancellationToken.None)
-                .GetAwaiter().GetResult();
+            try
+            {
+                PqContainer.DecryptPassphraseAsync(
+                        input, output, passphraseBytes, limits ?? PqDecryptionLimits.Default,
+                        input.Length, progress: null, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            catch (NotSupportedException)
+            {
+                // The fixed-capacity stream refused a write past 1 + expectedKeyLength + 1:
+                // the (authenticated) plaintext is larger than any key of the expected type,
+                // so this is the same caller-error signal as the length check below.
+                throw new PqFormatException($"This encrypted key file does not hold a {expectedTypeName}.");
+            }
 
             // The type byte was authenticated as part of the container plaintext, so this is a
             // caller-error signal (right passphrase, wrong kind of key file), not an oracle.
-            if (output.Length != 1 + expectedKeyLength || output.GetBuffer()[0] != expectedKeyType)
+            if (output.Length != 1 + expectedKeyLength || outputBuffer[0] != expectedKeyType)
             {
                 throw new PqFormatException($"This encrypted key file does not hold a {expectedTypeName}.");
             }
-            return output.GetBuffer().AsSpan(1, expectedKeyLength).ToArray();
+            return outputBuffer.AsSpan(1, expectedKeyLength).ToArray();
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(output.GetBuffer());
+            CryptographicOperations.ZeroMemory(outputBuffer);
             CryptographicOperations.ZeroMemory(passphraseBytes);
         }
     }

@@ -86,7 +86,7 @@ boundaries, assumptions, and explicit non-goals — is published in
   decrypt-later adversary) and a clear path to **post-quantum public-key encryption** via
   the Hybrid package.
 - You want **enterprise affordances**: telemetry, atomic output, a documented format with
-  test vectors, a published threat model, signed releases, and a locked API.
+  test vectors, a published threat model, provenance-attested releases, and a locked API.
 - You want a [comparison vs. `age`, libsodium, and OpenSSL](https://github.com/systemslibrarian/postquantum-file-encryption/blob/main/docs/COMPARISON.md) before
   committing.
 

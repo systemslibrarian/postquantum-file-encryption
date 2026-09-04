@@ -36,6 +36,17 @@
       "notes": "Frozen KAT Vector 3 (produced by the Rust core)."
     },
     {
+      "id": "pos-passphrase-pbkdf2-multichunk",
+      "category": "positive",
+      "expect": "accept",
+      "file": "passphrase-pbkdf2-multichunk.pqfe",
+      "sha256": "008543ab899a427a33100f1b865b54c5ef0426834b8e7b696eeffc9b97ea886a",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "plaintextUtf8": "PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-chunk conformance vector. PQFE multi-ch",
+      "notes": "Deterministic two-chunk container (1024-byte chunks, PBKDF2 100k): pins frame ordering, the final-frame marker, and multi-frame decryption cross-implementation."
+    },
+    {
       "id": "neg-bad-magic",
       "category": "negative",
       "expect": "reject-format",
@@ -155,6 +166,94 @@
       "passphrase": "test-vector-passphrase",
       "derivedFrom": "passphrase-pbkdf2.pqfe",
       "notes": "64 zero bytes: no PQFE magic."
+    },
+    {
+      "id": "neg-argon2-memory-out-of-range",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/argon2-memory-out-of-range.pqfe",
+      "sha256": "69f49c27f8a79c60ec592bc40e78f7e46e4fb540cb9ded7bc5e5d7388bab6099",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-argon2id.pqfe",
+      "notes": "Argon2id memory set to 2,097,153 KiB \u2014 one above the format maximum; rejected before any derivation."
+    },
+    {
+      "id": "neg-argon2-iterations-out-of-range",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/argon2-iterations-out-of-range.pqfe",
+      "sha256": "67aeb5e2ec92fbed19805f275792f3d23d65fd4fac92480e91fb457429d6ae04",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-argon2id.pqfe",
+      "notes": "Argon2id iterations set to 10,001 \u2014 one above the format maximum; rejected before any derivation."
+    },
+    {
+      "id": "neg-argon2-parallelism-zero",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/argon2-parallelism-zero.pqfe",
+      "sha256": "6c56513c67f156c408dc54a48313bad9061622a09fe1d3ffa329f88244d13ac5",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-argon2id.pqfe",
+      "notes": "Argon2id parallelism set to 0 \u2014 below the minimum of 1; rejected before any derivation."
+    },
+    {
+      "id": "neg-salt-too-short",
+      "category": "negative",
+      "expect": "reject-format",
+      "file": "negative/salt-too-short.pqfe",
+      "sha256": "e893220cedf4be01c32b100e0db6273e1b114d57cb206db5cadde74e056d9177",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-argon2id.pqfe",
+      "notes": "Declared salt length set to 7 \u2014 below the 8-byte floor; rejected before any derivation."
+    },
+    {
+      "id": "neg-truncated-at-frame-boundary",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/truncated-at-frame-boundary.pqfe",
+      "sha256": "b2c86ff20b2fd4527cf94596409e1c3b7829865938726a5dd85b0a2380a47a1a",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2.pqfe",
+      "notes": "Container cut exactly at the header/frame boundary: parses cleanly but carries no authenticated final frame, so a conforming reader must reject it."
+    },
+    {
+      "id": "neg-frame-swap",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/frame-swap.pqfe",
+      "sha256": "73ebecb7ab75eb9adf570a1a1f46d25ff490ca89b39acabe19e56bf531fc247d",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2-multichunk.pqfe",
+      "notes": "The two frames of the multi-chunk vector swapped on disk: each frame\u0027s ordinal is bound as AAD, so reordering fails authentication."
+    },
+    {
+      "id": "neg-final-frame-dropped",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/final-frame-dropped.pqfe",
+      "sha256": "57d2d3f47c88f7f7dc5f6d332ba2d119143300175ed4210c2d4d4b2ece839ed2",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2-multichunk.pqfe",
+      "notes": "The multi-chunk vector cut cleanly after its first (authentic, non-final) frame: no authenticated final marker, so a conforming reader must reject it."
+    },
+    {
+      "id": "neg-cross-container-transplant",
+      "category": "negative",
+      "expect": "reject-decryption",
+      "file": "negative/cross-container-transplant.pqfe",
+      "sha256": "c15c4e128878fd5676cedf6267a1e0d287fff264f713da16242b2633e1a31c6f",
+      "keySource": 1,
+      "passphrase": "test-vector-passphrase",
+      "derivedFrom": "passphrase-pbkdf2-multichunk.pqfe",
+      "notes": "Frame 0 of a second container (same passphrase, same plaintext, different salt and nonce prefix) transplanted into the multi-chunk vector at the same ordinal: the per-encryption key and header-as-AAD separation must reject splicing between containers."
     },
     {
       "id": "neg-wrong-passphrase",

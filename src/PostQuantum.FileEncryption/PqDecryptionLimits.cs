@@ -37,6 +37,15 @@ public sealed class PqDecryptionLimits
     public int MaxArgon2Iterations { get; init; } = PqEncryptionOptions.MaxArgon2Iterations;
 
     /// <summary>
+    /// Highest Argon2id parallelism (lane count) this decryptor will honor. The on-disk field
+    /// is one byte, so the format maximum — and the default — is 255. Parallelism divides
+    /// rather than multiplies the total Argon2id work, so this is a scheduling-overhead
+    /// ceiling, not a memory/CPU one; the memory and iteration limits above are the primary
+    /// cost bounds.
+    /// </summary>
+    public int MaxArgon2Parallelism { get; init; } = 255;
+
+    /// <summary>
     /// Largest chunk size, in bytes, this decryptor will allocate buffers for.
     /// Defaults to the format maximum (16 MiB).
     /// </summary>
@@ -47,7 +56,7 @@ public sealed class PqDecryptionLimits
 
     /// <summary>
     /// A conservative preset for containers from untrusted sources: PBKDF2 ≤ 2,000,000
-    /// iterations, Argon2id ≤ 256 MiB memory and ≤ 10 passes, chunk size ≤ 4 MiB. Every
+    /// iterations, Argon2id ≤ 256 MiB memory, ≤ 10 passes, and ≤ 8 lanes, chunk size ≤ 4 MiB. Every
     /// container produced with this library's defaults (and any reasonable tuning) stays well
     /// inside these ceilings; what gets rejected is the pathological header crafted to make
     /// you burn gibibytes of memory or minutes of CPU before the first authentication check.
@@ -57,6 +66,7 @@ public sealed class PqDecryptionLimits
         MaxPbkdf2Iterations = 2_000_000,
         MaxArgon2MemoryKiB = 256 * 1024,
         MaxArgon2Iterations = 10,
+        MaxArgon2Parallelism = 8,
         MaxChunkSizeBytes = 4 * 1024 * 1024,
     };
 
@@ -89,6 +99,13 @@ public sealed class PqDecryptionLimits
             throw new ArgumentOutOfRangeException(
                 nameof(MaxArgon2Iterations), MaxArgon2Iterations,
                 $"Limit must be between {PqEncryptionOptions.MinArgon2Iterations} and {PqEncryptionOptions.MaxArgon2Iterations}.");
+        }
+
+        if (MaxArgon2Parallelism < 1 || MaxArgon2Parallelism > 255)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MaxArgon2Parallelism), MaxArgon2Parallelism,
+                "Limit must be between 1 and 255.");
         }
 
         if (MaxChunkSizeBytes < PqEncryptionOptions.MinChunkSizeBytes

@@ -10,6 +10,31 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ### Added
 
+- **Nine new conformance-corpus vectors, run by both implementations.** A deterministic
+  two-chunk positive (`pos-passphrase-pbkdf2-multichunk`) plus eight negatives: the Argon2id
+  cost/salt bounds (`neg-argon2-memory-out-of-range`, `neg-argon2-iterations-out-of-range`,
+  `neg-argon2-parallelism-zero`, `neg-salt-too-short`) — previously pinned only by .NET unit
+  tests, so a Rust-side bounds regression would have shipped undetected — and four framing
+  negatives (`neg-truncated-at-frame-boundary`, `neg-frame-swap`, `neg-final-frame-dropped`,
+  `neg-cross-container-transplant`) that give the Rust reader its first coverage of the
+  final-frame gate, ordinal binding, and cross-container splicing, and back SECURITY.md's
+  explicit "splicing between containers" claim with committed bytes. All are deterministic
+  derivations; regenerating the corpus reproduces them bit-for-bit, and the generator now
+  refuses to re-randomize the pinned hybrid lenient vector.
+- **`PqDecryptionLimits.MaxArgon2Parallelism`.** A hostile header could demand Argon2id
+  parallelism 255 and no limit could cap it — even `Untrusted`. The new limit defaults to 255
+  (the format maximum, so no acceptance change) and `Untrusted` now caps it at 8.
+- **Zeroization regression tests** (`ZeroizationTests`): the engine's content-key zeroing on
+  the success, authentication-failure, and cancellation paths, plus
+  `PqRecipientPrivateKey.Dispose` and `LocalKekContentKeyProvider.Dispose` — a documented
+  defense that previously had zero test coverage and has regressed before (2026-06-12 audits).
+- **Structural-attack tests:** cross-container chunk transplant (unit + corpus), and
+  KeySource-4 recipient-block swap / strip / duplicate — the manipulation class
+  HYBRID-COMBINER.md points auditors at, previously untested.
+- **`test-vectors/SHA256SUMS` is now verified by CI** (every line recomputed, every top-level
+  artifact required to be listed) — it existed for third-party verification but was itself
+  checked by nothing.
+
 - **The documentation-consistency CI guard now actually exists.** The `1.7.0` changelog described
   a `docs-consistency` workflow running `scripts/check-docs-consistency.sh` on every push and pull
   request, but the workflow file was never committed — the guard never ran, which is how the
@@ -25,6 +50,31 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
   contract is load-bearing (reuse collapses AES-GCM nonce uniqueness across files).
 
 ### Changed
+
+- **Both fuzz targets now run under `PqDecryptionLimits.Untrusted`, with per-input timeouts.**
+  The container target fuzzed at the permissive Default limits, so the fuzzer minted
+  format-legal headers demanding gigabyte-scale KDF work — single inputs stalled ~20 minutes
+  and failed 13 of the last 30 scheduled runs on timeout. The workflow also passes
+  `-timeout=20` and uploads `timeout-*`/`oom-*` reproducers alongside `crash-*`.
+- **`PqKeyFileFormat.Decrypt` uses a fixed-capacity output buffer** sized to the expected key
+  (+1 byte) instead of preallocating to the whole key file's length: a hostile key file can no
+  longer force an output allocation proportional to its own size, and a real-but-wrong-type
+  key's bytes can no longer land in a reallocated buffer the zeroing `finally` doesn't hold.
+  Behavior is unchanged: oversized or wrong-type plaintext still fails with the same
+  `PqFormatException`.
+- **Analyzer release ledger corrected:** PQFE101–PQFE104 moved from
+  `AnalyzerReleases.Unshipped.md` to the shipped ledger under 1.5.0, where they actually
+  shipped. The analyzer test project also floors the transitive `System.Formats.Asn1` at
+  8.0.1 (CVE-2024-38095 — test-only graph, kept clean anyway).
+- **SECURITY.md now discloses the one key-dependent error distinction** (key-unwrap failure
+  vs. body-authentication failure are distinguishable stages — a key-possession signal for
+  services that expose raw errors), recorded in KNOWN-GAPS.md with the unify-or-keep decision
+  explicitly open. CONFORMANCE.md §3's MUST-reject list now names the committed corpus vector
+  for each case, FUZZING.md reflects the capped harnesses, README says "provenance-attested
+  releases" instead of "signed releases" (no author/tag signing is configured), and
+  REPRODUCIBLE-BUILDS.md scopes the reproducibility claim to Linux — a macOS arm64 rebuild of
+  `v1.7.1` reproducibly differs from the published package (verified with the repo's own
+  script), so the cross-OS claim was retracted until root-caused.
 
 - **KEY-MANAGEMENT.md no longer promises header-only CEK rewrap on format v2.** The serialized
   header is bound as AAD into every content frame, so replacing the wrapped CEK forces every frame

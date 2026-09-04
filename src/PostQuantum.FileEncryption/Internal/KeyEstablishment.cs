@@ -116,6 +116,11 @@ internal static class KeyEstablishment
                     throw new PqFormatException(
                         $"Container demands Argon2id with {memoryKiB} KiB memory and {iterations} iterations, above this decryptor's configured limits of {limits.MaxArgon2MemoryKiB} KiB / {limits.MaxArgon2Iterations} (see PqDecryptionLimits).");
                 }
+                if (parallelism > limits.MaxArgon2Parallelism)
+                {
+                    throw new PqFormatException(
+                        $"Container demands Argon2id parallelism {parallelism}, above this decryptor's configured limit of {limits.MaxArgon2Parallelism} (see PqDecryptionLimits).");
+                }
                 return await DeriveArgon2idAsync(passphrase, salt, (int)memoryKiB, (int)iterations, parallelism).ConfigureAwait(false);
             }
             default:

@@ -106,6 +106,27 @@ public sealed class ConformanceVectorGenerator
             "cross-impl-passphrase", "Encrypted by the Rust/WASM core, decrypted by .NET.",
             "Frozen KAT Vector 3 (produced by the Rust core)."));
 
+        // A deterministic TWO-chunk container (1024-byte chunks): the base for the
+        // frame-ordering and cross-container negatives below, and a positive pin for
+        // multi-frame decryption in both implementations.
+        string multiChunkPlaintext = string.Concat(Enumerable.Repeat("PQFE multi-chunk conformance vector. ", 56))[..2048];
+        byte[] multiChunk = await MakePassphraseContainerAsync(
+            salt: Filled(0x40, 16), iterations: 100_000, noncePrefix: Filled(0x44, 4),
+            plaintext: Encoding.UTF8.GetBytes(multiChunkPlaintext), flags: 0x00, keyParamsTrailing: null);
+        vectors.Add(new ConformanceVector
+        {
+            Id = "pos-passphrase-pbkdf2-multichunk",
+            Category = "positive",
+            Expect = "accept",
+            File = "passphrase-pbkdf2-multichunk.pqfe",
+            Sha256 = Write(dir, "passphrase-pbkdf2-multichunk.pqfe", multiChunk),
+            KeySource = 1,
+            Passphrase = "test-vector-passphrase",
+            PlaintextUtf8 = multiChunkPlaintext,
+            Notes = "Deterministic two-chunk container (1024-byte chunks, PBKDF2 100k): pins "
+                + "frame ordering, the final-frame marker, and multi-frame decryption cross-implementation.",
+        });
+
         // ---- negatives: deterministic single mutations of the frozen PBKDF2 vector ----
         byte[] baseVector = await File.ReadAllBytesAsync(Path.Combine(dir, "passphrase-pbkdf2.pqfe"));
         int headerLen = ContainerFormat.FixedHeaderLength
@@ -137,6 +158,70 @@ public sealed class ConformanceVectorGenerator
             "Truncated mid-frame after the header: no authenticated final frame."));
         vectors.Add(Negative("neg-not-a-container", "reject-format", new byte[64], dir,
             "64 zero bytes: no PQFE magic."));
+
+        // ---- negatives derived from the frozen Argon2id vector: cost/salt bounds ----
+        // These pin the CONFORMANCE.md 2.1 rule-5 MUSTs for the Argon2id side — the checks
+        // that stop a ~90-byte hostile header demanding 2 GiB of memory — in BOTH readers.
+        byte[] argonBase = await File.ReadAllBytesAsync(Path.Combine(dir, "passphrase-argon2id.pqfe"));
+        int argonSaltLen = argonBase[ContainerFormat.FixedHeaderLength + 1];
+        int argonParams = ContainerFormat.FixedHeaderLength + 2 + argonSaltLen; // MemoryKiB(4) ‖ Iterations(4) ‖ Parallelism(1)
+
+        vectors.Add(Negative("neg-argon2-memory-out-of-range", "reject-format",
+            Mutate(argonBase, m => BinaryPrimitives.WriteUInt32BigEndian(m.AsSpan(argonParams), 2_097_153)), dir,
+            "Argon2id memory set to 2,097,153 KiB — one above the format maximum; rejected before any derivation.",
+            derivedFrom: "passphrase-argon2id.pqfe"));
+        vectors.Add(Negative("neg-argon2-iterations-out-of-range", "reject-format",
+            Mutate(argonBase, m => BinaryPrimitives.WriteUInt32BigEndian(m.AsSpan(argonParams + 4), 10_001)), dir,
+            "Argon2id iterations set to 10,001 — one above the format maximum; rejected before any derivation.",
+            derivedFrom: "passphrase-argon2id.pqfe"));
+        vectors.Add(Negative("neg-argon2-parallelism-zero", "reject-format",
+            Mutate(argonBase, m => m[argonParams + 8] = 0), dir,
+            "Argon2id parallelism set to 0 — below the minimum of 1; rejected before any derivation.",
+            derivedFrom: "passphrase-argon2id.pqfe"));
+        vectors.Add(Negative("neg-salt-too-short", "reject-format",
+            Mutate(argonBase, m => m[ContainerFormat.FixedHeaderLength + 1] = 7), dir,
+            "Declared salt length set to 7 — below the 8-byte floor; rejected before any derivation.",
+            derivedFrom: "passphrase-argon2id.pqfe"));
+
+        // ---- clean-boundary truncation: header only, zero frames ----
+        vectors.Add(Negative("neg-truncated-at-frame-boundary", "reject-decryption",
+            baseVector[..headerLen], dir,
+            "Container cut exactly at the header/frame boundary: parses cleanly but carries no "
+            + "authenticated final frame, so a conforming reader must reject it."));
+
+        // ---- frame-ordering and cross-container negatives from the multi-chunk vector ----
+        int mcHeaderLen = ContainerFormat.FixedHeaderLength
+            + BinaryPrimitives.ReadUInt16BigEndian(multiChunk.AsSpan(ContainerFormat.OffsetKeyParamsLength));
+        int mcFrame = 5 + 1024 + ContainerFormat.TagLength;
+
+        byte[] frameSwap = (byte[])multiChunk.Clone();
+        Array.Copy(multiChunk, mcHeaderLen + mcFrame, frameSwap, mcHeaderLen, mcFrame);
+        Array.Copy(multiChunk, mcHeaderLen, frameSwap, mcHeaderLen + mcFrame, mcFrame);
+        vectors.Add(Negative("neg-frame-swap", "reject-decryption", frameSwap, dir,
+            "The two frames of the multi-chunk vector swapped on disk: each frame's ordinal is "
+            + "bound as AAD, so reordering fails authentication.",
+            derivedFrom: "passphrase-pbkdf2-multichunk.pqfe"));
+
+        vectors.Add(Negative("neg-final-frame-dropped", "reject-decryption",
+            multiChunk[..(mcHeaderLen + mcFrame)], dir,
+            "The multi-chunk vector cut cleanly after its first (authentic, non-final) frame: "
+            + "no authenticated final marker, so a conforming reader must reject it.",
+            derivedFrom: "passphrase-pbkdf2-multichunk.pqfe"));
+
+        byte[] otherContainer = await MakePassphraseContainerAsync(
+            salt: Filled(0x50, 16), iterations: 100_000, noncePrefix: Filled(0x55, 4),
+            plaintext: Encoding.UTF8.GetBytes(multiChunkPlaintext), flags: 0x00, keyParamsTrailing: null);
+        if (otherContainer.Length != multiChunk.Length)
+        {
+            throw new InvalidOperationException("Cross-container bases must be structurally identical.");
+        }
+        byte[] transplant = (byte[])multiChunk.Clone();
+        Array.Copy(otherContainer, mcHeaderLen, transplant, mcHeaderLen, mcFrame);
+        vectors.Add(Negative("neg-cross-container-transplant", "reject-decryption", transplant, dir,
+            "Frame 0 of a second container (same passphrase, same plaintext, different salt and "
+            + "nonce prefix) transplanted into the multi-chunk vector at the same ordinal: the "
+            + "per-encryption key and header-as-AAD separation must reject splicing between containers.",
+            derivedFrom: "passphrase-pbkdf2-multichunk.pqfe"));
 
         // A negative that needs no new file: the frozen vector with the wrong passphrase.
         var good = vectors[0];
@@ -175,10 +260,25 @@ public sealed class ConformanceVectorGenerator
             "test-vector-passphrase", "PostQuantum.FileEncryption known-answer vector v2.", 1,
             "4 bytes appended after the final frame. Decryption stops at the authenticated final frame. Format-v3 candidate."));
 
-        (byte[] multiContainer, byte[] multiPrivate) = MakeMultiRecipientTrailing(
-            noncePrefix: Filled(0x33, 4),
-            plaintext: "PostQuantum.FileEncryption conformance: trailing block past the multi-recipient count."u8.ToArray());
-        await File.WriteAllBytesAsync(Path.Combine(dir, "lenient", "multi-recipient-trailing.key"), multiPrivate);
+        // Generated ONCE and pinned: KEM encapsulation is randomized, so regenerating this
+        // vector would change frozen committed bytes. Reuse the committed artifacts when they
+        // exist; only a brand-new corpus (or a deliberate deletion) regenerates them.
+        string mrContainerPath = Path.Combine(dir, "lenient", "multi-recipient-trailing.pqfe");
+        string mrKeyPath = Path.Combine(dir, "lenient", "multi-recipient-trailing.key");
+        byte[] multiContainer;
+        byte[] multiPrivate;
+        if (File.Exists(mrContainerPath) && File.Exists(mrKeyPath))
+        {
+            multiContainer = await File.ReadAllBytesAsync(mrContainerPath);
+            multiPrivate = await File.ReadAllBytesAsync(mrKeyPath);
+        }
+        else
+        {
+            (multiContainer, multiPrivate) = MakeMultiRecipientTrailing(
+                noncePrefix: Filled(0x33, 4),
+                plaintext: "PostQuantum.FileEncryption conformance: trailing block past the multi-recipient count."u8.ToArray());
+        }
+        await File.WriteAllBytesAsync(mrKeyPath, multiPrivate);
         vectors.Add(new ConformanceVector
         {
             Id = "lenient-multi-recipient-trailing",
@@ -223,7 +323,9 @@ public sealed class ConformanceVectorGenerator
             Notes = notes,
         };
 
-    private static ConformanceVector Negative(string id, string expect, byte[] bytes, string dir, string notes)
+    private static ConformanceVector Negative(
+        string id, string expect, byte[] bytes, string dir, string notes,
+        string derivedFrom = "passphrase-pbkdf2.pqfe")
     {
         string file = "negative/" + id["neg-".Length..] + (id == "neg-not-a-container" ? ".bin" : ".pqfe");
         return new ConformanceVector
@@ -235,7 +337,7 @@ public sealed class ConformanceVectorGenerator
             Sha256 = Write(dir, file, bytes),
             KeySource = 1,
             Passphrase = "test-vector-passphrase",
-            DerivedFrom = "passphrase-pbkdf2.pqfe",
+            DerivedFrom = derivedFrom,
             Notes = notes,
         };
     }

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using PostQuantum.FileEncryption.Hybrid;
 using Xunit;
 using static PostQuantum.FileEncryption.Tests.TestSupport;
@@ -342,5 +343,98 @@ public sealed class HybridTests
         // The symmetric decryptor must not silently mishandle a recipient container.
         await Assert.ThrowsAsync<PqDecryptionException>(() =>
             new PqFileDecryptor().DecryptBytesAsync(container, "any passphrase"));
+    }
+
+    // ---- KeySource-4 recipient-block manipulation (HYBRID-COMBINER.md audit pointer) ----
+    //
+    // The whole serialized header — including every recipient block — is bound as AAD into
+    // every chunk, so swapping, stripping, or duplicating blocks must fail authentication even
+    // when the manipulated body still parses and a remaining block unwraps for the caller's key.
+
+    private static (int keyParamsOffset, int[] entryOffsets, int entryLength) ParseRecipientEntries(byte[] container)
+    {
+        const int keyParamsOffset = 18;
+        int count = container[keyParamsOffset];
+        int[] offsets = new int[count];
+        int cursor = keyParamsOffset + 1;
+        int entryLength = 0;
+        for (int i = 0; i < count; i++)
+        {
+            offsets[i] = cursor;
+            int blockLength = (container[cursor + 1] << 8) | container[cursor + 2];
+            entryLength = 3 + blockLength; // mode(1) + length(2) + block
+            cursor += entryLength;
+        }
+        return (keyParamsOffset, offsets, entryLength);
+    }
+
+    [Fact]
+    public async Task Swapping_two_recipient_blocks_is_rejected()
+    {
+        using var alice = PqHybridKeyPair.Generate();
+        using var bob = PqHybridKeyPair.Generate();
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesToAsync(
+            RandomBytes(500), [alice.PublicKey, bob.PublicKey]);
+
+        (_, int[] entries, int entryLen) = ParseRecipientEntries(container);
+        var swapped = (byte[])container.Clone();
+        Array.Copy(container, entries[1], swapped, entries[0], entryLen);
+        Array.Copy(container, entries[0], swapped, entries[1], entryLen);
+
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(swapped, alice.PrivateKey));
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(swapped, bob.PrivateKey));
+    }
+
+    [Fact]
+    public async Task Stripping_a_recipient_block_is_rejected_for_every_party()
+    {
+        using var alice = PqHybridKeyPair.Generate();
+        using var bob = PqHybridKeyPair.Generate();
+        using var carol = PqHybridKeyPair.Generate();
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesToAsync(
+            RandomBytes(500), [alice.PublicKey, bob.PublicKey, carol.PublicKey]);
+
+        (int kpOffset, int[] entries, int entryLen) = ParseRecipientEntries(container);
+
+        // Remove carol's (last) block, decrement the count, and shrink KeyParamsLength so the
+        // container still parses cleanly — the only thing wrong with it is the header change.
+        var stripped = new byte[container.Length - entryLen];
+        Array.Copy(container, 0, stripped, 0, entries[2]);
+        Array.Copy(container, entries[2] + entryLen, stripped, entries[2], container.Length - entries[2] - entryLen);
+        stripped[kpOffset]--; // recipient count
+        ushort kpLen = BinaryPrimitives.ReadUInt16BigEndian(stripped.AsSpan(16, 2));
+        BinaryPrimitives.WriteUInt16BigEndian(stripped.AsSpan(16, 2), (ushort)(kpLen - entryLen));
+
+        // A surviving recipient unwraps the CEK fine — and must still be rejected by the AAD.
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(stripped, alice.PrivateKey));
+        // The stripped recipient has no block at all: fail-closed the same way.
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(stripped, carol.PrivateKey));
+    }
+
+    [Fact]
+    public async Task Duplicating_a_recipient_block_is_rejected()
+    {
+        using var alice = PqHybridKeyPair.Generate();
+        using var bob = PqHybridKeyPair.Generate();
+        byte[] container = await new PqHybridEncryptor(Fast()).EncryptBytesToAsync(
+            RandomBytes(500), [alice.PublicKey, bob.PublicKey]);
+
+        (int kpOffset, int[] entries, int entryLen) = ParseRecipientEntries(container);
+        int insertAt = entries[1] + entryLen; // end of the recipient entries
+
+        var duplicated = new byte[container.Length + entryLen];
+        Array.Copy(container, 0, duplicated, 0, insertAt);
+        Array.Copy(container, entries[0], duplicated, insertAt, entryLen); // alice's block again
+        Array.Copy(container, insertAt, duplicated, insertAt + entryLen, container.Length - insertAt);
+        duplicated[kpOffset]++; // recipient count
+        ushort kpLen = BinaryPrimitives.ReadUInt16BigEndian(duplicated.AsSpan(16, 2));
+        BinaryPrimitives.WriteUInt16BigEndian(duplicated.AsSpan(16, 2), (ushort)(kpLen + entryLen));
+
+        await Assert.ThrowsAsync<PqDecryptionException>(() =>
+            new PqHybridDecryptor().DecryptBytesAsync(duplicated, alice.PrivateKey));
     }
 }
