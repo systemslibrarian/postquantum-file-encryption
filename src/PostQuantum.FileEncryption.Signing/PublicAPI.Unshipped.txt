@@ -1,1 +1,2 @@
 #nullable enable
+PostQuantum.FileEncryption.Signing.PqSigningPublicKey.GetFingerprint() -> string!

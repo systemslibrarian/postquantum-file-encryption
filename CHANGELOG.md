@@ -8,6 +8,22 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Added
+
+- **Public-key fingerprints.** `PqHybridPublicKey.GetFingerprint()` and
+  `PqSigningPublicKey.GetFingerprint()` return a stable, domain-separated fingerprint —
+  `pqfp1:` + URL-safe Base64 SHA-256 over a domain prefix, a purpose tag (recipient and
+  signing keys can never collide), and the exported key bytes — the defense both external
+  reviews converged on for the key-substitution attack: compare the string over a trusted
+  channel before first use of a key you were sent. The rendering is a frozen compatibility
+  surface for the `pqfp1:` prefix, pinned by `FingerprintTests`.
+- **`pqfe recipient` — the post-quantum recipient path is finally usable end-to-end from the
+  shipped tool:** `recipient keygen` (X25519 + ML-KEM-768 pair; `--encrypt` for a
+  passphrase-protected PQKF private key; prints the fingerprint), `recipient encrypt`
+  (multi-recipient via repeated `--recipient`), `recipient decrypt` (`--identity`, PQKF
+  auto-detected, `--untrusted` limits), and `recipient fingerprint`. Both `keygen` commands
+  now print the public-key fingerprint and warn when writing an unencrypted private key.
+
 ### Supply chain
 
 - **The release job's third-party dotnet tools are version-pinned** (NuGetPackageValidation

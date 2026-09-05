@@ -17,6 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using PostQuantum.FileEncryption;
+using PostQuantum.FileEncryption.Hybrid;
 using PostQuantum.FileEncryption.Signing;
 
 namespace Pqfe.Cli;
@@ -69,6 +70,7 @@ internal static class Program
                 "encrypt" => await EncryptAsync(rest, cts.Token).ConfigureAwait(false),
                 "decrypt" => await DecryptAsync(rest, cts.Token).ConfigureAwait(false),
                 "keygen" => KeyGen(rest, cts.Token),
+                "recipient" => await RecipientAsync(rest, cts.Token).ConfigureAwait(false),
                 "sign" => await SignAsync(rest, cts.Token).ConfigureAwait(false),
                 "verify" => await VerifyAsync(rest, cts.Token).ConfigureAwait(false),
                 _ => Fail($"unknown command: {args[0]}", ExitUsage),
@@ -252,8 +254,275 @@ internal static class Program
         }
 
         Console.Error.WriteLine($"Wrote {privatePath} (private key — keep secret) and {publicPath} (public key — share).");
+        Console.Error.WriteLine($"Public-key fingerprint: {keyPair.PublicKey.GetFingerprint()}");
+        if (!encrypt) WarnRawPrivateKey();
         return ExitOk;
     }
+
+    // ------------------------------------------------------------------ recipient encryption
+
+    private static async Task<int> RecipientAsync(string[] rest, CancellationToken cancellationToken)
+    {
+        if (rest.Length == 0)
+            return Fail("usage: pqfe recipient <keygen|encrypt|decrypt|fingerprint> ...", ExitUsage);
+
+        string[] sub = rest[1..];
+        return rest[0] switch
+        {
+            "keygen" => RecipientKeyGen(sub, cancellationToken),
+            "encrypt" => await RecipientEncryptAsync(sub, cancellationToken).ConfigureAwait(false),
+            "decrypt" => await RecipientDecryptAsync(sub, cancellationToken).ConfigureAwait(false),
+            "fingerprint" => await RecipientFingerprintAsync(sub, cancellationToken).ConfigureAwait(false),
+            _ => Fail($"unknown recipient command: {rest[0]}", ExitUsage),
+        };
+    }
+
+    private static int RecipientKeyGen(string[] rest, CancellationToken cancellationToken)
+    {
+        if (!TryParseKeyGen(rest, out string? privatePath, out bool encrypt, out string? passphraseEnv))
+            return Fail("usage: pqfe recipient keygen <keyfile> [--encrypt [--passphrase-env VAR]]   (writes <keyfile> and <keyfile>.pub)", ExitUsage);
+
+        string publicPath = privatePath + ".pub";
+
+        using var keyPair = PqHybridKeyPair.Generate();
+        byte[] privateBytes;
+        if (encrypt)
+        {
+            // PQKF: the key at rest is a passphrase-encrypted, authenticated .pqfe container.
+            string passphrase = ReadPassphraseString(passphraseEnv, confirm: true, cancellationToken);
+            privateBytes = keyPair.PrivateKey.ExportEncrypted(passphrase);
+        }
+        else
+        {
+            privateBytes = keyPair.PrivateKey.Export();
+        }
+        try
+        {
+            // CreateNew refuses to overwrite: a recipient key silently replaced would orphan
+            // every container already encrypted to the old public key.
+            WriteNewFile(privatePath, privateBytes, ownerOnly: true);
+            try
+            {
+                WriteNewFile(publicPath, keyPair.PublicKey.Export(), ownerOnly: false);
+            }
+            catch
+            {
+                TryDelete(privatePath);
+                throw;
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(privateBytes);
+        }
+
+        Console.Error.WriteLine($"Wrote {privatePath} (private key — keep secret) and {publicPath} (public key — share).");
+        Console.Error.WriteLine($"Public-key fingerprint: {keyPair.PublicKey.GetFingerprint()}");
+        Console.Error.WriteLine("Anyone encrypting to this key should confirm that fingerprint with you over a trusted channel first.");
+        if (!encrypt) WarnRawPrivateKey();
+        return ExitOk;
+    }
+
+    private static async Task<int> RecipientEncryptAsync(string[] rest, CancellationToken cancellationToken)
+    {
+        var recipients = new List<PqHybridPublicKey>();
+        var positionals = new List<string>(capacity: 2);
+        bool force = false;
+        for (int i = 0; i < rest.Length; i++)
+        {
+            switch (rest[i])
+            {
+                case "--recipient":
+                    if (i + 1 >= rest.Length) return RecipientEncryptUsage();
+                    string pubPath = rest[++i];
+                    byte[] pubBytes = await File.ReadAllBytesAsync(pubPath, cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        recipients.Add(PqHybridPublicKey.Import(pubBytes));
+                    }
+                    catch (ArgumentException)
+                    {
+                        return Fail($"'{pubPath}' is not a valid recipient public key (expected the .pub file written by 'pqfe recipient keygen').", ExitDataErr);
+                    }
+                    break;
+                case "--force":
+                    force = true;
+                    break;
+                default:
+                    if (rest[i].StartsWith('-')) return RecipientEncryptUsage();
+                    positionals.Add(rest[i]);
+                    break;
+            }
+        }
+        if (positionals.Count != 2 || recipients.Count == 0) return RecipientEncryptUsage();
+        string input = positionals[0];
+        string output = positionals[1];
+
+        bool claimed = false;
+        if (!force)
+        {
+            switch (TryClaimOutput(output))
+            {
+                case ClaimOutcome.Exists:
+                    return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
+                case ClaimOutcome.Claimed:
+                    claimed = true;
+                    break;
+            }
+        }
+
+        try
+        {
+            var progress = new Progress<PqProgress>(ReportProgress);
+            await new PqHybridEncryptor().EncryptFileToAsync(input, output, recipients, progress, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (claimed) ReleaseClaimedOutput(output);
+            throw;
+        }
+
+        Console.Error.WriteLine($"\nEncrypted {input} -> {output} for {recipients.Count} recipient(s)");
+        return ExitOk;
+    }
+
+    private static int RecipientEncryptUsage() =>
+        Fail("usage: pqfe recipient encrypt <input> <output> --recipient <pub> [--recipient <pub> ...] [--force]", ExitUsage);
+
+    private static async Task<int> RecipientDecryptAsync(string[] rest, CancellationToken cancellationToken)
+    {
+        string? identityPath = null;
+        string? passphraseEnv = null;
+        var positionals = new List<string>(capacity: 2);
+        bool force = false;
+        bool untrusted = false;
+        for (int i = 0; i < rest.Length; i++)
+        {
+            switch (rest[i])
+            {
+                case "--identity":
+                    if (i + 1 >= rest.Length) return RecipientDecryptUsage();
+                    identityPath = rest[++i];
+                    break;
+                case "--passphrase-env":
+                    if (i + 1 >= rest.Length) return RecipientDecryptUsage();
+                    passphraseEnv = rest[++i];
+                    break;
+                case "--untrusted":
+                    untrusted = true;
+                    break;
+                case "--force":
+                    force = true;
+                    break;
+                default:
+                    if (rest[i].StartsWith('-')) return RecipientDecryptUsage();
+                    positionals.Add(rest[i]);
+                    break;
+            }
+        }
+        if (positionals.Count != 2 || identityPath is null) return RecipientDecryptUsage();
+        string input = positionals[0];
+        string output = positionals[1];
+
+        bool claimed = false;
+        if (!force)
+        {
+            switch (TryClaimOutput(output))
+            {
+                case ClaimOutcome.Exists:
+                    return Fail($"'{output}' already exists; refusing to overwrite (use --force).", ExitCantCreate);
+                case ClaimOutcome.Claimed:
+                    claimed = true;
+                    break;
+            }
+        }
+        int Bail(int code)
+        {
+            if (claimed) ReleaseClaimedOutput(output);
+            return code;
+        }
+
+        try
+        {
+            byte[] keyBytes = await File.ReadAllBytesAsync(identityPath, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                // --untrusted caps the KDF cost a hostile container header may demand.
+                var limits = untrusted ? PqDecryptionLimits.Untrusted : PqDecryptionLimits.Default;
+
+                PqHybridPrivateKey privateKey;
+                if (PqHybridPrivateKey.IsEncryptedKeyFile(keyBytes))
+                {
+                    // A PQKF file from `pqfe recipient keygen --encrypt`; wrong passphrase or
+                    // tampering surfaces via Main's PqDecryptionException handler (exit 65).
+                    string passphrase = ReadPassphraseString(passphraseEnv, confirm: false, cancellationToken);
+                    privateKey = PqHybridPrivateKey.ImportEncrypted(keyBytes, passphrase, limits);
+                }
+                else
+                {
+                    if (passphraseEnv is not null)
+                    {
+                        return Bail(Fail($"--passphrase-env was given, but '{identityPath}' is not a passphrase-protected key file.", ExitUsage));
+                    }
+                    try
+                    {
+                        privateKey = PqHybridPrivateKey.Import(keyBytes);
+                    }
+                    catch (ArgumentException)
+                    {
+                        return Bail(Fail($"'{identityPath}' is not a valid recipient private key (expected the file written by 'pqfe recipient keygen').", ExitDataErr));
+                    }
+                }
+
+                using (privateKey)
+                {
+                    var decryptor = new PqHybridDecryptor(limits);
+                    var progress = new Progress<PqProgress>(ReportProgress);
+                    await decryptor.DecryptFileAsync(input, output, privateKey, progress, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(keyBytes);
+            }
+        }
+        catch
+        {
+            if (claimed) ReleaseClaimedOutput(output);
+            throw;
+        }
+
+        Console.Error.WriteLine($"\nDecrypted {input} -> {output}");
+        return ExitOk;
+    }
+
+    private static int RecipientDecryptUsage() =>
+        Fail("usage: pqfe recipient decrypt <input> <output> --identity <keyfile> [--untrusted] [--passphrase-env VAR] [--force]", ExitUsage);
+
+    private static async Task<int> RecipientFingerprintAsync(string[] rest, CancellationToken cancellationToken)
+    {
+        if (rest.Length != 1 || rest[0].StartsWith('-'))
+            return Fail("usage: pqfe recipient fingerprint <pubfile>", ExitUsage);
+
+        byte[] bytes = await File.ReadAllBytesAsync(rest[0], cancellationToken).ConfigureAwait(false);
+        PqHybridPublicKey publicKey;
+        try
+        {
+            publicKey = PqHybridPublicKey.Import(bytes);
+        }
+        catch (ArgumentException)
+        {
+            return Fail($"'{rest[0]}' is not a valid recipient public key.", ExitDataErr);
+        }
+
+        // Stdout, not stderr: the fingerprint is the command's output, for scripts to consume.
+        Console.WriteLine(publicKey.GetFingerprint());
+        return ExitOk;
+    }
+
+    private static void WarnRawPrivateKey() =>
+        Console.Error.WriteLine(
+            "note: the private key file is UNENCRYPTED (0600 on Unix). Consider --encrypt to protect it with a passphrase.");
 
     private static async Task<int> SignAsync(string[] rest, CancellationToken cancellationToken)
     {
@@ -644,6 +913,10 @@ internal static class Program
               pqfe encrypt <input> <output> [--argon2id] [--passphrase-env VAR]
               pqfe decrypt <input> <output> [--untrusted]  [--passphrase-env VAR]
               pqfe keygen  <keyfile> [--encrypt [--passphrase-env VAR]]
+              pqfe recipient keygen  <keyfile> [--encrypt [--passphrase-env VAR]]
+              pqfe recipient encrypt <input> <output> --recipient <pub> [--recipient <pub> ...]
+              pqfe recipient decrypt <input> <output> --identity <keyfile> [--untrusted]
+              pqfe recipient fingerprint <pubfile>
               pqfe sign    <input> <keyfile>     [--signature PATH] [--passphrase-env VAR]
               pqfe verify  <input> <keyfile.pub> [--signature PATH]
               pqfe --version
@@ -665,6 +938,13 @@ internal static class Program
                                     (PQKF format: an Argon2id-hardened .pqfe container).
                                     sign detects an encrypted key file automatically and
                                     prompts (or reads --passphrase-env) for its passphrase.
+
+            recipient keygen writes an X25519 + ML-KEM-768 hybrid recipient key pair for
+            public-key file encryption; recipient encrypt seals a file to one or more .pub
+            keys (any listed recipient can open it) and recipient decrypt opens it with the
+            matching private key. Both keygen commands print the public key's fingerprint
+            (pqfp1:…) — confirm it over a trusted channel before encrypting to a key you
+            were sent; recipient fingerprint re-prints it for any .pub file.
 
             keygen writes an Ed25519 + ML-DSA-65 hybrid signing key pair: <keyfile> holds the
             private key (keep secret; keygen refuses to overwrite), <keyfile>.pub the public

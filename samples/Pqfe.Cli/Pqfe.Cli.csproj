@@ -28,9 +28,9 @@
     <InformationalVersion>1.7.1</InformationalVersion>
     <MinClientVersion>6.0.0</MinClientVersion>
     <Title>pqfe — PostQuantum.FileEncryption CLI</Title>
-    <Description>Command-line file encryption and signing built on PostQuantum.FileEncryption: `pqfe encrypt` / `pqfe decrypt` for the FROZEN .pqfe v2 container format, plus `pqfe keygen` / `pqfe sign` / `pqfe verify` for detached Ed25519 + ML-DSA-65 hybrid signatures (.sig sidecars). Authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id passphrase derivation, atomic output files, fail-closed decryption and verification (wrong passphrase, tampered ciphertext, and bad signatures are indistinguishable within their class), and sysexits.h exit codes for scripting. Passphrases come from a no-echo prompt or an environment variable for CI use. Install: dotnet tool install -g PostQuantum.FileEncryption.Tool. Requires the .NET 10 runtime or later.</Description>
+    <Description>Command-line file encryption and signing built on PostQuantum.FileEncryption: `pqfe encrypt` / `pqfe decrypt` for the FROZEN .pqfe v2 container format, `pqfe recipient keygen` / `encrypt` / `decrypt` for X25519 + ML-KEM-768 hybrid public-key encryption (multi-recipient, with pqfp1: key fingerprints), plus `pqfe keygen` / `pqfe sign` / `pqfe verify` for detached Ed25519 + ML-DSA-65 hybrid signatures (.sig sidecars). Authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 or Argon2id passphrase derivation, atomic output files, fail-closed decryption and verification (wrong passphrase, tampered ciphertext, and bad signatures are indistinguishable within their class), and sysexits.h exit codes for scripting. Passphrases come from a no-echo prompt or an environment variable for CI use. Install: dotnet tool install -g PostQuantum.FileEncryption.Tool. Requires the .NET 10 runtime or later.</Description>
     <PackageReleaseNotes>Lockstep release of the PostQuantum.FileEncryption family — see CHANGELOG.md for the current version’s changes. Highlights from recent releases: keygen gains --encrypt, writing the private key as a passphrase-protected PQKF key file (an Argon2id-hardened .pqfe container); sign detects an encrypted key file automatically. Hardening: Ctrl+C is cooperative cancellation (exit 130, and it cancels the passphrase prompt itself), keygen writes the private key 0600 on Unix and cleans up a half-written pair, passphrase-prompt failures unwind without skipping key zeroing or cleanup, and --passphrase-env is rejected where it would be silently ignored. No change to the .pqfe v2 container format, which remains FROZEN for the 1.x line. See CHANGELOG.md.</PackageReleaseNotes>
-    <PackageTags>encryption;file-encryption;signing;signature;cli;dotnet-tool;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;ml-dsa;ed25519;cryptography;security;post-quantum;pqc;dotnet;net10</PackageTags>
+    <PackageTags>encryption;file-encryption;signing;signature;cli;dotnet-tool;ml-kem;x25519;hybrid;aes-gcm;aes-256;argon2id;pbkdf2;passphrase;authenticated-encryption;aead;ml-dsa;ed25519;cryptography;security;post-quantum;pqc;dotnet;net10</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
@@ -54,6 +54,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" />
+    <ProjectReference Include="../../src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" />
     <ProjectReference Include="../../src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" />
   </ItemGroup>
 

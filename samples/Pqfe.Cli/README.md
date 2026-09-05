@@ -35,6 +35,12 @@ Sign a finished container (or any file) so recipients can prove who produced it:
 pqfe keygen me.key --encrypt                       # writes me.key (passphrase-protected) + me.key.pub (share)
 pqfe sign   backup.tar.pqfe me.key                 # detects the encrypted key, prompts, writes backup.tar.pqfe.sig
 pqfe verify backup.tar.pqfe me.key.pub             # exit 0 = authentic, 65 = reject
+
+# Public-key (recipient) encryption — X25519 + ML-KEM-768 hybrid, multi-recipient:
+pqfe recipient keygen alice.key --encrypt          # writes alice.key (PQKF) + alice.key.pub; prints the pqfp1: fingerprint
+pqfe recipient encrypt report.pdf report.pdf.pqfe --recipient alice.key.pub --recipient bob.key.pub
+pqfe recipient decrypt report.pdf.pqfe report.pdf --identity alice.key --untrusted
+pqfe recipient fingerprint alice.key.pub           # re-print the fingerprint to compare over a trusted channel
 ```
 
 Without `--encrypt`, `keygen` writes the raw private key bytes (`0600` on Unix). With it, the
