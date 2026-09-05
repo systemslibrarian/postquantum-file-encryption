@@ -8,6 +8,48 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Added
+
+- **The documentation-consistency CI guard now actually exists.** The `1.7.0` changelog described
+  a `docs-consistency` workflow running `scripts/check-docs-consistency.sh` on every push and pull
+  request, but the workflow file was never committed — the guard never ran, which is how the
+  version markers below drifted. `.github/workflows/docs-consistency.yml` now runs it, the script
+  is portable (no GNU-only `grep -P`, so it runs on macOS too), and it additionally checks the
+  SECURITY.md supported-versions cell, the ROADMAP-2.0 "Today" cell, the AUDIT-SCOPE pinned tag,
+  and artifact-naming examples (`gh attestation verify` / `gh release download` /
+  reproducibility-script invocations) against the current version.
+- **KNOWN-GAPS.md gains five verified entries:** header-only CEK rewrap as a format-v3 candidate
+  (see below), the `IContentKeyProvider` key-freshness contract and its consequences, passphrase
+  Unicode normalization, non-interruptible KDF derivation, and default filesystem permissions on
+  decrypted output. `IContentKeyProvider.WrapNewKeyAsync`'s docs now state why the fresh-key
+  contract is load-bearing (reuse collapses AES-GCM nonce uniqueness across files).
+
+### Changed
+
+- **KEY-MANAGEMENT.md no longer promises header-only CEK rewrap on format v2.** The serialized
+  header is bound as AAD into every content frame, so replacing the wrapped CEK forces every frame
+  to be re-authenticated — and doing that under the *same* CEK and nonces would emit second GCM
+  tags for existing (key, nonce) pairs while old copies of the file still exist, allowing
+  authentication-key recovery. Rotation on v2 is now documented as a streaming transcode with a
+  fresh CEK and nonce prefix; true header-only rewrap is banked as a format-v3 candidate.
+- **Docs version sweep to `1.7.1`** across SECURITY.md (supported-versions cell), ROADMAP.md,
+  KNOWN-GAPS.md and GOLD-STANDARD.md review markers, ROADMAP-2.0.md, AUDIT-SCOPE.md (pinned tag),
+  README / SUPPLY-CHAIN / REPRODUCIBLE-BUILDS verification examples, and ANNOUNCE.md.
+  `PackageValidationBaselineVersion` moves from `1.5.0` to `1.7.1`, and `PackageReleaseNotes`
+  are reworded to be version-agnostic so they can no longer silently go stale on nuget.org.
+- **SECURITY.md claims recalibrated to exactly what the code does and tests pin:** one exception
+  type with byte-identical messages for key-dependent failures (structural diagnostics are
+  key-independent), integrity scoped to the authenticated envelope (trailing bytes after the final
+  frame are ignored — see KNOWN-GAPS.md), bounded-work noting that tight ceilings are opt-in via
+  `PqDecryptionLimits.Untrusted`, Dependencies now naming the Signing package's BouncyCastle use
+  and the Rust demo core's RustCrypto crates, and the SBOM list reflecting all eight per-package
+  SBOMs. GOLD-STANDARD.md's binary-compatibility row now states that package validation is
+  overridden off in the Aws/AzureKeyVault/Gcp/Analyzers packages.
+- **Format-doc errata (doc-only; no byte or reader change):** KEY-FILE-FORMAT.md now correctly
+  says a PQKF body is a KeySource-1 passphrase container whose KeyParams carry KdfId 1
+  (PBKDF2-HMAC-SHA256) or 2 (Argon2id) — the previous wording conflated KeySource with KdfId —
+  and FILE-FORMAT.md's KeySource-2 HKDF formulas state `salt = absent` explicitly.
+
 ## [1.7.1] — 2026-08-20
 
 Patch: WASM sample crate upgrades. No format change, no public API change, and no change to any
@@ -857,7 +899,9 @@ First release. The **symmetric, passphrase-based engine is production-ready**.
 - Bounded work on untrusted headers (KDF cost parameters are range-checked).
 - Derived keys, wrapped secrets, and private keys are zeroed after use.
 
-[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/systemslibrarian/postquantum-file-encryption/compare/v1.4.0...v1.4.1

@@ -26,6 +26,14 @@ public interface IContentKeyProvider
     /// Generates a fresh 32-byte content key and the opaque <c>wrapInfo</c> bytes required to
     /// recover it. The caller owns the returned content key and will zero it after use.
     /// </summary>
+    /// <remarks>
+    /// The content key MUST be freshly and randomly generated on every call — never cached,
+    /// pinned, or reused across calls. Cross-file AES-GCM nonce uniqueness rests entirely on
+    /// per-file key freshness (the container's nonce prefix is only 4 random bytes), so a
+    /// provider that returns a repeated key collapses nonce uniqueness to a 32-bit birthday
+    /// bound across files, leaking plaintext keystream and making the GCM authentication key
+    /// recoverable. See docs/KEY-MANAGEMENT.md and KNOWN-GAPS.md.
+    /// </remarks>
     Task<(byte[] contentKey, byte[] wrapInfo)> WrapNewKeyAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -11,7 +11,7 @@ restating.
 | | |
 | --- | --- |
 | Repository | `https://github.com/systemslibrarian/postquantum-file-encryption` |
-| Audit revision | latest release tag — **`v1.5.0`**, commit **`878e5a0`** |
+| Audit revision | latest release tag — **`v1.7.1`**, commit **`e0d332a`** |
 | On-disk formats under review | `.pqfe` **v2** container, `.sig` **v1** sidecar, `PQKF` **v1** key file — all **frozen** for the entire `1.x` line |
 
 Pin the engagement to the tag, not to `main`:
@@ -19,12 +19,13 @@ Pin the engagement to the tag, not to `main`:
 ```bash
 git clone https://github.com/systemslibrarian/postquantum-file-encryption
 cd postquantum-file-encryption
-git checkout v1.5.0        # commit 878e5a0
-git verify-tag v1.5.0      # signed tag; confirms provenance
+git checkout v1.7.1        # commit e0d332a
+# Release provenance: verify the tag's published artifacts against their build-provenance
+# attestations instead — see docs/SUPPLY-CHAIN.md ("gh attestation verify").
 ```
 
 The formats are frozen ([CLAUDE.md](../CLAUDE.md) "format freeze"), so the bytes an auditor
-reads at `v1.5.0` are the bytes every `1.x` build reads. A finding that requires changing
+reads at `v1.7.1` are the bytes every `1.x` build reads. A finding that requires changing
 frozen bytes is a **format-v3 / 2.0** item ([docs/ROADMAP-2.0.md](ROADMAP-2.0.md)), not a
 point fix — flag it as such.
 

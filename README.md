@@ -242,7 +242,7 @@ None of this library's trust claims ask for faith — each one is checkable in a
 ```bash
 # 1. Provenance: the package you downloaded was built by this repo's public release
 #    workflow, on GitHub's runners, from a tagged commit you can read:
-gh attestation verify PostQuantum.FileEncryption.1.6.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.7.1.nupkg \
   --repo systemslibrarian/postquantum-file-encryption
 
 # 2. The frozen format: reproduce the pinned known-answer vectors — byte-exact
@@ -603,11 +603,11 @@ Quick verification of any release:
 
 ```bash
 # Verify the build-provenance attestation on a downloaded .nupkg:
-gh attestation verify PostQuantum.FileEncryption.1.6.0.nupkg \
+gh attestation verify PostQuantum.FileEncryption.1.7.1.nupkg \
   --owner systemslibrarian
 
 # Inspect the CycloneDX SBOM bundled with the release:
-gh release download v1.6.0 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
+gh release download v1.7.1 -p 'sbom.core.cdx.json' && jq . sbom.core.cdx.json
 
 # Confirm the conformance vectors decrypt locally:
 dotnet test --filter "FullyQualifiedName~KnownAnswerVector|FullyQualifiedName~CrossImplementation"

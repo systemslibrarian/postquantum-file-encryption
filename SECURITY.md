@@ -12,7 +12,7 @@ any incompatible change requires a `2.0` major version.
 
 | Version            | Supported | Notes                                                    |
 | ------------------ | --------- | -------------------------------------------------------- |
-| `1.x` (current: `1.5.0`) | ✅  | Current line. Security fixes land here.                  |
+| `1.x` (current: `1.7.1`) | ✅  | Current line. Security fixes land here.                  |
 | `0.x`              | ❌        | Pre-`1.0`. Format was not yet frozen; please upgrade.    |
 
 A file produced by any `1.x` build is readable by every other `1.x` build. There is no
@@ -33,21 +33,30 @@ report until a fix is available and coordinated.
 
 - **Confidentiality of file contents** against an attacker who obtains the ciphertext but
   not the key, using AES-256-GCM with a unique per-file content key.
-- **Integrity and authenticity.** Any modification of the ciphertext, header, or framing is
-  detected and rejected. The authenticated additional data binds the key-establishment
-  parameters, the chunk ordinal, and the final-chunk marker, defeating bit-flipping, header
-  tampering, chunk reordering, splicing between containers, and truncation.
+- **Integrity and authenticity.** Any modification of the authenticated envelope — the
+  header, every ciphertext chunk, and the framing through the final frame — is detected and
+  rejected. The authenticated additional data binds the key-establishment parameters, the
+  chunk ordinal, and the final-chunk marker, defeating bit-flipping, header tampering, chunk
+  reordering, splicing between containers, and truncation. (Bytes appended *after* the
+  authenticated final frame are outside the envelope and are ignored, not rejected — see
+  [KNOWN-GAPS.md](KNOWN-GAPS.md).)
 - **Quantum-resistant confidentiality of the data**, via AES-256 (≈128-bit security against
   a Grover attacker). For quantum-resistant *key establishment* with a hybrid combiner that
   remains secure if either primitive is later broken, use the companion
   **`PostQuantum.FileEncryption.Hybrid`** package (X25519 + ML-KEM-768, multi-recipient).
 - **Bounded work on untrusted input.** KDF cost parameters carried in a container (PBKDF2
-  iterations, Argon2id memory/iterations) are range-checked before use, so a malicious
-  header cannot force unbounded memory or CPU — it fails closed as a `PqFormatException`.
-- **No decryption oracle.** Every authentication failure (wrong passphrase, tampered
-  ciphertext, truncated container, spliced frames) raises the same generic
-  `PqDecryptionException` with the same message. The library does not distinguish "wrong
-  key" from "tampered data" at the public surface.
+  iterations, Argon2id memory/iterations) are range-checked against the format's maxima
+  before use, so a malicious header cannot force *unbounded* memory or CPU — it fails closed
+  as a `PqFormatException`. The format maxima are still substantial (up to 2 GiB of Argon2id
+  memory or 100M PBKDF2 iterations) and the default limits accept every legal container, so
+  callers decrypting untrusted input should pass `PqDecryptionLimits.Untrusted` (or custom
+  ceilings) for tight bounds.
+- **No decryption oracle.** Every authentication failure raises the same exception type,
+  `PqDecryptionException`, and every *key-dependent* failure (wrong passphrase vs. tampered
+  ciphertext) carries one identical message — the library never distinguishes "wrong key"
+  from "tampered data" at the public surface, and tests pin those messages byte-identical.
+  Structural failures that an attacker can already compute from the ciphertext alone
+  (truncation, corrupt framing) carry distinct but key-independent diagnostics.
 - **No partial output on failure.** File APIs stage every byte to a sibling temp file and
   only `File.Move` it into place on full success. Stream callers can opt into the same
   all-or-nothing guarantee via `DecryptAtomicAsync`.
@@ -89,6 +98,12 @@ managed, runs anywhere). Removal of the inline mode is targeted for a future maj
   from .NET's `System.Security.Cryptography`.
 - The Hybrid package additionally uses `BouncyCastle.Cryptography` for X25519 and ML-KEM,
   selected so the package runs on every .NET 10 platform without a native ML-KEM dependency.
+- The Signing package uses `BouncyCastle.Cryptography` for Ed25519 and ML-DSA-65, under the
+  same fully-managed rationale as the Hybrid package.
+- The Rust/WASM demo core (`samples/pqfe-wasm` — a byte-compatibility reference, not a
+  shipped NuGet package) uses the pre-1.0 RustCrypto crates (`aes-gcm`, `ml-kem`, `argon2`,
+  `pbkdf2`, `hkdf`, `sha2`), which are not independently audited; its lockfile is committed
+  and `cargo-audit` runs in CI.
 
 ## Cryptographic design principles
 
@@ -105,7 +120,9 @@ managed, runs anywhere). Removal of the inline mode is targeted for a future maj
 
 Every release tag publishes:
 
-- a **CycloneDX SBOM** (`sbom.core.cdx.json`, `sbom.hybrid.cdx.json`),
+- **CycloneDX SBOMs, one per package** (`sbom.core.cdx.json`, `sbom.hybrid.cdx.json`,
+  `sbom.signing.cdx.json`, the three cloud providers, DI extensions, and the tool — see
+  [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md)),
 - a **SLSA-style build-provenance attestation** over the `.nupkg` artifacts (verifiable with
   `gh attestation verify`),
 - the `.nupkg` files themselves (also published to nuget.org).
