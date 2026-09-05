@@ -71,6 +71,7 @@ internal static class Program
                 "decrypt" => await DecryptAsync(rest, cts.Token).ConfigureAwait(false),
                 "keygen" => KeyGen(rest, cts.Token),
                 "recipient" => await RecipientAsync(rest, cts.Token).ConfigureAwait(false),
+                "inspect" => await InspectAsync(rest, cts.Token).ConfigureAwait(false),
                 "sign" => await SignAsync(rest, cts.Token).ConfigureAwait(false),
                 "verify" => await VerifyAsync(rest, cts.Token).ConfigureAwait(false),
                 _ => Fail($"unknown command: {args[0]}", ExitUsage),
@@ -520,6 +521,90 @@ internal static class Program
         return ExitOk;
     }
 
+    // ------------------------------------------------------------------ inspection
+
+    private static async Task<int> InspectAsync(string[] rest, CancellationToken cancellationToken)
+    {
+        bool json = false;
+        string? path = null;
+        foreach (string a in rest)
+        {
+            if (a == "--json") { json = true; }
+            else if (a.StartsWith('-') || path is not null)
+            {
+                return Fail("usage: pqfe inspect <file> [--json]", ExitUsage);
+            }
+            else { path = a; }
+        }
+        if (path is null) return Fail("usage: pqfe inspect <file> [--json]", ExitUsage);
+
+        PqContainerInfo info;
+        try
+        {
+            info = await PqContainerInfo.ReadFileAsync(path, cancellationToken).ConfigureAwait(false);
+        }
+        catch (PqFormatException ex)
+        {
+            return Fail($"'{path}': {ex.Message}", ExitDataErr);
+        }
+
+        if (json)
+        {
+            // Hand-built JSON keeps the CLI NativeAOT-safe (no reflection serializer) and the
+            // schema deliberately tiny and stable.
+            var sb = new StringBuilder(256);
+            sb.Append("{\n");
+            sb.Append($"  \"formatVersion\": {info.FormatVersion},\n");
+            sb.Append($"  \"keySource\": {(int)info.KeySource},\n");
+            sb.Append($"  \"keySourceName\": \"{info.KeySource}\",\n");
+            sb.Append($"  \"chunkSizeBytes\": {info.ChunkSizeBytes},\n");
+            if (info.Kdf is { } kdf)
+            {
+                sb.Append($"  \"kdf\": \"{kdf}\",\n");
+                sb.Append($"  \"saltSizeBytes\": {info.SaltSizeBytes},\n");
+            }
+            if (info.Pbkdf2Iterations is { } iters) sb.Append($"  \"pbkdf2Iterations\": {iters},\n");
+            if (info.Argon2MemoryKiB is { } mem) sb.Append($"  \"argon2MemoryKiB\": {mem},\n");
+            if (info.Argon2Iterations is { } passes) sb.Append($"  \"argon2Iterations\": {passes},\n");
+            if (info.Argon2Parallelism is { } lanes) sb.Append($"  \"argon2Parallelism\": {lanes},\n");
+            if (info.RecipientCount is { } recipients) sb.Append($"  \"recipientCount\": {recipients},\n");
+            if (info.KeyProviderId is { } provider) sb.Append($"  \"keyProviderId\": \"{JsonEscape(provider)}\",\n");
+            if (info.PlaintextSizeUpperBoundBytes is { } bound) sb.Append($"  \"plaintextSizeUpperBoundBytes\": {bound},\n");
+            sb.Append("  \"authenticated\": false\n}");
+            Console.WriteLine(sb.ToString());
+        }
+        else
+        {
+            Console.WriteLine($"Format version:  {info.FormatVersion} (.pqfe, frozen for 1.x)");
+            Console.WriteLine($"Key source:      {info.KeySource} ({(int)info.KeySource})");
+            Console.WriteLine($"Chunk size:      {info.ChunkSizeBytes:N0} bytes");
+            if (info.Kdf == PqKdf.Pbkdf2HmacSha256)
+                Console.WriteLine($"KDF:             PBKDF2-HMAC-SHA256, {info.Pbkdf2Iterations:N0} iterations, {info.SaltSizeBytes}-byte salt");
+            if (info.Kdf == PqKdf.Argon2id)
+                Console.WriteLine($"KDF:             Argon2id, {info.Argon2MemoryKiB:N0} KiB memory, {info.Argon2Iterations:N0} passes, {info.Argon2Parallelism} lane(s), {info.SaltSizeBytes}-byte salt");
+            if (info.RecipientCount is { } count)
+                Console.WriteLine($"Recipients:      {count}");
+            if (info.KeyProviderId is { } providerId)
+                Console.WriteLine($"Key provider:    {providerId}");
+            if (info.PlaintextSizeUpperBoundBytes is { } upperBound)
+                Console.WriteLine($"Plaintext size:  <= {upperBound:N0} bytes");
+            Console.Error.WriteLine("note: header fields are UNAUTHENTICATED until a decryption succeeds — use them to");
+            Console.Error.WriteLine("      refuse work or choose a key, never as trusted facts about the plaintext.");
+        }
+        return ExitOk;
+    }
+
+    private static string JsonEscape(string value)
+    {
+        var sb = new StringBuilder(value.Length);
+        foreach (char c in value)
+        {
+            if (c is '"' or '\\') sb.Append('\\');
+            sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
     private static void WarnRawPrivateKey() =>
         Console.Error.WriteLine(
             "note: the private key file is UNENCRYPTED (0600 on Unix). Consider --encrypt to protect it with a passphrase.");
@@ -917,6 +1002,7 @@ internal static class Program
               pqfe recipient encrypt <input> <output> --recipient <pub> [--recipient <pub> ...]
               pqfe recipient decrypt <input> <output> --identity <keyfile> [--untrusted]
               pqfe recipient fingerprint <pubfile>
+              pqfe inspect <file> [--json]
               pqfe sign    <input> <keyfile>     [--signature PATH] [--passphrase-env VAR]
               pqfe verify  <input> <keyfile.pub> [--signature PATH]
               pqfe --version
@@ -938,6 +1024,12 @@ internal static class Program
                                     (PQKF format: an Argon2id-hardened .pqfe container).
                                     sign detects an encrypted key file automatically and
                                     prompts (or reads --passphrase-env) for its passphrase.
+
+            inspect prints what a container's header declares — key source, KDF work
+            factors, chunk size, recipient count, provider id, and an upper bound on the
+            plaintext size — without deriving keys or decrypting anything, so it is safe to
+            run on untrusted files before deciding whether (and with which key) to decrypt.
+            Header fields are unauthenticated until a decryption succeeds.
 
             recipient keygen writes an X25519 + ML-KEM-768 hybrid recipient key pair for
             public-key file encryption; recipient encrypt seals a file to one or more .pub

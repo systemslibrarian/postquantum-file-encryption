@@ -3,3 +3,25 @@ PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2Parallelism.get -> int
 PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2Parallelism.init -> void
 PostQuantum.FileEncryption.PqDecryptionLimits.MaxPlaintextBytes.get -> long
 PostQuantum.FileEncryption.PqDecryptionLimits.MaxPlaintextBytes.init -> void
+PostQuantum.FileEncryption.PqContainerInfo
+PostQuantum.FileEncryption.PqContainerInfo.Argon2Iterations.get -> int?
+PostQuantum.FileEncryption.PqContainerInfo.Argon2MemoryKiB.get -> int?
+PostQuantum.FileEncryption.PqContainerInfo.Argon2Parallelism.get -> int?
+PostQuantum.FileEncryption.PqContainerInfo.ChunkSizeBytes.get -> int
+PostQuantum.FileEncryption.PqContainerInfo.FormatVersion.get -> int
+PostQuantum.FileEncryption.PqContainerInfo.Kdf.get -> PostQuantum.FileEncryption.PqKdf?
+PostQuantum.FileEncryption.PqContainerInfo.KeyProviderId.get -> string?
+PostQuantum.FileEncryption.PqContainerInfo.KeySource.get -> PostQuantum.FileEncryption.PqKeySource
+PostQuantum.FileEncryption.PqContainerInfo.Pbkdf2Iterations.get -> int?
+PostQuantum.FileEncryption.PqContainerInfo.PlaintextSizeUpperBoundBytes.get -> long?
+PostQuantum.FileEncryption.PqContainerInfo.RecipientCount.get -> int?
+PostQuantum.FileEncryption.PqContainerInfo.SaltSizeBytes.get -> int?
+PostQuantum.FileEncryption.PqKeySource
+PostQuantum.FileEncryption.PqKeySource.HybridMultiRecipient = 4 -> PostQuantum.FileEncryption.PqKeySource
+PostQuantum.FileEncryption.PqKeySource.HybridRecipient = 3 -> PostQuantum.FileEncryption.PqKeySource
+PostQuantum.FileEncryption.PqKeySource.KeyProvider = 5 -> PostQuantum.FileEncryption.PqKeySource
+PostQuantum.FileEncryption.PqKeySource.MlKemRecipient = 2 -> PostQuantum.FileEncryption.PqKeySource
+PostQuantum.FileEncryption.PqKeySource.Passphrase = 1 -> PostQuantum.FileEncryption.PqKeySource
+static PostQuantum.FileEncryption.PqContainerInfo.Read(System.ReadOnlySpan<byte> container) -> PostQuantum.FileEncryption.PqContainerInfo!
+static PostQuantum.FileEncryption.PqContainerInfo.ReadFileAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<PostQuantum.FileEncryption.PqContainerInfo!>!
+static PostQuantum.FileEncryption.PqContainerInfo.TryRead(System.ReadOnlySpan<byte> container, out PostQuantum.FileEncryption.PqContainerInfo? info) -> bool

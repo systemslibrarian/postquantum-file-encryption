@@ -41,6 +41,10 @@ pqfe recipient keygen alice.key --encrypt          # writes alice.key (PQKF) + a
 pqfe recipient encrypt report.pdf report.pdf.pqfe --recipient alice.key.pub --recipient bob.key.pub
 pqfe recipient decrypt report.pdf.pqfe report.pdf --identity alice.key --untrusted
 pqfe recipient fingerprint alice.key.pub           # re-print the fingerprint to compare over a trusted channel
+
+# Inspect what a container's header declares — no key needed, nothing decrypted:
+pqfe inspect report.pdf.pqfe                       # key source, KDF cost, chunk size, plaintext bound
+pqfe inspect report.pdf.pqfe --json                # machine-readable, for policy gates in scripts
 ```
 
 Without `--encrypt`, `keygen` writes the raw private key bytes (`0600` on Unix). With it, the

@@ -237,7 +237,7 @@ internal static class PqContainer
     /// container could otherwise inject terminal escape sequences or forged lines into whatever
     /// log or console the caller writes the message to.
     /// </summary>
-    private static string SanitizeForMessage(string value)
+    internal static string SanitizeForMessage(string value)
     {
         // Single pass, single copy of the predicate: a pre-scan fast path would duplicate the
         // sanitization rule, and this runs only while building an exception message anyway.
