@@ -126,8 +126,8 @@ managed, runs anywhere). Removal of the inline mode is targeted for a future maj
 Every release tag publishes:
 
 - **CycloneDX SBOMs, one per package** (`sbom.core.cdx.json`, `sbom.hybrid.cdx.json`,
-  `sbom.signing.cdx.json`, the three cloud providers, DI extensions, and the tool — see
-  [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md)),
+  `sbom.signing.cdx.json`, the three cloud providers, DI extensions, Analyzers, and the
+  tool — see [docs/SUPPLY-CHAIN.md](docs/SUPPLY-CHAIN.md)),
 - a **SLSA-style build-provenance attestation** over the `.nupkg` artifacts (verifiable with
   `gh attestation verify`),
 - the `.nupkg` files themselves (also published to nuget.org).

@@ -1,1 +1,2 @@
 #nullable enable
+PostQuantum.FileEncryption.Hybrid.PqHybridPublicKey.GetFingerprint() -> string!

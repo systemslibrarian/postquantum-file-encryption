@@ -65,6 +65,28 @@ var gcp = new GcpKmsContentKeyProvider(await KeyManagementServiceClient.CreateAs
   services' binding semantics; CI carries no cloud credentials, so **live-service integration
   is not exercised by this repo's pipeline** ([KNOWN-GAPS.md](../KNOWN-GAPS.md)).
 
+## Verifying a received public key (fingerprints)
+
+Encrypting to the wrong public key is the classic key-substitution attack: whoever swapped the
+key you were sent reads everything encrypted from then on, and no cryptography downstream can
+detect it. Every public key therefore exposes a stable, domain-separated fingerprint:
+
+```csharp
+string fp = recipientPublicKey.GetFingerprint();
+// "pqfp1:6JCYeiCLnoUrunV1IsnrIjkhWgpSTgr9SH1hcsQaGWo"
+```
+
+```bash
+pqfe recipient fingerprint alice.key.pub   # the same value from the CLI
+```
+
+The value is `pqfp1:` + URL-safe Base64 of SHA-256 over a domain prefix, a purpose tag
+(recipient vs. signing keys can never share a fingerprint, even with related bytes), and the
+exported key bytes. Compare the **whole string** over a channel you already trust — a call, a
+video chat, an existing authenticated system — before first use; both `keygen` commands print
+it at generation time. Fingerprints are safe to log, publish, and pin in configuration — they
+reveal nothing secret. The rendering is frozen for the `pqfp1:` prefix.
+
 ## Multiple recipients / access groups
 
 Shipped as `KeySource = 4` in the Hybrid package (design history in [ROADMAP-v3.md](ROADMAP-v3.md)): one CEK wrapped to N recipients (or

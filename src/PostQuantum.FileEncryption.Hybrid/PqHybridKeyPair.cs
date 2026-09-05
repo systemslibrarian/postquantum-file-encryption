@@ -41,6 +41,18 @@ public sealed class PqHybridPublicKey
         return bytes;
     }
 
+    /// <summary>
+    /// A stable, domain-separated fingerprint of this public key: <c>pqfp1:</c> followed by
+    /// the URL-safe Base64 SHA-256 of the key bytes with a purpose tag (a recipient key and a
+    /// signing key can never share a fingerprint). Compare the whole string over a channel
+    /// you already trust — a call, a video chat, an existing authenticated system — before
+    /// first use of a key you received: two parties reading the same fingerprint hold the
+    /// same key, which is the defense against a swapped-in attacker key. Safe to log,
+    /// publish, and pin in configuration; it reveals nothing secret. The rendering is a
+    /// compatibility surface and will not change for the <c>pqfp1:</c> prefix.
+    /// </summary>
+    public string GetFingerprint() => Fingerprint.Compute(Fingerprint.PurposeHybridRecipient, Export());
+
     /// <summary>Imports a hybrid public key from <see cref="Export"/> bytes.</summary>
     /// <exception cref="ArgumentException">The byte length is not <c>1216</c>.</exception>
     public static PqHybridPublicKey Import(byte[] bytes)
