@@ -1,3 +1,5 @@
 #nullable enable
 PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2Parallelism.get -> int
 PostQuantum.FileEncryption.PqDecryptionLimits.MaxArgon2Parallelism.init -> void
+PostQuantum.FileEncryption.PqDecryptionLimits.MaxPlaintextBytes.get -> long
+PostQuantum.FileEncryption.PqDecryptionLimits.MaxPlaintextBytes.init -> void

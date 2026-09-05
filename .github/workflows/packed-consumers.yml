@@ -1,0 +1,41 @@
+name: Packed consumers
+
+# Tests the product AS CONSUMERS RECEIVE IT: packs all nine lockstep packages into a local
+# feed, builds a clean net8.0 + net10.0 consumer from those packages (no project references),
+# asserts the packed analyzers load and fire, runs the full API journey on both frameworks,
+# and installs + drives the packed `pqfe` tool end to end. Catches bad package assets, broken
+# dependency pins, analyzer packaging mistakes, and tool-payload failures that source builds
+# cannot see. See scripts/verify-packed-consumers.sh (also runnable locally).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'samples/Pqfe.Cli/**'
+      - 'scripts/verify-packed-consumers.sh'
+      - '.github/workflows/packed-consumers.yml'
+      - 'Directory.Build.props'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packed-consumers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          # 8.0.x provides the runtime for the consumer's net8.0 leg; 10.0.x is the build SDK.
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Verify packed consumers
+        run: bash scripts/verify-packed-consumers.sh

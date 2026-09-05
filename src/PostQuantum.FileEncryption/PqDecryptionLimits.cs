@@ -51,6 +51,20 @@ public sealed class PqDecryptionLimits
     /// </summary>
     public int MaxChunkSizeBytes { get; init; } = PqEncryptionOptions.MaxChunkSizeBytes;
 
+    /// <summary>
+    /// Largest total plaintext size, in bytes, this decryptor will produce from a container
+    /// whose length is known up front (the file, bytes, atomic, and seekable-stream APIs).
+    /// The exact plaintext total is derived from the container length and rejected with
+    /// <see cref="PqFormatException"/> before any key derivation or decryption work, closing
+    /// the size-amplification hole where a service that buffered an untrusted container then
+    /// pays for its full plaintext expansion. Defaults to <see cref="long.MaxValue"/> (no
+    /// ceiling) — including in <see cref="Untrusted"/>, because the acceptable plaintext size
+    /// is application knowledge: services decrypting untrusted input should set their actual
+    /// maximum. Containers arriving on unknown-length (non-seekable) streams cannot be
+    /// pre-checked and are not bounded by this limit.
+    /// </summary>
+    public long MaxPlaintextBytes { get; init; } = long.MaxValue;
+
     /// <summary>The permissive defaults: every limit equals the format maximum, so every legal container decrypts.</summary>
     public static PqDecryptionLimits Default { get; } = new();
 
@@ -106,6 +120,12 @@ public sealed class PqDecryptionLimits
             throw new ArgumentOutOfRangeException(
                 nameof(MaxArgon2Parallelism), MaxArgon2Parallelism,
                 "Limit must be between 1 and 255.");
+        }
+
+        if (MaxPlaintextBytes < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MaxPlaintextBytes), MaxPlaintextBytes, "Limit must not be negative.");
         }
 
         if (MaxChunkSizeBytes < PqEncryptionOptions.MinChunkSizeBytes

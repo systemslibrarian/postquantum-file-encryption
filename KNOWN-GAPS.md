@@ -245,7 +245,7 @@ Last reviewed against: **`1.7.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
   overload holds the full decrypted output in a `MemoryStream` until the final frame
   authenticates, so peak memory is proportional to plaintext size and it cannot exceed the
   ~2 GiB single-array limit (a larger valid container throws `IOException`, not a `Pq*`
-  exception, and `PqDecryptionLimits` does not bound this buffer). For untrusted or large
+  exception; `PqDecryptionLimits.MaxPlaintextBytes` can bound it, and the whole plaintext size, for known-length inputs). For untrusted or large
   inputs, prefer the file APIs (temp-file staging) or the non-atomic stream overload with a
   bounded destination. This is documented on the method; noted here for completeness.
 
