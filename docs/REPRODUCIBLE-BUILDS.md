@@ -53,18 +53,18 @@ What does **not** affect reproducibility (with the above in place):
 - Local NuGet caches. The compiler reads from `obj/`, which is regenerated from the same
   inputs.
 
-What **should not** affect it, but currently does:
-
-- **The operating system of the verifier.** In principle `.gitattributes`-normalised sources
-  plus `Deterministic=true` yield byte-identical assemblies on any OS. In practice, a macOS
-  arm64 rebuild of `v1.7.1` produced managed DLLs that differ from the Linux-built published
-  package — observed with this repository's own verifier, and independently reported. The
-  release-time verification on Linux passed for the same tag, so this is platform/toolchain
-  drift, not evidence of tampering — but it means **Linux (the CI environment) is the
-  demonstrated reproducibility envelope today**. Verify on Linux, or when investigating a
-  mismatch elsewhere, first match the exact SDK (`dotnet --version`) and OS of the release
-  build before suspecting the artifact. Root-causing (and either fixing or permanently
-  scoping) the cross-OS difference is tracked work.
+- **The operating system of the verifier — proven, not just principled.** For `v1.7.1` the
+  rebuild is byte-identical on Linux (x64 release CI and arm64) **and macOS arm64** with SDK
+  `10.0.400`. An earlier macOS "mismatch" — reported externally and initially reproduced
+  here — turned out to be a bug in this repository's own verification script, not in the
+  artifacts: on macOS `mktemp -d` returns a `/var/folders/…` path, but `/var` is a symlink
+  to `/private/var`, and building through the unresolved spelling made SourceLink's computed
+  source root disagree with the compiler's canonical source paths — the `/_/` path map never
+  applied, absolute build paths leaked into the deterministic input hash, and the diff
+  flagged a perfectly reproducible package as MISMATCH. The script now canonicalizes its
+  work directory (`pwd -P`). If you verify by hand, build from a symlink-free (physical)
+  path — a mismatch that appears only under an aliased path is the verifier's environment,
+  not the artifact.
 
 What **does** matter:
 

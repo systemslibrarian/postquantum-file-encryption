@@ -105,6 +105,16 @@ independently re-traced before fixing; none affects any on-disk byte or reader a
   trace on a locked/unreadable file; the pqfe-web page no longer hangs at "Encrypting…"
   forever if the worker crashes mid-operation; the docs-consistency link checker handles
   markdown link titles and URL-encoded targets.
+- **The reproducibility verifier's macOS false-MISMATCH, root-caused and fixed.** On macOS,
+  `mktemp -d` returns a `/var/folders/…` path whose `/var` prefix is a symlink to
+  `/private/var`; building the cloned source through the unresolved spelling made
+  SourceLink's source root disagree with the compiler's canonical paths, so the `/_/` path
+  map never applied and the deterministic input hash shifted — reporting a byte-perfect
+  package as MISMATCH (the earlier external macOS-reproducibility report had the same
+  cause). The script now canonicalizes its work directory (`pwd -P`); `v1.7.1` is verified
+  byte-identical on Linux **and macOS arm64**, and REPRODUCIBLE-BUILDS.md now states the
+  proven cross-OS claim. (Also corrected: AUDIT-SCOPE.md pinned the v1.7.1 annotated-tag
+  object hash as the commit; it now names the actual commit `f062c10`.)
 
 ### Changed (behavior)
 
