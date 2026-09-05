@@ -8,8 +8,68 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Fixed
+
+Sixteen defects found by an adversarially verified multi-agent bug hunt (every finding
+independently re-traced before fixing; none affects any on-disk byte or reader acceptance):
+
+- **Key hygiene:** the container engine's chunk staging buffers are now zeroed in the same
+  `finally` as the content key — for PQKF traffic those buffers held a full private key on
+  the managed heap after export/import. `LocalKekContentKeyProvider`'s constructor zeroes its
+  cloned KEK if `AesGcm` construction throws (the half-built object could never be disposed).
+- **Fail-closed exception contract:** an empty byte-passphrase against an Argon2id container
+  no longer escapes as Konscious's raw `ArgumentException` (the exception family was steered
+  by an unauthenticated header byte); `PqKeyFileFormat.Decrypt` no longer converts
+  `PlatformNotSupportedException` into "wrong kind of key file" on AES-GCM-less platforms;
+  near-`Array.MaxLength` inputs to the bytes APIs no longer throw a raw
+  `ArgumentOutOfRangeException` from an internal capacity hint (core + Hybrid); an oversized
+  provider `wrapInfo` is rejected with the intended message instead of an internal-parameter
+  `ArgumentException`.
+- **Data-loss guards:** `PqSigner.SignFileAsync` (and `pqfe sign --signature`) refuse a
+  signature path equal to the input or key file — previously that silently replaced the
+  signed file (or the private key) with the signature and reported success; the WebUpload
+  Keygen sample opens both outputs `CreateNew` (an existing key pair is a hard error — an
+  overwrite would permanently orphan every prior upload), writes the private half first with
+  `0600` on Unix, and cleans up on partial failure; the CLI's overwrite refusal now claims
+  the output path atomically so it holds across the interactive passphrase prompt; a second
+  Ctrl+C now always terminates the CLI even when a redirected-stdin read cannot observe
+  cancellation.
+- **Azure provider:** a null-`KeyId` (local `JsonWebKey`) client no longer rejects every
+  legitimate container with a nonsense pin message — nor accepts a hostile `/`-prefixed
+  recorded id via accidental wildcard (`null + "/"`); the header-derived recorded key id is
+  control-character-sanitized before it reaches an exception message.
+- **Rust core:** `encrypt_bytes_with` validates its parameters (a zero `chunk_size` looped
+  forever; a wrong-length nonce prefix panicked; an over-long salt silently produced a
+  container no reader can decrypt); a new `decrypt_hybrid` fuzz target covers the
+  KeySource-3/4 recipient-block parsers the passphrase target cannot reach.
+- **Samples/tooling:** the Backup quickstart no longer aborts the whole run with a raw stack
+  trace on a locked/unreadable file; the pqfe-web page no longer hangs at "Encrypting…"
+  forever if the worker crashes mid-operation; the docs-consistency link checker handles
+  markdown link titles and URL-encoded targets.
+
+### Changed (behavior)
+
+- **All in-library key-dependent decryption failures are now fully uniform** — one exception
+  type, one identical message, no inner exception — across *stages* as well as causes: wrong
+  passphrase, wrong hybrid/inline-ML-KEM recipient key, wrong local KEK, tampered wrap, and
+  tampered body are indistinguishable to a caller. Previously the unwrap stage carried
+  distinct messages ("this file is not encrypted to this key…"), which let a service exposing
+  raw errors act as a key-possession oracle (externally probed and confirmed). Callers who
+  matched on the old message text must match on `PqDecryptionException` instead. Cloud-KMS
+  providers keep their uniform provider-specific operational messages (see KNOWN-GAPS.md).
+- **`pqfe decrypt` gains `--untrusted`** (maps to `PqDecryptionLimits.Untrusted`), and the
+  Blazor demo decrypts anonymous uploads under `Untrusted` limits — the library's own
+  documented anti-pattern, now fixed in its own samples.
+
 ### Added
 
+- **Vector 9 — inline ML-KEM-768 recipient known-answer vector** (`test-vectors/
+  mlkem-recipient.pqfe` + `.key`, decrypt-only, hash-pinned everywhere): the third
+  key-establishment path, previously pinned by nothing because its round-trip tests self-skip
+  without platform ML-KEM. Generated and round-trip-verified on a Linux host with OpenSSL 3.5,
+  where the full suite (RecipientTests included) also ran green — their first known execution.
+- **Cross-stage no-oracle test** pinning that a wrong recipient key and a tampered body yield
+  byte-identical `PqDecryptionException`s with null inner exceptions.
 - **Nine new conformance-corpus vectors, run by both implementations.** A deterministic
   two-chunk positive (`pos-passphrase-pbkdf2-multichunk`) plus eight negatives: the Argon2id
   cost/salt bounds (`neg-argon2-memory-out-of-range`, `neg-argon2-iterations-out-of-range`,

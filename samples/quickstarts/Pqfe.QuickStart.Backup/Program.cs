@@ -71,6 +71,13 @@ try
             Console.Error.WriteLine($"FAILED {name}: wrong passphrase, or the file was altered");
             failures++;
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A locked, unreadable, or concurrently deleted file must not abort the whole run
+            // with a raw stack trace — report it like the other per-file failures and move on.
+            Console.Error.WriteLine($"FAILED {name}: {ex.Message}");
+            failures++;
+        }
     }
 }
 catch (OperationCanceledException)

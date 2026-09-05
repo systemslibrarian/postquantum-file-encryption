@@ -176,7 +176,9 @@ public sealed class PqFileEncryptor
     {
         ArgumentNullException.ThrowIfNull(keyProvider);
         using var input = new MemoryStream(plaintext.ToArray(), writable: false);
-        using var output = new MemoryStream(plaintext.Length + 256);
+        // Capacity hint clamped: for plaintext within 256 bytes of Array.MaxLength the naive
+        // int addition wraps negative and MemoryStream(int) throws a raw ArgumentOutOfRangeException.
+        using var output = new MemoryStream((int)Math.Min(plaintext.Length + 256L, Array.MaxLength));
         await PqContainer.EncryptKeyProviderAsync(
             input, output, keyProvider, _options, plaintext.Length, progress, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
@@ -212,7 +214,9 @@ public sealed class PqFileEncryptor
         // Empty passphrases are rejected once at the engine choke point (PqContainer), so
         // every overload — and any future codec caller — inherits the same gate.
         using var input = new MemoryStream(plaintext.ToArray(), writable: false);
-        using var output = new MemoryStream(plaintext.Length + 256);
+        // Capacity hint clamped: for plaintext within 256 bytes of Array.MaxLength the naive
+        // int addition wraps negative and MemoryStream(int) throws a raw ArgumentOutOfRangeException.
+        using var output = new MemoryStream((int)Math.Min(plaintext.Length + 256L, Array.MaxLength));
         await PqContainer.EncryptPassphraseAsync(
             input, output, passphrase, _options, plaintext.Length, progress, cancellationToken).ConfigureAwait(false);
         return output.ToArray();

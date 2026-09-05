@@ -204,7 +204,10 @@ internal static class PqContainer
         {
             throw new ArgumentException("Provider id must be between 1 and 255 UTF-8 bytes.", nameof(providerId));
         }
-        if (wrapInfo.Length > ushort.MaxValue)
+        // The real ceiling is what fits the header's uint16 KeyParams field alongside the id
+        // and length prefix — checking only ushort.MaxValue here would let the last few bytes
+        // of the range escape as ContainerHeader.Create's internal-parameter ArgumentException.
+        if (wrapInfo.Length > ContainerFormat.MaxKeyParamsLength - 3 - id.Length)
         {
             throw new ArgumentException("Provider wrap info is too large.", nameof(wrapInfo));
         }

@@ -54,7 +54,15 @@ function createWorkerBackend() {
             pending.delete(m.id);
             m.ok ? p.res(m.result) : p.rej(new Error(m.error));
         };
-        worker.onerror = (e) => { clearTimeout(timer); reject(new Error(e.message || 'worker error')); };
+        worker.onerror = (e) => {
+            clearTimeout(timer);
+            const err = new Error(e.message || 'worker error');
+            reject(err); // no-op if init already resolved
+            // A worker crash after init must not strand in-flight operations: reject them all
+            // so the UI shows the error instead of hanging at "Encrypting…" forever.
+            for (const p of pending.values()) p.rej(err);
+            pending.clear();
+        };
     });
 }
 

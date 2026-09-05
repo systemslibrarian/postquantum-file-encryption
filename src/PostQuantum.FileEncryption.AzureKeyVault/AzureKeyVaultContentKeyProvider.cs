@@ -115,9 +115,11 @@ public sealed class AzureKeyVaultContentKeyProvider : IContentKeyProvider
         if (!KeyIdMatchesConfiguredKey(recordedKeyId))
         {
             // A clear operational error, like LocalKek's wrong-length message: the caller is
-            // holding the wrong provider, not (necessarily) a tampered file.
+            // holding the wrong provider, not (necessarily) a tampered file. The recorded id
+            // comes from the unauthenticated header, so control characters are neutralized
+            // before it can reach a log or terminal (mirrors PqContainer.SanitizeForMessage).
             throw new PqDecryptionException(
-                $"The container's content key was wrapped under Key Vault key '{recordedKeyId}', " +
+                $"The container's content key was wrapped under Key Vault key '{SanitizeForMessage(recordedKeyId)}', " +
                 $"but this provider is configured for '{_client.KeyId}'.");
         }
 
@@ -153,7 +155,35 @@ public sealed class AzureKeyVaultContentKeyProvider : IContentKeyProvider
     /// match the versioned id the service recorded (Key Vault ids are
     /// <c>https://vault/keys/name[/version]</c>).
     /// </summary>
-    private bool KeyIdMatchesConfiguredKey(string recordedKeyId) =>
-        string.Equals(recordedKeyId, _client.KeyId, StringComparison.Ordinal) ||
-        recordedKeyId.StartsWith(_client.KeyId + "/", StringComparison.Ordinal);
+    private bool KeyIdMatchesConfiguredKey(string recordedKeyId)
+    {
+        string? configured = _client.KeyId;
+        if (configured is null)
+        {
+            // A locally-operating client built from a JsonWebKey with no key id cannot pin —
+            // and the naive comparison below would both reject every legitimate id with a
+            // nonsense message AND accept any hostile recorded id starting with '/'
+            // (null + "/" == "/", an accidental wildcard). Defer to the cryptographic unwrap:
+            // a wrong or tampered wrap still fails closed at the unwrap step.
+            return true;
+        }
+        return string.Equals(recordedKeyId, configured, StringComparison.Ordinal) ||
+            recordedKeyId.StartsWith(configured + "/", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Replaces control characters in header-derived text before embedding it in an exception
+    /// message, so a crafted container cannot inject terminal escape sequences or forged lines
+    /// into whatever log or console the caller writes the message to.
+    /// </summary>
+    private static string SanitizeForMessage(string value)
+    {
+        Span<char> buffer = value.Length <= 256 ? stackalloc char[value.Length] : new char[value.Length];
+        for (int i = 0; i < value.Length; i++)
+        {
+            char c = value[i];
+            buffer[i] = char.IsControl(c) ? '?' : c;
+        }
+        return new string(buffer);
+    }
 }

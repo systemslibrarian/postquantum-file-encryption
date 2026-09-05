@@ -216,6 +216,29 @@ the two test suites above (`PrivateKeyVector` / `ContainerVector` and `HYBRID8_P
 
 ---
 
+## Vector 9 — inline ML-KEM-768 recipient (KeySource 2, deprecated, decrypt-only)
+
+Pins the deprecated inline recipient path byte-exactly: the KeySource-2 wrap layout
+(`KemId ‖ C ‖ KemCiphertext ‖ WrapNonce ‖ WrapTag ‖ WrappedKey`), the ML-KEM-768
+decapsulation, the `HKDF-SHA256` KEK derivation, and the AES-256-GCM key unwrap — the one
+key-establishment path no other vector covered (its randomized round-trip tests self-skip on
+hosts without platform ML-KEM). Encryption is randomized, so the vector is decrypt-only.
+Generated once on a Linux host with OpenSSL 3.5 (platform ML-KEM) and frozen. The artifacts
+are committed files rather than inline Base64, hash-pinned by `VectorArtifactTests` and
+`test-vectors/SHA256SUMS`; the decrypt is exercised by
+`tests/.../RecipientKnownAnswerVectorTests.cs` wherever `PqKeyPair.IsSupported`. The key pair
+was generated solely for this vector and protects nothing. The Rust core does not implement
+this mode, so the vector is not in the cross-implementation manifest.
+
+| Field | Value |
+| --- | --- |
+| Key source | `2` (inline ML-KEM-768 recipient, deprecated `PQFE001`/`PQFE002`) |
+| Container | [`test-vectors/mlkem-recipient.pqfe`](../test-vectors/mlkem-recipient.pqfe), SHA-256 `02d3614753172b9eb9690cb35325794fac5e9a67faf5f81377b708725ed00503` |
+| Recipient private key | [`test-vectors/mlkem-recipient.key`](../test-vectors/mlkem-recipient.key) (`PqRecipientPrivateKey.Export()`, 2,400 bytes), SHA-256 `ff8599053e453e11aad3149736c7094484a39cf8d982ab9ab285956889ca5444` |
+| Expected plaintext (UTF-8) | `PostQuantum.FileEncryption inline ML-KEM-768 recipient known-answer vector.` |
+
+---
+
 ## How to verify
 
 ```bash

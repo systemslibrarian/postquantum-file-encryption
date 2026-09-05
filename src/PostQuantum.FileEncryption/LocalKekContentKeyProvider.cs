@@ -46,7 +46,17 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
             throw new ArgumentException($"The key-encryption key must be {KekLength} bytes (256 bits).", nameof(kek));
         }
         _kek = kek.ToArray();
-        _kekGcm = new AesGcm(_kek, TagLength);
+        try
+        {
+            _kekGcm = new AesGcm(_kek, TagLength);
+        }
+        catch
+        {
+            // AesGcm can throw (e.g. PlatformNotSupportedException) after the KEK was cloned;
+            // the half-constructed object can never be disposed, so zero the clone here.
+            CryptographicOperations.ZeroMemory(_kek);
+            throw;
+        }
     }
 
     /// <summary>Creates a provider over a fresh random 256-bit KEK (e.g. for tests).</summary>
@@ -141,11 +151,13 @@ public sealed class LocalKekContentKeyProvider : IContentKeyProvider, IDisposabl
             }
             return Task.FromResult(contentKey);
         }
-        catch (AuthenticationTagMismatchException ex)
+        catch (AuthenticationTagMismatchException)
         {
             CryptographicOperations.ZeroMemory(contentKey);
+            // Same generic literal as the engine: a wrong KEK and a tampered body must be
+            // indistinguishable to the caller — message and exception shape alike.
             throw new PqDecryptionException(
-                "Decryption failed: wrong key-encryption key, or the wrapped key has been altered.", ex);
+                "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
         }
     }
 

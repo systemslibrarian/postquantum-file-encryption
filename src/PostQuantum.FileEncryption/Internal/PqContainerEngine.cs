@@ -57,6 +57,11 @@ internal static class PqContainerEngine
         IProgress<PqProgress>? progress,
         CancellationToken cancellationToken)
     {
+        // Declared outside the try so the finally can zero them: for key-file (PQKF) traffic
+        // the "plaintext" flowing through these staging buffers IS a private key, so they get
+        // the same hygiene as the content key.
+        byte[] current = [];
+        byte[] next = [];
         try
         {
             using var aes = new AesGcm(contentKey, ContainerFormat.TagLength);
@@ -66,8 +71,8 @@ internal static class PqContainerEngine
             // Two plaintext buffers let us read one chunk ahead, so we always know whether the
             // chunk we are about to seal is the final one. ReadAtMostAsync only returns a short
             // count at end-of-stream, so a partial fill reliably means "no more data".
-            byte[] current = new byte[header.ChunkSize];
-            byte[] next = new byte[header.ChunkSize];
+            current = new byte[header.ChunkSize];
+            next = new byte[header.ChunkSize];
             byte[] ciphertext = new byte[header.ChunkSize];
             byte[] tag = new byte[ContainerFormat.TagLength];
             byte[] nonce = new byte[ContainerFormat.NonceLength];
@@ -117,6 +122,8 @@ internal static class PqContainerEngine
         finally
         {
             CryptographicOperations.ZeroMemory(contentKey);
+            CryptographicOperations.ZeroMemory(current);
+            CryptographicOperations.ZeroMemory(next);
         }
     }
 
@@ -136,6 +143,8 @@ internal static class PqContainerEngine
         IProgress<PqProgress>? progress,
         CancellationToken cancellationToken)
     {
+        // Declared outside the try so the finally can zero it — see EncryptCoreAsync.
+        byte[] plaintext = [];
         try
         {
             long? totalPlaintextBytes = DerivePlaintextTotal(totalContainerBytes, header);
@@ -154,7 +163,7 @@ internal static class PqContainerEngine
             }
 
             byte[] ciphertext = new byte[bufferSize];
-            byte[] plaintext = new byte[bufferSize];
+            plaintext = new byte[bufferSize];
             byte[] tag = new byte[ContainerFormat.TagLength];
             byte[] nonce = new byte[ContainerFormat.NonceLength];
             byte[] frameHeader = new byte[5];
@@ -210,10 +219,13 @@ internal static class PqContainerEngine
                     // throws and writes nothing, so corrupt data never reaches `destination`.
                     aes.Decrypt(nonce, ciphertext.AsSpan(0, (int)length), tag, plaintext.AsSpan(0, (int)length), aad);
                 }
-                catch (AuthenticationTagMismatchException ex)
+                catch (AuthenticationTagMismatchException)
                 {
+                    // Deliberately no inner exception: every in-library key-dependent failure
+                    // (wrong passphrase, wrong recipient/KEK, tampered wrap, tampered body)
+                    // must be indistinguishable to the caller — message AND exception shape.
                     throw new PqDecryptionException(
-                        "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.", ex);
+                        "Decryption failed — the passphrase (or key) is wrong, or the file has been altered, truncated, or corrupted.");
                 }
 
                 await destination.WriteAsync(plaintext.AsMemory(0, (int)length), cancellationToken).ConfigureAwait(false);
@@ -240,6 +252,7 @@ internal static class PqContainerEngine
         finally
         {
             CryptographicOperations.ZeroMemory(contentKey);
+            CryptographicOperations.ZeroMemory(plaintext);
         }
     }
 

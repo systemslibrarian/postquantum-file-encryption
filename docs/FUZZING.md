@@ -88,6 +88,12 @@ mkdir -p corpus && cp fuzz/PostQuantum.FileEncryption.Fuzz/seed-corpus/*.pqfe \
 > `ParserBoundaryTests` and the committed negative vectors instead. The CI jobs also pass
 > `-timeout=20` per input and upload `timeout-*`/`oom-*` reproducers alongside `crash-*`.
 
+The Rust side has **two** targets: `decrypt` (passphrase parser) and `decrypt_hybrid`, which
+drives `decrypt_bytes_hybrid` with the pinned multi-recipient conformance key so the
+KeySource-3/4 recipient-block parsers — unreachable from the passphrase target — get
+coverage-guided fuzzing too, including the unwrap-success branch (its matching container is
+seeded into the corpus).
+
 ## Scheduled CI
 
 `.github/workflows/fuzz.yml` runs both targets nightly (and on demand via *Run workflow*), caches

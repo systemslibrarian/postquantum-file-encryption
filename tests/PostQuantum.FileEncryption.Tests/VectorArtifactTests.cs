@@ -18,6 +18,8 @@ public sealed class VectorArtifactTests
     [InlineData("passphrase-pbkdf2-multichunk.pqfe", "008543AB899A427A33100F1B865B54C5EF0426834B8E7B696EEFFC9B97EA886A")]
     [InlineData("keyfile.pqkf", "EEDA08E328B028E69F87145642C7898C72BE83E410EBFD595F0B2B50FD9BFB38")]
     [InlineData("hybrid-recipient.pqfe", "A16FF8DB3DAD6A50D9A81CEE5A97CE26D875C8DCE80A00C93DD7516F080D31DE")]
+    [InlineData("mlkem-recipient.pqfe", "02D3614753172B9EB9690CB35325794FAC5E9A67FAF5F81377B708725ED00503")]
+    [InlineData("mlkem-recipient.key", "FF8599053E453E11AAD3149736C7094484A39CF8D982AB9AB285956889CA5444")]
     public void Committed_vector_artifact_is_byte_identical(string fileName, string expectedSha256)
     {
         string path = Path.Combine(FindRepositoryRoot(), "test-vectors", fileName);

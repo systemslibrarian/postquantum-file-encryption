@@ -100,7 +100,9 @@ public sealed class PqHybridEncryptor
     {
         ValidateRecipients(recipients);
         using var input = new MemoryStream(plaintext.ToArray(), writable: false);
-        using var output = new MemoryStream(plaintext.Length + 1536);
+        // Capacity hint clamped: for plaintext within 1536 bytes of Array.MaxLength the naive
+        // int addition wraps negative and MemoryStream(int) throws a raw ArgumentOutOfRangeException.
+        using var output = new MemoryStream((int)Math.Min(plaintext.Length + 1536L, Array.MaxLength));
         await EncryptToAsync(input, output, recipients, plaintext.Length, null, cancellationToken).ConfigureAwait(false);
         return output.ToArray();
     }

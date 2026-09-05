@@ -174,6 +174,28 @@ pub fn encrypt_bytes_with(
     iterations: u32,
     chunk_size: u32,
 ) -> Vec<u8> {
+    // This test-facing writer must enforce the same parameter ranges as the .NET writer's
+    // PqEncryptionOptions.Validate: without these, chunk_size = 0 loops forever appending
+    // empty frames, a nonce prefix that is not 4 bytes panics mid-write, and a salt longer
+    // than 255 bytes silently truncates its length byte — producing a container no
+    // conforming reader can ever decrypt (silent data loss for a caller who kept only the
+    // ciphertext).
+    assert!(
+        (MIN_SALT_LEN..=255).contains(&salt.len()),
+        "salt must be 8..=255 bytes"
+    );
+    assert!(
+        nonce_prefix.len() == NONCE_PREFIX_LEN,
+        "nonce prefix must be exactly 4 bytes"
+    );
+    assert!(
+        (MIN_PBKDF2_ITERS..=MAX_PBKDF2_ITERS).contains(&iterations),
+        "iterations out of the format range"
+    );
+    assert!(
+        (MIN_CHUNK..=MAX_CHUNK).contains(&chunk_size),
+        "chunk size out of the format range"
+    );
     let key = derive_pbkdf2(passphrase, salt, iterations);
 
     // KeyParams (passphrase / PBKDF2): KdfId | SaltLen | Salt | Iterations(u32 BE)
