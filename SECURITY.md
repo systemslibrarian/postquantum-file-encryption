@@ -56,7 +56,12 @@ report until a fix is available and coordinated.
   ciphertext) carries one identical message — the library never distinguishes "wrong key"
   from "tampered data" at the public surface, and tests pin those messages byte-identical.
   Structural failures that an attacker can already compute from the ciphertext alone
-  (truncation, corrupt framing) carry distinct but key-independent diagnostics.
+  (truncation, corrupt framing) carry distinct but key-independent diagnostics. One
+  distinction *is* key-dependent: which stage failed. A recipient/provider key that cannot
+  unwrap the content key reports differently from a body that fails chunk authentication, so
+  a service that exposes raw error details can reveal whether its key could open a submitted
+  container — see [KNOWN-GAPS.md](KNOWN-GAPS.md) before surfacing exception text across a
+  trust boundary.
 - **No partial output on failure.** File APIs stage every byte to a sibling temp file and
   only `File.Move` it into place on full success. Stream callers can opt into the same
   all-or-nothing guarantee via `DecryptAtomicAsync`.

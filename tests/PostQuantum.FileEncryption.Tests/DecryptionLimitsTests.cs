@@ -188,4 +188,63 @@ public sealed class DecryptionLimitsTests
             base.Dispose(disposing);
         }
     }
+
+    // ---------------------------------------------------------------- Argon2 parallelism ceiling
+
+    [Fact]
+    public async Task Argon2id_parallelism_above_the_limit_is_rejected_before_derivation()
+    {
+        var options = new PqEncryptionOptions
+        {
+            Kdf = PqKdf.Argon2id,
+            Argon2MemoryKiB = 8 * 1024, // format minimum — cheap for the suite
+            Argon2Iterations = 1,
+            Argon2Parallelism = 3,
+            ChunkSizeBytes = 1024,
+        };
+        byte[] container = await EncryptAsync(RandomBytes(64), options);
+
+        var strict = new PqFileDecryptor(new PqDecryptionLimits { MaxArgon2Parallelism = 2 });
+        await Assert.ThrowsAsync<PqFormatException>(() => strict.DecryptBytesAsync(container, Passphrase));
+
+        // The same container opens fine under the defaults (limit 255 = the format maximum).
+        byte[] restored = await new PqFileDecryptor().DecryptBytesAsync(container, Passphrase);
+        Assert.Equal(64, restored.Length);
+    }
+
+    [Fact]
+    public async Task Untrusted_preset_caps_argon2id_parallelism_at_8()
+    {
+        var atCap = new PqEncryptionOptions
+        {
+            Kdf = PqKdf.Argon2id,
+            Argon2MemoryKiB = 8 * 1024,
+            Argon2Iterations = 1,
+            Argon2Parallelism = 8,
+            ChunkSizeBytes = 1024,
+        };
+        byte[] fine = await EncryptAsync(RandomBytes(32), atCap);
+        var untrusted = new PqFileDecryptor(PqDecryptionLimits.Untrusted);
+        Assert.Equal(32, (await untrusted.DecryptBytesAsync(fine, Passphrase)).Length);
+
+        var overCapOptions = new PqEncryptionOptions
+        {
+            Kdf = PqKdf.Argon2id,
+            Argon2MemoryKiB = 8 * 1024,
+            Argon2Iterations = 1,
+            Argon2Parallelism = 9,
+            ChunkSizeBytes = 1024,
+        };
+        byte[] overCap = await EncryptAsync(RandomBytes(32), overCapOptions);
+        await Assert.ThrowsAsync<PqFormatException>(() => untrusted.DecryptBytesAsync(overCap, Passphrase));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(256)]
+    public void Parallelism_limit_outside_the_byte_range_is_a_configuration_error(int limit)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new PqFileDecryptor(new PqDecryptionLimits { MaxArgon2Parallelism = limit }));
+    }
 }

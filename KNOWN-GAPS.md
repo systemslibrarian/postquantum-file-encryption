@@ -122,6 +122,20 @@ Last reviewed against: **`1.7.1`**. See [ROADMAP.md](ROADMAP.md) for the forward
 - **Passphrases are still `string` on the convenience overloads.** The zeroable byte overloads
   exist, but the `string` overloads remain for ergonomics and cannot zero the caller's `string`.
 
+- **The failure *stage* is distinguishable across key-establishment and body authentication.**
+  Within each stage messages are uniform and pinned by tests (wrong passphrase vs. tampered
+  bytes is one identical message), but the stages differ: a hybrid/provider key that fails to
+  *unwrap* the content key throws "not encrypted to this key…" while a successfully unwrapped
+  container whose *body* fails authentication throws the generic tamper message (with a
+  different inner exception). An external probe confirmed the two are programmatically
+  distinguishable. That tells an attacker submitting a crafted container to a service whether
+  the service's key could open it — a key-possession/membership signal, though never a
+  plaintext or key-recovery oracle. Unifying the public message and inner-exception policy
+  across stages is `1.x`-safe (exception text is not part of the frozen format) but changes
+  observable behavior callers may match on, so it is deliberately a considered decision rather
+  than a quiet patch; until then, services should log raw exception detail privately and
+  return a uniform error to untrusted callers.
+
 ### Dependency assurance
 
 - **Argon2id comes from `Konscious.Security.Cryptography`**, a widely used but **not formally

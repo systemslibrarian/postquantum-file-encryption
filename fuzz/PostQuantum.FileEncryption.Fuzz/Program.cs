@@ -13,11 +13,16 @@ const string passphrase = "fuzz-passphrase";
 // (even a constructor) beforehand would write to unmapped memory.
 Fuzzer.LibFuzzer.Run(data =>
 {
-    // Target 1: the .pqfe v2 container parser.
+    // Target 1: the .pqfe v2 container parser. Untrusted limits, for the same reason as the
+    // PQKF target below — and because the permissive Default limits let the fuzzer mint
+    // format-legal headers demanding 2 GiB Argon2id / 100M PBKDF2 iterations, which stalled
+    // single iterations for ~20 minutes and failed scheduled runs on timeout. The format-maxima
+    // range checks the Default path exercises are pinned by ParserBoundaryTests instead.
     try
     {
         // Synchronous wait is fine in a fuzz harness; the call is CPU-bound over a byte buffer.
-        _ = new PqFileDecryptor().DecryptBytesAsync(data.ToArray(), passphrase).GetAwaiter().GetResult();
+        _ = new PqFileDecryptor(PqDecryptionLimits.Untrusted)
+            .DecryptBytesAsync(data.ToArray(), passphrase).GetAwaiter().GetResult();
     }
     catch (PqEncryptionException)
     {

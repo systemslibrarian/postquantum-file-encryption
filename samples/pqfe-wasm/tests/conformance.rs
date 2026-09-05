@@ -76,6 +76,14 @@ fn lenient_corners_are_accepted() {
 }
 
 #[test]
+fn multichunk_positive_vector_decrypts() {
+    // Deterministic two-chunk container: pins frame ordering, the final-frame marker, and
+    // multi-frame decryption. Its expected plaintext is 2048 bytes of a repeated sentence.
+    let expected = "PQFE multi-chunk conformance vector. ".repeat(56).into_bytes();
+    accept("passphrase-pbkdf2-multichunk.pqfe", PASSPHRASE, &expected[..2048]);
+}
+
+#[test]
 fn negative_vectors_are_rejected() {
     for rel in [
         "negative/bad-magic.pqfe",
@@ -89,6 +97,18 @@ fn negative_vectors_are_rejected() {
         "negative/tag-truncated.pqfe",
         "negative/prefix-truncated.pqfe",
         "negative/not-a-container.bin",
+        // Argon2id cost/salt bounds (CONFORMANCE.md 2.1 rule 5, Argon2id side) — the checks
+        // that stop a tiny hostile header from demanding 2 GiB of memory, pinned per reader.
+        "negative/argon2-memory-out-of-range.pqfe",
+        "negative/argon2-iterations-out-of-range.pqfe",
+        "negative/argon2-parallelism-zero.pqfe",
+        "negative/salt-too-short.pqfe",
+        // Framing negatives: clean-boundary truncation (the saw_final path), frame reorder
+        // (counter-in-AAD), a dropped final frame, and a cross-container frame transplant.
+        "negative/truncated-at-frame-boundary.pqfe",
+        "negative/frame-swap.pqfe",
+        "negative/final-frame-dropped.pqfe",
+        "negative/cross-container-transplant.pqfe",
     ] {
         reject(rel, PASSPHRASE);
     }

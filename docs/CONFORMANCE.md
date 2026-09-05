@@ -149,17 +149,27 @@ Coverage table:
 | `4`         | Multiple recipients                   | `tests/.../HybridTests.cs`                |
 | `5`         | Envelope key provider (`LocalKekContentKeyProvider`) | `tests/.../KeyProviderTests.cs` |
 
-Negative vectors (every implementation MUST reject these the same way):
+Negative vectors (every implementation MUST reject these the same way). Most are committed as
+machine-readable corpus vectors (`test-vectors/manifest.json`), run by both implementations:
 
-- Wrong passphrase
-- Wrong recipient private key
-- Wrong content-key provider
-- A single bit flip in the header
-- A single bit flip in any frame's ciphertext or tag
-- Truncation: drop the final frame entirely, drop the final N bytes of the final tag
-- Splicing: swap frame *i* with frame *j*
-- Out-of-range KDF parameters in the header (e.g. `Pbkdf2Iterations = 1`)
-- Unknown `AeadId`, `KeySource`, or `FormatVersion`
+- Wrong passphrase — corpus `neg-wrong-passphrase`
+- Wrong recipient private key — per-implementation unit tests (`HybridTests`; randomized keys,
+  so not corpus-pinnable)
+- Wrong content-key provider — .NET unit tests (`KeyProviderTests`; the Rust core does not
+  implement `KeySource = 5`)
+- A single bit flip in the header — corpus `neg-header-tamper`
+- A single bit flip in any frame's ciphertext or tag — corpus `neg-ciphertext-tamper`
+- Truncation — corpus `neg-tag-truncated`, `neg-prefix-truncated`,
+  `neg-truncated-at-frame-boundary` (clean cut, zero frames), and `neg-final-frame-dropped`
+  (clean cut after an authentic non-final frame)
+- Splicing: swap frame *i* with frame *j* — corpus `neg-frame-swap`; transplanting an authentic
+  frame from a *different* container — corpus `neg-cross-container-transplant`
+- Out-of-range KDF parameters in the header — corpus `neg-pbkdf2-iterations-out-of-range`,
+  `neg-argon2-memory-out-of-range`, `neg-argon2-iterations-out-of-range`,
+  `neg-argon2-parallelism-zero`, and `neg-salt-too-short`
+- Unknown `AeadId`, `KeySource`, or `FormatVersion` — corpus `neg-unknown-aead`,
+  `neg-unknown-keysource`, `neg-bad-version` (and `neg-bad-magic`, `neg-not-a-container`,
+  `neg-chunksize-zero`)
 
 ---
 
