@@ -21,7 +21,12 @@ if [[ -z "$TAG" || -z "$PKG" ]]; then
 fi
 
 VERSION="${TAG#v}"
-WORK="$(mktemp -d)"
+# Canonicalize (pwd -P): on macOS mktemp returns a /var/folders/... path, but /var is a
+# symlink to /private/var — and building through the unresolved spelling makes SourceLink's
+# computed source root disagree with the compiler's canonical source paths, so the /_/ path
+# map never applies, absolute paths leak into the deterministic input hash, and verification
+# reports a false MISMATCH for a perfectly reproducible package.
+WORK="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$WORK"' EXIT
 
 echo "==> Verifying reproducibility for $PKG $VERSION (tag $TAG)"

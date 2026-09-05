@@ -11,7 +11,7 @@ restating.
 | | |
 | --- | --- |
 | Repository | `https://github.com/systemslibrarian/postquantum-file-encryption` |
-| Audit revision | latest release tag — **`v1.7.1`**, commit **`e0d332a`** |
+| Audit revision | latest release tag — **`v1.7.1`**, commit **`f062c10`** |
 | On-disk formats under review | `.pqfe` **v2** container, `.sig` **v1** sidecar, `PQKF` **v1** key file — all **frozen** for the entire `1.x` line |
 
 Pin the engagement to the tag, not to `main`:
@@ -19,7 +19,7 @@ Pin the engagement to the tag, not to `main`:
 ```bash
 git clone https://github.com/systemslibrarian/postquantum-file-encryption
 cd postquantum-file-encryption
-git checkout v1.7.1        # commit e0d332a
+git checkout v1.7.1        # commit f062c10
 # Release provenance: verify the tag's published artifacts against their build-provenance
 # attestations instead — see docs/SUPPLY-CHAIN.md ("gh attestation verify").
 ```
