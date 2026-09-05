@@ -247,4 +247,29 @@ public sealed class DecryptionLimitsTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new PqFileDecryptor(new PqDecryptionLimits { MaxArgon2Parallelism = limit }));
     }
+
+    // ---------------------------------------------------------------- total-plaintext ceiling
+
+    [Fact]
+    public async Task Plaintext_total_above_the_limit_is_rejected_before_derivation()
+    {
+        var options = new PqEncryptionOptions { Pbkdf2Iterations = 100_000, ChunkSizeBytes = 1024 };
+        byte[] container = await EncryptAsync(RandomBytes(4096), options);
+
+        var strict = new PqFileDecryptor(new PqDecryptionLimits { MaxPlaintextBytes = 4095 });
+        await Assert.ThrowsAsync<PqFormatException>(() => strict.DecryptBytesAsync(container, Passphrase));
+
+        var exact = new PqFileDecryptor(new PqDecryptionLimits { MaxPlaintextBytes = 4096 });
+        Assert.Equal(4096, (await exact.DecryptBytesAsync(container, Passphrase)).Length);
+
+        // Defaults are unlimited — every legal container still opens.
+        Assert.Equal(4096, (await new PqFileDecryptor().DecryptBytesAsync(container, Passphrase)).Length);
+    }
+
+    [Fact]
+    public void Negative_plaintext_limit_is_a_configuration_error()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new PqFileDecryptor(new PqDecryptionLimits { MaxPlaintextBytes = -1 }));
+    }
 }

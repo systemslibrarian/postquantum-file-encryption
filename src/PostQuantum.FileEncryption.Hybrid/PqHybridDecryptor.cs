@@ -47,7 +47,7 @@ public sealed class PqHybridDecryptor
         // container's length and derives the plaintext total for progress reporting from it.
         long? total = input.CanSeek ? input.Length - input.Position : null;
         ContainerHeader header = await PqContainerEngine.ReadHeaderAsync(input, cancellationToken).ConfigureAwait(false);
-        PqContainer.EnforceChunkLimit(header, _limits);
+        PqContainer.EnforceChunkLimit(header, _limits, total);
         byte[] contentKey = header.KeySource switch
         {
             ContainerFormat.KeySourceHybridRecipient => HybridKeyEstablishment.UnwrapFromRecipient(header.KeyParams, privateKey),

@@ -10,6 +10,24 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ### Added
 
+- **`PqDecryptionLimits.MaxPlaintextBytes`** — a total-plaintext ceiling enforced *before any
+  key derivation or decryption work* for every input whose length is known (file, bytes,
+  atomic, seekable streams): the exact plaintext total is derived from the container length
+  and over-limit containers are rejected with `PqFormatException`, closing the
+  size-amplification hole for services that buffer untrusted containers (an external review's
+  Medium finding). Default is unlimited (no acceptance change); set it to the application's
+  real maximum when decrypting untrusted input. Enforced identically by the Hybrid decryptor.
+- **Packed-consumer verification** (`scripts/verify-packed-consumers.sh` + the
+  `packed-consumers` workflow): packs all nine packages into a hermetic local feed, builds a
+  clean net8.0 + net10.0 consumer from the packages alone, asserts the packed analyzers load
+  and fire (PQFE101), runs the full API journey on both frameworks, and installs + drives the
+  packed `pqfe` tool end to end (round trips, recipient flow, fingerprints, wrong-passphrase
+  exit code) — catching package-asset, dependency-pin, analyzer-packaging, and tool-payload
+  regressions that source builds cannot see. The OSS-Fuzz build script now also builds and
+  seeds the `decrypt_hybrid` target.
+
+### Added
+
 - **Public-key fingerprints.** `PqHybridPublicKey.GetFingerprint()` and
   `PqSigningPublicKey.GetFingerprint()` return a stable, domain-separated fingerprint —
   `pqfp1:` + URL-safe Base64 SHA-256 over a domain prefix, a purpose tag (recipient and

@@ -83,7 +83,7 @@ internal static class PqContainer
             {
                 throw new PqDecryptionException("This container is encrypted to a recipient key, not a passphrase.");
             }
-            EnforceChunkLimit(header, limits);
+            EnforceChunkLimit(header, limits, totalBytes);
             // A hostile header can legally demand the format-maximum KDF cost (up to 2 GiB of
             // Argon2id memory) which then runs to completion uninterruptibly. Honor a cancelled
             // token here, before that cost is committed, rather than only after in ReadBodyAsync.
@@ -120,7 +120,7 @@ internal static class PqContainer
             {
                 throw new PqDecryptionException("This container is encrypted with a passphrase, not a recipient key.");
             }
-            EnforceChunkLimit(header, limits);
+            EnforceChunkLimit(header, limits, totalBytes);
             byte[] contentKey = KeyEstablishment.UnwrapRecipientKey(header, privateKey);
             await Codec.ReadBodyAsync(source, destination, contentKey, header, totalBytes, progress, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
@@ -163,7 +163,7 @@ internal static class PqContainer
             {
                 throw new PqDecryptionException("This container was not encrypted with an external key provider.");
             }
-            EnforceChunkLimit(header, limits);
+            EnforceChunkLimit(header, limits, totalBytes);
             (string providerId, byte[] wrapInfo) = ParseKeyProviderParams(header.KeyParams);
             if (!string.Equals(providerId, provider.ProviderId, StringComparison.Ordinal))
             {
@@ -182,17 +182,28 @@ internal static class PqContainer
     }
 
     /// <summary>
-    /// Rejects a header whose declared chunk size exceeds the decryptor's configured ceiling.
-    /// Runs before key establishment and before the engine allocates chunk buffers, so a
-    /// hostile header above the limit costs nothing. Key-independent, so no oracle.
-    /// Internal (not private) so the Hybrid package's decryptor enforces the same gate.
+    /// Rejects a header whose declared chunk size — or, when the container's total length is
+    /// known, whose exact derivable plaintext total — exceeds the decryptor's configured
+    /// ceilings. Runs before key establishment and before the engine allocates chunk buffers,
+    /// so a hostile header above a limit costs nothing. Key-independent, so no oracle.
+    /// Internal (not private) so the Hybrid package's decryptor enforces the same gates.
     /// </summary>
-    internal static void EnforceChunkLimit(ContainerHeader header, PqDecryptionLimits limits)
+    internal static void EnforceChunkLimit(ContainerHeader header, PqDecryptionLimits limits, long? totalContainerBytes)
     {
         if (header.ChunkSize > limits.MaxChunkSizeBytes)
         {
             throw new PqFormatException(
                 $"Container declares a {header.ChunkSize}-byte chunk size, above this decryptor's configured limit of {limits.MaxChunkSizeBytes} bytes (see PqDecryptionLimits).");
+        }
+        // DerivePlaintextTotal assumes full non-final frames, which maximizes plaintext for a
+        // given body length — so it is a safe upper bound even for nonconforming containers
+        // with short data frames (the frozen reader leniency #5).
+        if (limits.MaxPlaintextBytes < long.MaxValue
+            && PqContainerEngine.DerivePlaintextTotal(totalContainerBytes, header) is long plaintextTotal
+            && plaintextTotal > limits.MaxPlaintextBytes)
+        {
+            throw new PqFormatException(
+                $"Container holds up to {plaintextTotal} bytes of plaintext, above this decryptor's configured limit of {limits.MaxPlaintextBytes} bytes (see PqDecryptionLimits).");
         }
     }
 

@@ -262,7 +262,7 @@ internal static class PqContainerEngine
     /// last carries exactly <see cref="ContainerHeader.ChunkSize"/> plaintext bytes, so n — and
     /// therefore the plaintext size — is fully determined by the body length.
     /// </summary>
-    private static long? DerivePlaintextTotal(long? totalContainerBytes, ContainerHeader header)
+    internal static long? DerivePlaintextTotal(long? totalContainerBytes, ContainerHeader header)
     {
         if (totalContainerBytes is not long total)
         {
