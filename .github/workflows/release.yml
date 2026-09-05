@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # No step in this job pushes via git; don't leave a writable token in .git/config
+          # for later steps (including third-party tools) to read.
+          persist-credentials: false
 
       - name: Verify docs and project versions match the release tag
         # Fail the release before anything is packed or pushed if the version documented to
@@ -100,7 +104,9 @@ jobs:
         # hit nuget.org (where they're effectively immutable). The `Symbols` rule is excluded
         # because symbols ship as a separate .snupkg (IncludeSymbols + SymbolPackageFormat=snupkg).
         run: |
-          dotnet tool install --global Meziantou.Framework.NuGetPackageValidation.Tool
+          # Pinned: these two tools run inside the release job, so a compromised floating
+          # release must not be able to execute here. Bump the pins deliberately.
+          dotnet tool install --global Meziantou.Framework.NuGetPackageValidation.Tool --version 2.0.6
           for nupkg in artifacts/*.nupkg; do
             echo "Validating $nupkg"
             meziantou.validate-nuget-package "$nupkg" --excluded-rules Symbols
@@ -108,7 +114,7 @@ jobs:
 
       - name: Generate SBOMs (CycloneDX)
         run: |
-          dotnet tool install --global CycloneDX
+          dotnet tool install --global CycloneDX --version 6.2.0
           dotnet CycloneDX src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj -o artifacts --json --filename sbom.core.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj -o artifacts --json --filename sbom.hybrid.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj -o artifacts --json --filename sbom.signing.cdx.json
@@ -116,12 +122,18 @@ jobs:
           dotnet CycloneDX src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj -o artifacts --json --filename sbom.azurekeyvault.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Gcp/PostQuantum.FileEncryption.Gcp.csproj -o artifacts --json --filename sbom.gcp.cdx.json
           dotnet CycloneDX src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj -o artifacts --json --filename sbom.di.cdx.json
+          dotnet CycloneDX src/PostQuantum.FileEncryption.Analyzers/PostQuantum.FileEncryption.Analyzers.csproj -o artifacts --json --filename sbom.analyzers.cdx.json
           dotnet CycloneDX samples/Pqfe.Cli/Pqfe.Cli.csproj -o artifacts --json --filename sbom.tool.cdx.json
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: 'artifacts/*.nupkg'
+          # Everything a consumer can download deserves provenance: packages, symbol
+          # packages, and the SBOMs themselves.
+          subject-path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+            artifacts/sbom.*.cdx.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -312,6 +324,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # No step in this job pushes via git; don't leave a writable token in .git/config
+          # for later steps (including third-party tools) to read.
+          persist-credentials: false
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:

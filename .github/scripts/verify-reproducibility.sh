@@ -43,6 +43,16 @@ case "$PKG" in
     CSPROJ="$WORK/src/src/PostQuantum.FileEncryption/PostQuantum.FileEncryption.csproj" ;;
   PostQuantum.FileEncryption.Hybrid)
     CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Hybrid/PostQuantum.FileEncryption.Hybrid.csproj" ;;
+  PostQuantum.FileEncryption.Signing)
+    CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Signing/PostQuantum.FileEncryption.Signing.csproj" ;;
+  PostQuantum.FileEncryption.Aws)
+    CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Aws/PostQuantum.FileEncryption.Aws.csproj" ;;
+  PostQuantum.FileEncryption.AzureKeyVault)
+    CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.AzureKeyVault/PostQuantum.FileEncryption.AzureKeyVault.csproj" ;;
+  PostQuantum.FileEncryption.Gcp)
+    CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Gcp/PostQuantum.FileEncryption.Gcp.csproj" ;;
+  PostQuantum.FileEncryption.Analyzers)
+    CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Analyzers/PostQuantum.FileEncryption.Analyzers.csproj" ;;
   PostQuantum.FileEncryption.Extensions.DependencyInjection)
     CSPROJ="$WORK/src/src/PostQuantum.FileEncryption.Extensions.DependencyInjection/PostQuantum.FileEncryption.Extensions.DependencyInjection.csproj" ;;
   PostQuantum.FileEncryption.Tool)

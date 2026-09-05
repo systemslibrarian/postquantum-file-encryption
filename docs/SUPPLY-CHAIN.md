@@ -17,7 +17,7 @@ produces and attaches:
 | --- | --- | --- |
 | `PostQuantum.FileEncryption[.<Package>].X.Y.Z.nupkg` | The nine lockstep packages: core, Hybrid, Signing, Aws, AzureKeyVault, Gcp, DI extensions, Analyzers, and the `pqfe` tool | nuget.org and GitHub Release |
 | `PostQuantum.FileEncryption[.<Package>].X.Y.Z.snupkg` | Symbol packages for the seven library packages | nuget.org and GitHub Release |
-| `sbom.<package>.cdx.json` | CycloneDX SBOMs: core, hybrid, signing, aws, azurekeyvault, gcp, di, and tool | GitHub Release |
+| `sbom.<package>.cdx.json` | CycloneDX SBOMs: core, hybrid, signing, aws, azurekeyvault, gcp, di, analyzers, and tool | GitHub Release |
 | Build-provenance attestation | SLSA-style attestation over every `.nupkg` | GitHub attestations API |
 
 The release workflow also runs `Meziantou.Framework.NuGetPackageValidation.Tool` against
@@ -36,8 +36,9 @@ owner and the GitHub attestation infrastructure.
 gh attestation verify PostQuantum.FileEncryption.1.7.1.nupkg \
   --owner systemslibrarian
 
-# The same command works for every published .nupkg. Symbol packages (.snupkg) are NOT
-# covered by the attestation today — verifying one fails by construction.
+# The same command works for every published .nupkg. From the release after 1.7.1, .snupkg
+# symbol packages and the sbom.*.cdx.json files are attested too; artifacts of 1.7.1 and
+# earlier carry attestations for the .nupkg files only.
 ```
 
 A successful run prints the subject digest, the workflow that produced it, the commit SHA,
@@ -95,9 +96,9 @@ the verification script, and the CI job that runs it on every release tag are in
 .github/scripts/verify-reproducibility.sh v1.7.1 PostQuantum.FileEncryption.Hybrid
 ```
 
-The scripted verification currently covers the core, Hybrid, DI extensions, and tool
-packages. The other five build from the same deterministic `Directory.Build.props`
-settings but are not yet in the script's matrix.
+From the release after 1.7.1 the scripted verification covers **all nine** lockstep
+packages; for 1.7.1 and earlier tags it ran for the core, Hybrid, DI extensions, and tool
+packages only.
 
 A failing run is a finding worth a private security report — see
 [SECURITY.md](../SECURITY.md).

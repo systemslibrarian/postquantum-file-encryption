@@ -27,7 +27,7 @@ done. Last reviewed against: **`1.7.1`**.
 | --- | --- | --- |
 | Warnings as errors, latest-recommended analyzers | ✅ | `Directory.Build.props` |
 | Public API surface locked against accidental breaks | ✅ | PublicApiAnalyzers, `PublicAPI.Shipped.txt` in all seven library packages |
-| Binary compatibility validated against the published baseline | ⚠️ | `EnablePackageValidation` (baseline `1.7.1`) via `Directory.Build.props`; overridden **off** in the Aws, AzureKeyVault, Gcp, and Analyzers packages — a pre-first-publish gate never flipped after they shipped |
+| Binary compatibility validated against the published baseline | ✅ | `EnablePackageValidation` (baseline `1.7.1`) via `Directory.Build.props` for every library package; the Analyzers and Tool packages have no consumable `lib/` API surface to validate |
 | Key material zeroed (`CryptographicOperations.ZeroMemory` in `finally`) | ✅ | Throughout `Internal/`; reviewed per change |
 | AOT/trim compatible, proven end-to-end | ✅ | `IsAotCompatible` + CI native-AOT publish & round-trip smoke test |
 | Async + cancellation honored on all I/O | ✅ | Public API contract; cancellation cleanup tests |

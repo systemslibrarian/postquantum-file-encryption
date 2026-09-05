@@ -8,6 +8,21 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ## [Unreleased]
 
+### Supply chain
+
+- **The release job's third-party dotnet tools are version-pinned** (NuGetPackageValidation
+  2.0.6, CycloneDX 6.2.0) and both release-workflow checkouts set
+  `persist-credentials: false` — no floating third-party code, and no writable git token on
+  disk, inside the job that builds, attests, and publishes the packages.
+- **Provenance attestation now covers `.snupkg` symbol packages and the SBOM files**, not
+  just `.nupkg` — every downloadable release artifact verifies with `gh attestation verify`
+  from the next tag onward. The Analyzers package gains its missing SBOM
+  (`sbom.analyzers.cdx.json`).
+- **Reproducibility verification extended to all nine lockstep packages** (was 4 of 9), and
+  **binary package validation is enabled in the Aws/AzureKeyVault/Gcp packages** against the
+  published `1.7.1` baseline — their pre-first-publish opt-out was stale (verified: all three
+  pack clean against the live baseline).
+
 ### Fixed
 
 Sixteen defects found by an adversarially verified multi-agent bug hunt (every finding
