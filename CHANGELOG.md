@@ -10,6 +10,16 @@ and the `.pqfe` v2 container format is frozen for the entire `1.x` line.
 
 ### Added
 
+- **`PqContainerInfo` — supported container inspection.** `Read` / `TryRead` / `ReadFileAsync`
+  report what a header declares (key source, KDF and its work factors, chunk size, recipient
+  count, sanitized provider id, and an exact plaintext-size upper bound) **without deriving
+  keys or decrypting anything** — the primitive for application policy ("hybrid recipients
+  only", "nothing over 100 MB") that both external reviews asked for, so no operator ever
+  hand-parses the frozen header. Structural acceptance mirrors the real reader exactly,
+  pinned by a conformance-corpus consistency test; every value is documented as
+  unauthenticated until a decryption succeeds. `pqfe inspect <file> [--json]` exposes it from
+  the shipped tool (hand-built JSON keeps the CLI NativeAOT-safe).
+
 - **`PqDecryptionLimits.MaxPlaintextBytes`** — a total-plaintext ceiling enforced *before any
   key derivation or decryption work* for every input whose length is known (file, bytes,
   atomic, seekable streams): the exact plaintext total is derived from the container length
